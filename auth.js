@@ -9,7 +9,7 @@ import { pool } from "./db.js";
 const SESSION_SECRET =
   process.env.SESSION_SECRET || "dev-only-change-me-in-render-env";
 const SESSION_DAYS = 30;
-const TOKEN_TTL_HOURS = 72; // magic links stay valid 3 days
+const TOKEN_TTL_HOURS = 24 * 365; // ~1 year — links double as durable bookmarks
 
 // ---- Magic links ----------------------------------------------------------
 
