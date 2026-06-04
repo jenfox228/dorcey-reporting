@@ -5,10 +5,9 @@
 // never a migration. Each field: { key, label, type } where type is
 // "number" (default) or "text".
 //
-// VERIFIED = field list recovered exactly from the April mapping.
-// RECONSTRUCTED = built from the recovered *categories* and needs a quick
-//   eyeball against the live Google Form before go-live (look for the
-//   // VERIFY tag).
+// VERIFIED = field list taken from the live Google Form.
+// RECONSTRUCTED = built from recovered categories; eyeball before go-live
+//   (look for the // VERIFY tag).
 // ---------------------------------------------------------------------------
 
 const n = (key, label) => ({ key, label, type: "number" });
@@ -18,10 +17,10 @@ export const TEMPLATES = {
   // ===== Admin-only (no self-report; lives in the dashboard/admin) ========
   admin_none: { label: "Admin", family: "-", monday: [], friday: [] },
 
-
   // ===== TEMPLATE A — Estate Planning Attorneys =========================
-  // Josh, Mike, Erica, Kara (+ Joe pending). Calendar-heavy Monday,
-  // practice-area-heavy Friday. RECONSTRUCTED from recovered categories.
+  // Josh, Mike, Erica, Kara, Joe. Calendar-heavy Monday, practice-area Friday.
+  // Call/meeting fields intentionally KEPT — the firm wants attorney calls
+  // tracked. RECONSTRUCTED.
   attorney_ep: {
     label: "Estate Planning Attorney",
     family: "A",
@@ -58,7 +57,7 @@ export const TEMPLATES = {
   },
 
   // ===== TEMPLATE B — Probate / TA Specialists ==========================
-  // Doug, Brian. VERIFIED — both forms identical.
+  // Doug, Brian. Attorney area — call/follow-up fields KEPT. VERIFIED.
   probate_specialist: {
     label: "Probate / TA Specialist",
     family: "B",
@@ -105,7 +104,193 @@ export const TEMPLATES = {
     ],
   },
 
-  // Probate Department — VERIFIED (16-field probate funnel).
+  // Processed Funding — VERIFIED (real fields, replaced the old placeholder).
+  op_processed_funding: {
+    label: "Processed Funding",
+    family: "C",
+    monday: [
+      n("funding_meetings", "Funding Meetings"),
+      n("files_to_process", "Files to be Processed"),
+      n("files_followup", "Files on Follow-Up List (misc.)"),
+      n("deeds_to_process", "Deeds to Process"),
+    ],
+    friday: [
+      n("processed_funding", "Processed Funding"),
+      n("files_removed_followup", "Files removed from Follow-Up List"),
+      n("deeds_processed", "Deeds Processed"),
+      n("calls_emails_clients", "Calls/Emails with Clients"),
+      n("calls_emails_institutions", "Calls/Emails with Financial Institutions"),
+    ],
+  },
+
+  // Business Planning — VERIFIED. (JTM/MV = team-member attributions.)
+  op_business_planning: {
+    label: "Business Planning",
+    family: "C",
+    monday: [n("new_llcs", "New LLCs this past week")],
+    friday: [
+      n("llcs_drafted", "LLCs Drafted"),
+      n("llcs_processed", "LLCs Processed"),
+      n("new_mas_jtm", "New M&As (JTM)"),
+      n("signed_in_person_jtm", "Signed In Person/Office (JTM)"),
+      n("signed_docusign_mv", "Signed Via DocuSign (MV)"), // VERIFY M/F
+      n("binders_made_jtm", "Binders Made (JTM)"), // VERIFY M/F
+      n("llc_funding_mv", "LLC Funding (MV)"), // VERIFY M/F
+      n("llcs_filed", "LLCs Filed"),
+      n("new_bps_jtm", "New BPs (JTM)"),
+      n("closed_files_jtm", "Closed Files (JTM)"),
+    ],
+  },
+
+  // Drafting — VERIFIED.
+  op_drafting: {
+    label: "Drafting",
+    family: "C",
+    monday: [
+      n("files_to_draft", "Files to be Drafted"),
+      n("adv_planning_to_draft", "Advanced Planning to be Drafted"),
+    ],
+    friday: [
+      n("files_drafted", "Files Drafted"),
+      n("adv_planning_drafted", "Advanced Planning files Drafted"),
+    ],
+  },
+
+  // APP Funding — VERIFIED.
+  op_app_funding: {
+    label: "APP Funding",
+    family: "C",
+    monday: [
+      n("packets_to_draft", "Funding Packets to be Drafted"),
+      n("packets_to_process", "Funding Packets to be Processed"),
+      n("funding_audit_meetings", "APP Funding/Audit Meetings"),
+    ],
+    friday: [
+      n("drafted_packets", "Drafted Funding Packets"),
+      n("processed_packets", "Processed Funding Packets"),
+      n("audits_completed", "APP Audits Completed"),
+      n("audits_remaining", "APP Audits Remaining (this month)"),
+      n("calls_emails_clients", "Calls/Emails with Clients"),
+      n("calls_emails_institutions", "Calls/Emails with Financial Institutions"),
+    ],
+  },
+
+  // Drafting Funding — VERIFIED. (Touches O/S Deeds + the FVR tool.)
+  op_drafting_funding: {
+    label: "Drafting Funding",
+    family: "C",
+    monday: [
+      n("funding_meetings", "Funding Meetings"),
+      n("files_to_draft", "Files to Draft"),
+      n("os_deeds_to_request", "O/S Deeds to Request"),
+    ],
+    friday: [
+      n("files_drafted", "Files Drafted"),
+      n("os_deeds_requested", "O/S Deeds Requested"),
+      n("calls_emails_clients", "Calls/Emails with Clients"),
+      n("audits", "Audits"),
+      n("update_fvr", "Update FVR"),
+    ],
+  },
+
+  // DLF Registered Agent — VERIFIED.
+  op_dlf_ra: {
+    label: "DLF Registered Agent",
+    family: "C",
+    monday: [
+      n("new_ra", "New RA last week"),
+      n("ra_to_file", "RA to be filed"),
+    ],
+    friday: [
+      n("ra_filed", "RA Filed"),
+      n("fl_filing", "FL Filing"),
+      n("wy_filing", "WY Filing"),
+      n("other_state_filing", "Other State Filing"),
+    ],
+  },
+
+  // Marketing Global — VERIFIED. Philippines team (PH) — schedule reminders
+  // to their local morning, not Eastern time.
+  op_marketing_global: {
+    label: "Marketing Global",
+    family: "C",
+    ph_team: true,
+    monday: [
+      n("newsletter_created", "Monthly Newsletter Created"), // VERIFY M/F
+      n("onedrive_project", "OneDrive Project"),
+    ],
+    friday: [
+      n("numbers_project", "Numbers Project"),
+      n("social_media_created", "Social Media Created"),
+      n("videos_created", "Videos Created"),
+    ],
+  },
+
+  // Drafting Global — VERIFIED. Philippines team (PH).
+  op_drafting_global: {
+    label: "Drafting Global",
+    family: "C",
+    ph_team: true,
+    monday: [n("files_to_draft", "Files to be Drafted")],
+    friday: [n("files_drafted", "Files Drafted")],
+  },
+
+  // Probate-TA — VERIFIED. Client follow-up field removed per firm request.
+  op_probate_ta: {
+    label: "Probate-TA",
+    family: "C",
+    monday: [n("new_tas", "New TAs last week")],
+    friday: [
+      n("closed_tas", "Closed TAs this week"),
+      n("notices_736_sent", "736 notices sent out"),
+      n("notice_of_trust_filed", "Cases with Notice of Trust filed"),
+      n("cases_nearing_736_end", "Cases nearing end of 736 period"), // VERIFY M/F
+      n("distributions_sent", "Distributions sent out"),
+      n("docs_recording", "Docs sent for recording"),
+    ],
+  },
+
+  // Probate Intake — VERIFIED. Client-calls field removed; Intake Calls KEPT.
+  op_probate_intake: {
+    label: "Probate Intake",
+    family: "C",
+    monday: [
+      n("new_probates_retained", "New Probates retained last week"),
+      n("new_files_to_create", "New files to create"),
+      n("new_tas_retained", "New TAs retained last week"),
+    ],
+    friday: [
+      n("intake_calls", "Intake Calls"),
+      n("new_probate_appts", "New Probate appts scheduled"),
+      n("new_ta_appts", "New TA appts scheduled"),
+    ],
+  },
+
+  // Admin / Marketing (Jeana) — VERIFIED. Merge of Iron Mountain records work
+  // plus admin/marketing tasks; there is no separate Iron Mountain department.
+  op_admin_marketing: {
+    label: "Admin / Marketing",
+    family: "C",
+    monday: [
+      n("boxes_in_im", "Boxes left in Iron Mountain"),
+      n("total_docs_returned", "Total documents returned (running total)"),
+    ],
+    friday: [
+      n("letters_mailed", "Letters Mailed this week"),
+      n("docs_returned_week", "Documents Returned this week"),
+      n("forensis_files_closed", "Forensis Files Closed"), // VERIFY spelling
+      n("research_tickets", "Research tickets"),
+      n("dashboard_additions", "Dashboard additions"),
+      n("client_tracking_sheets", "Client tracking sheets"),
+      n("preconsult_video_views", "Pre-consult video views (WebinarJam)"),
+      n("seminar_attendees", "Seminar attendees"),
+      n("scan_shred_closed", "Scan & shred jobs closed"),
+      n("files_put_away", "Files put away"),
+    ],
+  },
+
+  // Probate Department — VERIFIED. Phone calls, Emails, and client Follow-ups
+  // removed per firm request; workflow/throughput fields kept.
   op_probate_dept: {
     label: "Probate Department",
     family: "C",
@@ -119,24 +304,12 @@ export const TEMPLATES = {
       n("closed_probates", "Closed probates"),
       n("petitions_filed", "Petitions filed"),
       n("ntc_filed", "Notices to creditors filed"),
-      n("phone_calls", "Phone calls"),
-      n("emails", "Emails"),
       n("complex_discussed", "Complex cases discussed"),
       n("files_reviewed", "Files reviewed"),
-      n("followups", "Follow-ups with clients"),
       n("initial_docs_signing", "Initial docs sent for signing"),
       n("closing_docs_signing", "Closing docs sent for signing"),
       n("docs_recording", "Docs sent for recording"),
     ],
-  },
-
-  // Processed Funding — placeholder operational template until the exact
-  // field list is re-collected. RECONSTRUCTED.
-  op_processed_funding: {
-    label: "Processed Funding",
-    family: "C",
-    monday: [n("in_queue", "Funding items in queue")], // VERIFY
-    friday: [n("processed", "Funding items processed")], // VERIFY
   },
 
   // ===== TEMPLATE D — Attribution / Rollup Trackers =====================
