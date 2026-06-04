@@ -1,6 +1,8 @@
 // seed.js — run once (or anytime) to insert/refresh the team roster, then
 // print a fresh magic link for the first admin so you can bootstrap.
-//   Run on Render via a one-off Shell:  node seed.js
+//   Run on Render via the Shell:  node seed.js
+// Safe to re-run: existing people are updated (not duplicated), and no
+// submissions are ever touched.
 import { pool, initSchema } from "./db.js";
 import { createMagicToken } from "./auth.js";
 
@@ -8,22 +10,33 @@ import { createMagicToken } from "./auth.js";
 // a key in config/templates.js.
 const TEAM = [
   // --- Admins ---
-  { name: "Jen Fox",      email: "jen.fox@dorceylaw.com",     template_key: "admin_none",         is_admin: true },
-  { name: "Josh Dorcey",  email: "josh.dorcey@dorceylaw.com", template_key: "attorney_ep",        is_admin: true, location: "Fort Myers HQ" },
-  { name: "Mike Scott",   email: "mike.scott@dorceylaw.com",  template_key: "attorney_ep",        is_admin: true, location: "LaBelle" },
+  { name: "Jen Fox",      email: "jen.fox@dorceylaw.com",     template_key: "admin_none",  is_admin: true },
+  { name: "Josh Dorcey",  email: "josh.dorcey@dorceylaw.com", template_key: "attorney_ep", is_admin: true, location: "Fort Myers HQ" },
+  { name: "Mike Scott",   email: "mike.scott@dorceylaw.com",  template_key: "attorney_ep", is_admin: true, location: "LaBelle" },
 
   // --- Estate Planning attorneys (Template A) ---
   { name: "Erica Johnson", email: "erica.johnson@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },
   { name: "Kara Sajdak",   email: "kara.sajdak@dorceylaw.com",   template_key: "attorney_ep", location: "Naples / Marco Island" },
+  { name: "Joe LoTempio",  email: "joe.lotempio@dorceylaw.com",  template_key: "attorney_ep", location: "Fort Myers HQ" },
 
   // --- Probate / TA specialists (Template B) ---
-  { name: "Doug Dodson",    email: "doug.dodson@dorceylaw.com",     template_key: "probate_specialist" },
+  { name: "Doug Dodson",     email: "doug.dodson@dorceylaw.com",     template_key: "probate_specialist" },
   { name: "Brian Bronsther", email: "brian.bronsther@dorceylaw.com", template_key: "probate_specialist" },
 
   // --- Operational departments (Template C) ---
-  { name: "File Creation",     email: "file.creation@dorceylaw.com",     template_key: "op_file_creation" },
-  { name: "Probate Department", email: "probate.dept@dorceylaw.com",      template_key: "op_probate_dept" },
-  { name: "Processed Funding", email: "processed.funding@dorceylaw.com",  template_key: "op_processed_funding" },
+  { name: "File Creation",        email: "file.creation@dorceylaw.com",     template_key: "op_file_creation" },
+  { name: "Processed Funding",    email: "processed.funding@dorceylaw.com",  template_key: "op_processed_funding" },
+  { name: "Business Planning",    email: "business.planning@dorceylaw.com",  template_key: "op_business_planning" },
+  { name: "Drafting",             email: "drafting@dorceylaw.com",           template_key: "op_drafting" },
+  { name: "APP Funding",          email: "app.funding@dorceylaw.com",        template_key: "op_app_funding" },
+  { name: "Drafting Funding",     email: "drafting.funding@dorceylaw.com",   template_key: "op_drafting_funding" },
+  { name: "DLF Registered Agent", email: "dlf.ra@dorceylaw.com",             template_key: "op_dlf_ra" },
+  { name: "Marketing Global",     email: "marketing.global@dorceylaw.com",   template_key: "op_marketing_global" },
+  { name: "Drafting Global",      email: "drafting.global@dorceylaw.com",    template_key: "op_drafting_global" },
+  { name: "Probate-TA",           email: "probate.ta@dorceylaw.com",         template_key: "op_probate_ta" },
+  { name: "Probate Intake",       email: "probate.intake@dorceylaw.com",     template_key: "op_probate_intake" },
+  { name: "Probate Department",   email: "probate.dept@dorceylaw.com",       template_key: "op_probate_dept" },
+  { name: "Admin / Marketing",    email: "jeana.renaud@dorceylaw.com",       template_key: "op_admin_marketing" },
 
   // --- Attribution / rollup trackers (Template D) ---
   { name: "APP Department",    email: "app.dept@dorceylaw.com",    template_key: "tracker_app" },
@@ -47,7 +60,6 @@ async function run() {
   }
   console.log(`Seeded ${TEAM.length} users.`);
 
-  // Bootstrap link for the first admin.
   const { rows } = await pool.query(
     `SELECT id, name FROM rpt_users WHERE is_admin = TRUE ORDER BY id LIMIT 1`
   );
