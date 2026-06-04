@@ -56,6 +56,23 @@ export const TEMPLATES = {
     ],
   },
 
+  // Real Estate Attorney — Brad Butcher. VERIFIED. Attorney area, so the
+  // phone-calls field is kept.
+  attorney_realestate: {
+    label: "Real Estate Attorney",
+    family: "A",
+    monday: [
+      n("re_closings_scheduled", "Real Estate closings scheduled this week"),
+      n("re_new_client_appts", "New Real Estate client appts"),
+    ],
+    friday: [
+      n("re_intake_calls", "New Real Estate intake calls"),
+      n("re_clients_scheduled", "New Real Estate clients scheduled"),
+      n("re_closings", "Real Estate closings this week"),
+      n("re_phone_calls", "Real Estate phone calls"),
+    ],
+  },
+
   // ===== TEMPLATE B — Probate / TA Specialists ==========================
   // Doug, Brian. Attorney area — call/follow-up fields KEPT. VERIFIED.
   probate_specialist: {
@@ -190,6 +207,25 @@ export const TEMPLATES = {
       n("calls_emails_clients", "Calls/Emails with Clients"),
       n("audits", "Audits"),
       n("update_fvr", "Update FVR"),
+    ],
+  },
+
+  // Deeds — VERIFIED. In-state vs out-of-state deed pipeline.
+  op_deeds: {
+    label: "Deeds",
+    family: "C",
+    monday: [
+      n("in_state_deed_requests", "In-state deed requests"),
+      n("oos_deed_requests", "Out-of-state deed requests"),
+      n("deeds_sent_fft", "Deeds sent to Florida Freedom Title (FFT)"),
+    ],
+    friday: [
+      n("deeds_processed_instate", "Deeds processed (in-state)"),
+      n("deeds_processed_oos", "Deeds processed (out-of-state)"),
+      n("deeds_recorded_instate", "Deeds recorded (in-state)"),
+      n("deeds_recorded_oos", "Deeds recorded (out-of-state)"),
+      n("deeds_left_to_process", "Deeds left to be processed"),
+      n("deeds_rejected", "Deeds rejected this week"),
     ],
   },
 
