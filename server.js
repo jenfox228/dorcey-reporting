@@ -53,6 +53,35 @@ function appUrl(req) {
   );
 }
 
+// Last N reporting weeks (Monday YYYY-MM-DD), oldest -> newest. UTC-safe.
+function lastNWeeks(n = 8) {
+  const [y, m, d] = weekMonday().split("-").map(Number);
+  const base = Date.UTC(y, m - 1, d);
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) {
+    out.push(new Date(base - i * 7 * 86400000).toISOString().slice(0, 10));
+  }
+  return out;
+}
+
+// Sum the numeric values in a JSONB data object (ignores text fields).
+function sumNumeric(obj) {
+  let s = 0;
+  for (const v of Object.values(obj || {})) {
+    if (typeof v === "number") s += v;
+    else if (typeof v === "string" && v.trim() !== "" && !isNaN(+v)) s += +v;
+  }
+  return s;
+}
+
+// Map a stored data object to labeled field rows using the template.
+function fieldDetail(templateKey, period, data) {
+  return fieldsFor(templateKey, period).map((f) => ({
+    label: f.label,
+    value: data?.[f.key] ?? (f.type === "text" ? "" : 0),
+  }));
+}
+
 // ---- Health ---------------------------------------------------------------
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -164,6 +193,56 @@ app.post("/api/admin/link", requireUser, requireAdmin, async (req, res) => {
   res.json({ url: `${appUrl(req)}/login/${token}` });
 });
 
+// ---- Dashboard API (leadership) -------------------------------------------
+
+app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
+  const weeks = lastNWeeks(8);
+  const earliest = weeks[0];
+  const thisWeek = weeks[weeks.length - 1];
+
+  const { rows: users } = await pool.query(
+    `SELECT id, name, template_key, location FROM rpt_users
+      WHERE active = TRUE AND template_key <> 'admin_none'
+      ORDER BY name`
+  );
+  const { rows: subs } = await pool.query(
+    `SELECT user_id, period_type, week_of::text AS week_of, data
+       FROM rpt_submissions WHERE week_of >= $1`,
+    [earliest]
+  );
+
+  const byUser = {};
+  for (const s of subs) {
+    (byUser[s.user_id] ??= {})[`${s.week_of}|${s.period_type}`] = s.data;
+  }
+
+  const out = users.map((u) => {
+    const tpl = TEMPLATES[u.template_key] || { label: u.template_key, family: "?" };
+    const cell = (wk, p) => byUser[u.id]?.[`${wk}|${p}`] || null;
+    const history = weeks.map((wk) => ({
+      week: wk,
+      mTotal: sumNumeric(cell(wk, "M")),
+      fTotal: sumNumeric(cell(wk, "F")),
+      reported: !!cell(wk, "F") || !!cell(wk, "M"),
+    }));
+    const curM = cell(thisWeek, "M");
+    const curF = cell(thisWeek, "F");
+    return {
+      name: u.name,
+      location: u.location,
+      family: tpl.family,
+      templateLabel: tpl.label,
+      thisWeek: {
+        M: { submitted: !!curM, total: sumNumeric(curM), fields: curM ? fieldDetail(u.template_key, "M", curM) : [] },
+        F: { submitted: !!curF, total: sumNumeric(curF), fields: curF ? fieldDetail(u.template_key, "F", curF) : [] },
+      },
+      history,
+    };
+  });
+
+  res.json({ weeks, thisWeek, users: out });
+});
+
 // ---- Page routes ----------------------------------------------------------
 
 app.get("/report", (req, res) => {
@@ -174,6 +253,11 @@ app.get("/report", (req, res) => {
 app.get("/admin", (req, res) => {
   if (!req.user?.is_admin) return res.status(403).send(loginError());
   res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/dashboard", (req, res) => {
+  if (!req.user?.is_admin) return res.status(403).send(loginError());
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
 });
 
 app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));
