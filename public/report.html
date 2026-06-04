@@ -142,6 +142,7 @@ async function load(){
   const r = await fetch("/api/me");
   if(!r.ok){ document.body.innerHTML = "<p style='padding:40px;text-align:center'>Your link expired — ask Jen for a new one.</p>"; return; }
   STATE = await r.json();
+  document.title = "Dorcey · " + (STATE.user.name || "Weekly Numbers");
   const first = (STATE.user.name||"there").split(" ")[0];
   const hr = new Date().getHours();
   const part = hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
