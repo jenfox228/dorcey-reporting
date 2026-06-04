@@ -35,13 +35,15 @@ export async function consumeMagicToken(token) {
   );
   const row = rows[0];
   if (!row) return null;
-  if (row.used_at) return null;
-  if (new Date(row.expires_at) < new Date()) return null;
+  if (new Date(row.expires_at) < new Date()) return null; // expired by time only
   if (!row.active) return null;
-  // Mark used (single-use). The session cookie keeps them logged in after.
-  await pool.query(`UPDATE rpt_magic_tokens SET used_at = now() WHERE id = $1`, [
-    row.token_id,
-  ]);
+  // Reusable until expiry: link-preview bots / multiple taps won't "burn" it.
+  // Record first use for audit, but never block re-use within the window.
+  if (!row.used_at) {
+    await pool.query(`UPDATE rpt_magic_tokens SET used_at = now() WHERE id = $1`, [
+      row.token_id,
+    ]);
+  }
   return row;
 }
 
