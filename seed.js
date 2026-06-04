@@ -19,6 +19,9 @@ const TEAM = [
   { name: "Kara Sajdak",   email: "kara.sajdak@dorceylaw.com",   template_key: "attorney_ep", location: "Naples / Marco Island" },
   { name: "Joe LoTempio",  email: "joe.lotempio@dorceylaw.com",  template_key: "attorney_ep", location: "Fort Myers HQ" },
 
+  // --- Real Estate attorney ---
+  { name: "Brad Butcher",  email: "brad.butcher@dorceylaw.com",  template_key: "attorney_realestate", location: "Fort Myers HQ" },
+
   // --- Probate / TA specialists (Template B) ---
   { name: "Doug Dodson",     email: "doug.dodson@dorceylaw.com",     template_key: "probate_specialist" },
   { name: "Brian Bronsther", email: "brian.bronsther@dorceylaw.com", template_key: "probate_specialist" },
@@ -30,6 +33,7 @@ const TEAM = [
   { name: "Drafting",             email: "drafting@dorceylaw.com",           template_key: "op_drafting" },
   { name: "APP Funding",          email: "app.funding@dorceylaw.com",        template_key: "op_app_funding" },
   { name: "Drafting Funding",     email: "drafting.funding@dorceylaw.com",   template_key: "op_drafting_funding" },
+  { name: "Deeds",                email: "deeds@dorceylaw.com",              template_key: "op_deeds" },
   { name: "DLF Registered Agent", email: "dlf.ra@dorceylaw.com",             template_key: "op_dlf_ra" },
   { name: "Marketing Global",     email: "marketing.global@dorceylaw.com",   template_key: "op_marketing_global" },
   { name: "Drafting Global",      email: "drafting.global@dorceylaw.com",    template_key: "op_drafting_global" },
