@@ -52,8 +52,20 @@ async function load(){
         <span class="tpl">${u.email}</span></td>
       <td class="tpl">${u.template_key}${u.location? " · "+u.location:""}</td>
       <td><button class="link" onclick="gen(${u.id},this)">Generate link</button>
+        ${u.is_admin?`<button class="link" style="margin-left:6px" onclick="genDash(${u.id},this)">Dashboard link</button>`:''}
         <div class="urlcell"></div></td>
     </tr>`).join("");
+}
+async function genDash(id, btn){
+  btn.textContent="…";
+  const r = await fetch("/api/admin/dashlink",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({user_id:id})});
+  const {url} = await r.json();
+  const cell = btn.parentElement.querySelector(".urlcell");
+  cell.textContent = url;
+  btn.textContent="Copy dashboard link";
+  btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
+    btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy dashboard link",1500); };
 }
 async function gen(id, btn){
   btn.textContent="…";

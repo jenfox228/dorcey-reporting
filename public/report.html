@@ -90,7 +90,22 @@
   .deltas .down{color:#b04a3a;font-weight:700}
   .toast button{margin-top:8px;border:0;background:var(--navy);color:#fff;border-radius:11px;
     padding:12px 22px;font:600 .95rem "Libre Franklin",sans-serif;cursor:pointer}
+  #toastPrint{background:#fff;color:var(--navy);border:1px solid var(--navy);margin-right:8px}
+  .printbtn{width:100%;margin-top:8px;border:1px solid var(--navy);background:#fff;color:var(--navy);
+    border-radius:13px;padding:13px;cursor:pointer;font:600 .95rem "Libre Franklin",sans-serif}
   .loading{padding:80px 0;text-align:center;color:var(--muted)}
+
+  /* Printable huddle sheet */
+  #printArea{display:none}
+  @media print{
+    body{background:#fff}
+    .wrap,.masthead,.barwrap,.toast{display:none !important}
+    #printArea{display:block;padding:24px;color:#000;font-family:"Libre Franklin",sans-serif}
+    #printArea h1{font-family:"Playfair Display",serif;color:#0f1f3a;margin:0 0 4px;font-size:1.4rem;
+      border-bottom:2px solid #c9a14a;padding-bottom:6px}
+    #printArea table{width:100%;border-collapse:collapse;margin-top:14px}
+    #printArea td{border-bottom:1px solid #ccc;padding:7px 4px;font-size:1rem}
+  }
 </style>
 </head>
 <body>
@@ -116,6 +131,7 @@
 
   <div class="barwrap" id="bar" hidden>
     <button class="submit" id="submitBtn">Submit my numbers</button>
+    <button class="printbtn" id="printBtn">🖨 Print for huddle</button>
   </div>
 
   <div class="toast" id="toast">
@@ -124,9 +140,13 @@
       <h2>Sent to the huddle</h2>
       <p style="color:var(--muted);margin:.2rem 0 0" id="toastSub"></p>
       <div class="deltas" id="deltas"></div>
+      <button id="toastPrint">🖨 Print for huddle</button>
       <button id="toastClose">Done</button>
     </div>
   </div>
+
+  <!-- Printable huddle sheet (hidden on screen, shown only when printing) -->
+  <div id="printArea"></div>
 
 <script>
 let STATE = null;        // /api/me payload
@@ -236,6 +256,24 @@ function showFeedback(data, prev){
   $("#toast").classList.add("show");
 }
 $("#toastClose").onclick=()=>$("#toast").classList.remove("show");
+
+function doPrint(){
+  const fields = period==="M" ? STATE.template.monday : STATE.template.friday;
+  const data = collect();
+  const periodLabel = period==="M" ? "Forecast — Monday huddle" : "Actuals — Friday huddle";
+  const rows = fields.map(f=>
+    `<tr><td>${f.label}</td><td style="text-align:right;font-weight:700">${data[f.key]??(f.type==="text"?"":0)}</td></tr>`
+  ).join("");
+  $("#printArea").innerHTML = `
+    <h1>Dorcey Law Firm — Weekly Numbers</h1>
+    <div style="font-size:1.05rem;font-weight:600;color:#0f1f3a">${STATE.user.name}${STATE.user.location?" · "+STATE.user.location:""}</div>
+    <div style="color:#555;margin-top:2px">Week of ${fmtWeek(STATE.weekOf)} &nbsp;·&nbsp; ${periodLabel}</div>
+    <table>${rows}</table>
+    <div style="margin-top:22px;font-size:.78rem;color:#888">Printed ${new Date().toLocaleString()}</div>`;
+  window.print();
+}
+$("#printBtn").onclick = doPrint;
+$("#toastPrint").onclick = doPrint;
 
 load();
 </script>
