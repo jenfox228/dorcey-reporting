@@ -163,11 +163,11 @@ async function load(){
   if(!r.ok){ document.body.innerHTML = "<p style='padding:40px;text-align:center'>Your link expired — ask Jen for a new one.</p>"; return; }
   STATE = await r.json();
   document.title = "Dorcey · " + (STATE.user.name || "Weekly Numbers");
-  const first = (STATE.user.name||"there").split(" ")[0];
+  const who = STATE.user.person || (STATE.user.name||"there").split(" ")[0];
   const hr = new Date().getHours();
   const part = hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
-  $("#greeting").textContent = `${part}, ${first}`;
-  $("#role").textContent = STATE.template.label + (STATE.user.location? " · "+STATE.user.location : "");
+  $("#greeting").textContent = `${part}, ${who}`;
+  $("#role").textContent = "Reporting for: " + STATE.user.name + (STATE.user.location? " · "+STATE.user.location : "");
   $("#weekOf").textContent = fmtWeek(STATE.weekOf);
   period = STATE.suggestedPeriod;
   $("#toggle").hidden = false; $("#meta").hidden = false; $("#bar").hidden = false;
