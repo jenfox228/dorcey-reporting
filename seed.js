@@ -41,6 +41,7 @@ const TEAM = [
   { name: "Probate Intake",       email: "probate.intake@dorceylaw.com",     template_key: "op_probate_intake" },
   { name: "Probate Department",   email: "probate.dept@dorceylaw.com",       template_key: "op_probate_dept" },
   { name: "Admin / Marketing",    email: "jeana.renaud@dorceylaw.com",       template_key: "op_admin_marketing" },
+  { name: "Receptionist",         email: "reception@dorceylaw.com",          template_key: "op_receptionist" },
 
   // --- Attribution / rollup trackers (Template D) ---
   { name: "APP Department",    email: "app.dept@dorceylaw.com",    template_key: "tracker_app" },
