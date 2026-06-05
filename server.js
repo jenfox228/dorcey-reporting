@@ -93,7 +93,10 @@ app.get("/login/:token", async (req, res) => {
     const user = await consumeMagicToken(req.params.token);
     if (!user) return res.status(401).send(loginError());
     res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.redirect("/report");
+    // Serve the form here (no redirect) so the URL stays the unique link —
+    // bookmarking it re-opens THIS person's form every time, even if they
+    // also use a second link for a different role.
+    res.sendFile(path.join(__dirname, "public", "report.html"));
   } catch (e) {
     console.error("login error", e);
     res.status(500).send(loginError());
@@ -193,6 +196,19 @@ app.post("/api/admin/link", requireUser, requireAdmin, async (req, res) => {
   res.json({ url: `${appUrl(req)}/login/${token}` });
 });
 
+// A durable link that drops an admin straight onto the dashboard (for Josh).
+app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
+  const { user_id } = req.body || {};
+  const { rows } = await pool.query(
+    `SELECT id, is_admin FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [user_id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: "no_user" });
+  if (!rows[0].is_admin) return res.status(400).json({ error: "not_admin" });
+  const token = await createMagicToken(user_id);
+  res.json({ url: `${appUrl(req)}/dash/${token}` });
+});
+
 // ---- Dashboard API (leadership) -------------------------------------------
 
 app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
@@ -258,6 +274,19 @@ app.get("/admin", (req, res) => {
 app.get("/dashboard", (req, res) => {
   if (!req.user?.is_admin) return res.status(403).send(loginError());
   res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+// Durable dashboard link (for Josh): sign in via token, land on the dashboard.
+app.get("/dash/:token", async (req, res) => {
+  try {
+    const user = await consumeMagicToken(req.params.token);
+    if (!user || !user.is_admin) return res.status(401).send(loginError());
+    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
+    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+  } catch (e) {
+    console.error("dash login error", e);
+    res.status(500).send(loginError());
+  }
 });
 
 app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));

@@ -1,69 +1,83 @@
-// seed.js — run once (or anytime) to insert/refresh the team roster, then
-// print a fresh magic link for the first admin so you can bootstrap.
+// seed.js — inserts/updates the team roster with real emails, then prints a
+// fresh admin sign-in link. Safe to re-run anytime: it matches people by
+// NAME and updates them in place (never duplicates, never touches links or
+// submissions).
 //   Run on Render via the Shell:  node seed.js
-// Safe to re-run: existing people are updated (not duplicated), and no
-// submissions are ever touched.
 import { pool, initSchema } from "./db.js";
 import { createMagicToken } from "./auth.js";
 
-// Edit emails to real firm addresses before go-live. template_key must match
-// a key in config/templates.js.
+// Department/role -> the person who fills it + their real email.
+// notify_email = optional second recipient (e.g., Probate is Kait AND Ellie).
+// Two "unsure" roles (Brian, Joe) keep placeholders until someone is assigned.
 const TEAM = [
   // --- Admins ---
-  { name: "Jen Fox",      email: "jen.fox@dorceylaw.com",     template_key: "admin_none",  is_admin: true },
-  { name: "Josh Dorcey",  email: "josh.dorcey@dorceylaw.com", template_key: "attorney_ep", is_admin: true, location: "Fort Myers HQ" },
-  { name: "Mike Scott",   email: "mike.scott@dorceylaw.com",  template_key: "attorney_ep", is_admin: true, location: "LaBelle" },
+  { name: "Jen Fox",      email: "jen.fox@dorceylaw.com",  template_key: "admin_none",  is_admin: true },
+  { name: "Josh Dorcey",  email: "msilva@dorceylaw.com",   template_key: "attorney_ep", is_admin: true, location: "Fort Myers HQ" },   // Marissa
+  { name: "Mike Scott",   email: "bgonzalez@dorceylaw.com", template_key: "attorney_ep", is_admin: true, location: "LaBelle" },        // Bianca
 
-  // --- Estate Planning attorneys (Template A) ---
-  { name: "Erica Johnson", email: "erica.johnson@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },
-  { name: "Kara Sajdak",   email: "kara.sajdak@dorceylaw.com",   template_key: "attorney_ep", location: "Naples / Marco Island" },
-  { name: "Joe LoTempio",  email: "joe.lotempio@dorceylaw.com",  template_key: "attorney_ep", location: "Fort Myers HQ" },
+  // --- Estate Planning attorneys ---
+  { name: "Erica Johnson", email: "alebert@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },          // Amanda
+  { name: "Kara Sajdak",   email: "aking@dorceylaw.com",   template_key: "attorney_ep", location: "Naples / Marco Island" },  // Lexi
+  { name: "Joe LoTempio",  email: "joe.lotempio@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },     // TODO assign
 
   // --- Real Estate attorney ---
-  { name: "Brad Butcher",  email: "brad.butcher@dorceylaw.com",  template_key: "attorney_realestate", location: "Fort Myers HQ" },
+  { name: "Brad Butcher",  email: "cwoodcraft@dorceylaw.com", template_key: "attorney_realestate", location: "Fort Myers HQ" }, // Carri
 
-  // --- Probate / TA specialists (Template B) ---
-  { name: "Doug Dodson",     email: "doug.dodson@dorceylaw.com",     template_key: "probate_specialist" },
-  { name: "Brian Bronsther", email: "brian.bronsther@dorceylaw.com", template_key: "probate_specialist" },
+  // --- Probate / TA specialists ---
+  { name: "Doug Dodson",     email: "ADiazFelipe@dorceylaw.com", template_key: "probate_specialist" }, // Arlethys
+  { name: "Brian Bronsther", email: "brian.bronsther@dorceylaw.com", template_key: "probate_specialist" }, // TODO assign
 
-  // --- Operational departments (Template C) ---
-  { name: "File Creation",        email: "file.creation@dorceylaw.com",     template_key: "op_file_creation" },
-  { name: "Processed Funding",    email: "processed.funding@dorceylaw.com",  template_key: "op_processed_funding" },
-  { name: "Business Planning",    email: "business.planning@dorceylaw.com",  template_key: "op_business_planning" },
-  { name: "Drafting",             email: "drafting@dorceylaw.com",           template_key: "op_drafting" },
-  { name: "APP Funding",          email: "app.funding@dorceylaw.com",        template_key: "op_app_funding" },
-  { name: "Drafting Funding",     email: "drafting.funding@dorceylaw.com",   template_key: "op_drafting_funding" },
-  { name: "Deeds",                email: "deeds@dorceylaw.com",              template_key: "op_deeds" },
-  { name: "DLF Registered Agent", email: "dlf.ra@dorceylaw.com",             template_key: "op_dlf_ra" },
-  { name: "Marketing Global",     email: "marketing.global@dorceylaw.com",   template_key: "op_marketing_global" },
-  { name: "Drafting Global",      email: "drafting.global@dorceylaw.com",    template_key: "op_drafting_global" },
-  { name: "Probate-TA",           email: "probate.ta@dorceylaw.com",         template_key: "op_probate_ta" },
-  { name: "Probate Intake",       email: "probate.intake@dorceylaw.com",     template_key: "op_probate_intake" },
-  { name: "Probate Department",   email: "probate.dept@dorceylaw.com",       template_key: "op_probate_dept" },
-  { name: "Admin / Marketing",    email: "jeana.renaud@dorceylaw.com",       template_key: "op_admin_marketing" },
-  { name: "Receptionist",         email: "reception@dorceylaw.com",          template_key: "op_receptionist" },
+  // --- Operational departments ---
+  { name: "File Creation",        email: "krenaud@dorceylaw.com",  template_key: "op_file_creation" },     // Kayla
+  { name: "Processed Funding",    email: "abowes@dorceylaw.com",   template_key: "op_processed_funding" }, // Alyse
+  { name: "Business Planning",    email: "MVillagracia@dorceylaw.com", template_key: "op_business_planning" }, // Michael
+  { name: "Drafting",             email: "alebert@dorceylaw.com",  template_key: "op_drafting" },          // Amanda (also Erica)
+  { name: "APP Funding",          email: "mpena@dorceylaw.com",    template_key: "op_app_funding" },       // Mariela
+  { name: "Drafting Funding",     email: "cconnell@dorceylaw.com", template_key: "op_drafting_funding" },  // Cherrian
+  { name: "Deeds",                email: "apavy@dorceylaw.com",    template_key: "op_deeds" },             // Amy
+  { name: "DLF Registered Agent", email: "Jarandia@dorceylaw.com", template_key: "op_dlf_ra" },            // John
+  { name: "Marketing Global",     email: "CArandia@dorceylaw.com", template_key: "op_marketing_global" }, // Cristina
+  { name: "Drafting Global",      email: "SHayo@dorceylaw.com",    template_key: "op_drafting_global" },   // Saira
+  { name: "Probate-TA",           email: "ellie@dorceylaw.com", notify_email: "kroth@dorceylaw.com", template_key: "op_probate_ta" },   // Kait & Ellie
+  { name: "Probate Intake",       email: "ADiazFelipe@dorceylaw.com", template_key: "op_probate_intake" }, // Arlethys (also Doug)
+  { name: "Probate Department",   email: "ellie@dorceylaw.com", notify_email: "kroth@dorceylaw.com", template_key: "op_probate_dept" }, // Kait & Ellie
+  { name: "Admin / Marketing",    email: "jeana@dorceylaw.com",    template_key: "op_admin_marketing" },   // Jeana
+  { name: "Receptionist",         email: "kchapas@dorceylaw.com",  template_key: "op_receptionist" },      // Karina
 
-  // --- Attribution / rollup trackers (Template D) ---
-  { name: "APP Department",    email: "app.dept@dorceylaw.com",    template_key: "tracker_app" },
-  { name: "Intake Department", email: "intake.dept@dorceylaw.com", template_key: "tracker_intake" },
+  // --- Attribution / rollup trackers ---
+  { name: "APP Department",    email: "krenaud@dorceylaw.com", template_key: "tracker_app" },    // Kayla (also File Creation)
+  { name: "Intake Department", email: "kwright@dorceylaw.com",  template_key: "tracker_intake" }, // Karen
 ];
 
 async function run() {
   await initSchema();
+  // This firm's reality: one person can fill several forms, so the same email
+  // legitimately appears on multiple rows. Drop the old one-email-per-row rule
+  // and make sure the optional second-recipient column exists. Both idempotent.
+  await pool.query(`ALTER TABLE rpt_users DROP CONSTRAINT IF EXISTS rpt_users_email_key;`);
+  await pool.query(`ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS notify_email TEXT;`);
+
+  let updated = 0, inserted = 0;
   for (const m of TEAM) {
-    await pool.query(
-      `INSERT INTO rpt_users (name, email, template_key, location, is_admin)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (email) DO UPDATE SET
-         name = EXCLUDED.name,
-         template_key = EXCLUDED.template_key,
-         location = EXCLUDED.location,
-         is_admin = EXCLUDED.is_admin,
-         active = TRUE`,
-      [m.name, m.email, m.template_key, m.location || null, !!m.is_admin]
-    );
+    const { rows } = await pool.query(`SELECT id FROM rpt_users WHERE name = $1`, [m.name]);
+    if (rows.length) {
+      await pool.query(
+        `UPDATE rpt_users
+            SET email=$1, notify_email=$2, template_key=$3, location=$4, is_admin=$5, active=TRUE
+          WHERE name=$6`,
+        [m.email, m.notify_email || null, m.template_key, m.location || null, !!m.is_admin, m.name]
+      );
+      updated++;
+    } else {
+      await pool.query(
+        `INSERT INTO rpt_users (name, email, notify_email, template_key, location, is_admin)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [m.name, m.email, m.notify_email || null, m.template_key, m.location || null, !!m.is_admin]
+      );
+      inserted++;
+    }
   }
-  console.log(`Seeded ${TEAM.length} users.`);
+  console.log(`Roster synced — ${updated} updated, ${inserted} added (${TEAM.length} total).`);
 
   const { rows } = await pool.query(
     `SELECT id, name FROM rpt_users WHERE is_admin = TRUE ORDER BY id LIMIT 1`
@@ -71,9 +85,9 @@ async function run() {
   if (rows[0]) {
     const token = await createMagicToken(rows[0].id);
     const base = process.env.APP_URL || "https://YOUR-APP.onrender.com";
-    console.log("\n=== BOOTSTRAP SIGN-IN LINK (valid 3 days) ===");
+    console.log("\n=== BOOTSTRAP SIGN-IN LINK (valid 1 year) ===");
     console.log(`${rows[0].name}: ${base}/login/${token}`);
-    console.log("Open it, then go to /admin to generate everyone else's links.\n");
+    console.log("Open it, then go to /admin.\n");
   }
   await pool.end();
 }

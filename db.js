@@ -20,15 +20,16 @@ export const pool = new Pool({
 export async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS rpt_users (
-      id           SERIAL PRIMARY KEY,
-      name         TEXT NOT NULL,
-      email        TEXT UNIQUE NOT NULL,
-      role         TEXT NOT NULL DEFAULT 'reporter',
-      template_key TEXT NOT NULL,
-      location     TEXT,
-      is_admin     BOOLEAN NOT NULL DEFAULT FALSE,
-      active       BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      id            SERIAL PRIMARY KEY,
+      name          TEXT UNIQUE NOT NULL,
+      email         TEXT NOT NULL,
+      notify_email  TEXT,
+      role          TEXT NOT NULL DEFAULT 'reporter',
+      template_key  TEXT NOT NULL,
+      location      TEXT,
+      is_admin      BOOLEAN NOT NULL DEFAULT FALSE,
+      active        BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS rpt_magic_tokens (
@@ -56,5 +57,19 @@ export async function initSchema() {
 
     CREATE INDEX IF NOT EXISTS rpt_submissions_week_idx
       ON rpt_submissions (week_of);
+
+    -- Backfill the contact-email column on tables created before it existed.
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS notify_email TEXT;
+
+    -- Migrate existing databases: one person can own several reporting roles,
+    -- so email must NOT be unique; the role NAME is the unique identity instead.
+    DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rpt_users_email_key') THEN
+        ALTER TABLE rpt_users DROP CONSTRAINT rpt_users_email_key;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rpt_users_name_key') THEN
+        ALTER TABLE rpt_users ADD CONSTRAINT rpt_users_name_key UNIQUE (name);
+      END IF;
+    END $$;
   `);
 }
