@@ -4,6 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Dorcey · Weekly Numbers</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#0f1f3a" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="DLF Numbers" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -91,7 +98,9 @@
   .toast button{margin-top:8px;border:0;background:var(--navy);color:#fff;border-radius:11px;
     padding:12px 22px;font:600 .95rem "Libre Franklin",sans-serif;cursor:pointer}
   #toastPrint{background:#fff;color:var(--navy);border:1px solid var(--navy);margin-right:8px}
-  .printbtn{width:100%;margin-top:8px;border:1px solid var(--navy);background:#fff;color:var(--navy);
+  .streak{font-weight:700;color:var(--gold);background:#fbf6e8;border:1px solid #ecdca0;
+    border-radius:10px;padding:8px 12px;margin:6px 0 2px;display:none}
+  .streak.show{display:block}  .printbtn{width:100%;margin-top:8px;border:1px solid var(--navy);background:#fff;color:var(--navy);
     border-radius:13px;padding:13px;cursor:pointer;font:600 .95rem "Libre Franklin",sans-serif}
   .loading{padding:80px 0;text-align:center;color:var(--muted)}
 
@@ -138,6 +147,7 @@
     <div class="box">
       <div class="check">✓</div>
       <h2>Sent to the huddle</h2>
+      <div id="streakMsg" class="streak"></div>
       <p style="color:var(--muted);margin:.2rem 0 0" id="toastSub"></p>
       <div class="deltas" id="deltas"></div>
       <button id="toastPrint">🖨 Print for huddle</button>
@@ -250,6 +260,9 @@ function showFeedback(data, prev){
     .filter(x=>x.d!==0).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,4);
   const total = fields.reduce((s,f)=>s+(+data[f.key]||0),0);
   $("#toastSub").textContent = `${total} tracked this ${period==="M"?"forecast":"week"}.`;
+  const n=(STATE.streak||0)+1, sm=$("#streakMsg");
+  sm.textContent = n<=1 ? "🎉 You're on the board — first one in!" : `🔥 ${n} weeks in a row!`;
+  sm.classList.add("show");
   $("#deltas").innerHTML = rows.length
     ? rows.map(x=>`<div><span>${x.label}</span>
         <span class="${x.d>0?"up":"down"}">${x.d>0?"+":""}${x.d} vs last wk</span></div>`).join("")

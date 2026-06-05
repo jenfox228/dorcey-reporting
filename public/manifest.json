@@ -1,0 +1,12 @@
+{
+  "name": "Dorcey Law Weekly Numbers",
+  "short_name": "DLF Numbers",
+  "description": "Weekly forecast and actuals reporting for Dorcey Law Firm.",
+  "display": "standalone",
+  "background_color": "#0f1f3a",
+  "theme_color": "#0f1f3a",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

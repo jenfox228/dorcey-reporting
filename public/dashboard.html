@@ -4,6 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dorcey · Weekly Pulse</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#0f1f3a" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="DLF Pulse" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -28,6 +35,15 @@
 
   /* firm summary band */
   .band{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:6px 0 22px}
+  .celebrate{background:linear-gradient(120deg,#fbf6e8,#f3ead0);border:1px solid var(--gold);
+    color:var(--navy);border-radius:14px;padding:14px 18px;margin:6px 0 16px;
+    font-family:"Playfair Display",serif;font-size:1.12rem;text-align:center;box-shadow:var(--shadow)}
+  .movers{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-10px 0 20px}
+  .movers-h{font-weight:700;color:var(--navy);margin-right:2px}
+  .mover{font-size:.85rem;font-weight:600;padding:4px 10px;border-radius:999px;
+    border:1px solid var(--line);background:#fff}
+  .mover.up{color:#1b7a3d;border-color:#bfe3c9}
+  .mover.down{color:var(--down);border-color:#e8c4c4}
   .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
   .stat .k{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
   .stat .v{font-family:"Playfair Display",serif;font-size:2rem;color:var(--navy);line-height:1.1;margin-top:4px}
@@ -158,6 +174,19 @@ function render(){
   const firmSeries=DATA.weeks.map((_,i)=>u.reduce((s,x)=>s+(key==="F"?x.history[i].fTotal:x.history[i].mTotal),0));
   const firmPrev=firmSeries[idx-1]||0;
 
+  // Biggest movers this week vs last (current period)
+  const movers=u.map(x=>{
+    const now = key==="F"?x.history[idx].fTotal:x.history[idx].mTotal;
+    const prev = idx>0 ? (key==="F"?x.history[idx-1].fTotal:x.history[idx-1].mTotal) : 0;
+    return {name:x.person||x.name, d:now-prev};
+  }).filter(m=>m.d!==0).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,5);
+  const moversStrip = movers.length ? `<div class="movers"><span class="movers-h">Movers this week</span>`+
+    movers.map(m=>`<span class="mover ${m.d>0?'up':'down'}">${m.name} ${m.d>0?'▲':'▼'} ${m.d>0?'+':''}${m.d}</span>`).join("")+
+    `</div>` : "";
+
+  const celebrate = (u.length && reported>=u.length)
+    ? `<div class="celebrate">🎉 Everyone's in — 100% reported this week. Nice work, team.</div>` : "";
+
   const band=`
     <div class="band">
       <div class="stat"><div class="k">Reported this week</div>
@@ -190,7 +219,7 @@ function render(){
       members.map(x=>card(x,key)).join("")+`</div>`;
   }
 
-  $("#content").innerHTML=viewSwitcher()+band+toolbar+groups;
+  $("#content").innerHTML=viewSwitcher()+celebrate+band+moversStrip+toolbar+groups;
   wireSwitcher();
   document.querySelectorAll("#tog button").forEach(b=>{
     b.setAttribute("aria-selected", b.dataset.p===period);
@@ -243,7 +272,10 @@ function renderCompliance(){
       <div class="cdots">${dots}</div></div>`;
   }).join("");
 
-  return band+`<div class="group">Who's behind — most overdue at the top</div>
+  const celebrate = (u.length && upToDate>=u.length)
+    ? `<div class="celebrate">🎉 100% compliance — everyone reported this week. Clean sweep.</div>` : "";
+
+  return celebrate+band+`<div class="group">Who's behind — most overdue at the top</div>
     <div class="comptable">${head}${rows}</div>
     <div class="hint">Each square = one of the last 8 weeks. Filled = reported, empty = missed. Hover a square for its date.</div>`;
 }
