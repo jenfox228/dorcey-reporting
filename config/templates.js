@@ -325,6 +325,21 @@ export const TEMPLATES = {
     ],
   },
 
+  // Receptionist — VERIFIED. Front-desk calls, signings, and binder handoffs.
+  op_receptionist: {
+    label: "Receptionist",
+    family: "C",
+    monday: [
+      n("calls", "Number of calls"),
+      n("signings", "Number of signings"),
+    ],
+    friday: [
+      n("binders_called", "Binders called to pick up"),
+      n("binders_picked_up", "Binders picked up"),
+      n("binders_returned_shelf", "Binders returned to shelf"),
+    ],
+  },
+
   // Probate Department — VERIFIED. Phone calls, Emails, and client Follow-ups
   // removed per firm request; workflow/throughput fields kept.
   op_probate_dept: {
