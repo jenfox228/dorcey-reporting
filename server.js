@@ -64,6 +64,12 @@ function lastNWeeks(n = 8) {
   return out;
 }
 
+// A Monday string N weeks before the given Monday string.
+function weekMinus(iso, n) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) - n * 7 * 86400000).toISOString().slice(0, 10);
+}
+
 // Sum the numeric values in a JSONB data object (ignores text fields).
 function sumNumeric(obj) {
   let s = 0;
@@ -138,6 +144,20 @@ app.get("/api/me", requireUser, async (req, res) => {
     prefill[p] = rows[0]?.data || {};
   }
 
+  // Reporting streak: consecutive weeks (ending LAST week) with any submission.
+  // After they submit this week, the form shows streak + 1.
+  const { rows: wkRows } = await pool.query(
+    `SELECT DISTINCT week_of::text AS w FROM rpt_submissions WHERE user_id = $1`,
+    [u.id]
+  );
+  const reportedWeeks = new Set(wkRows.map((r) => r.w));
+  let streak = 0;
+  let probe = weekMinus(thisWeek, 1);
+  while (reportedWeeks.has(probe)) {
+    streak++;
+    probe = weekMinus(probe, 1);
+  }
+
   res.json({
     user: {
       name: u.name,
@@ -151,6 +171,7 @@ app.get("/api/me", requireUser, async (req, res) => {
     suggestedPeriod: suggestedPeriod(),
     prefill,
     existing,
+    streak,
   });
 });
 
