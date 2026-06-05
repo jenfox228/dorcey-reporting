@@ -182,16 +182,17 @@ function renderToggle(){
 }
 
 function valuesForRender(){
-  // Prefer what they've already entered this week; otherwise prefill last week.
+  // Show this week's entry if they've already submitted (so they can edit it);
+  // otherwise open a BLANK form so they enter fresh numbers each week.
   const existing = STATE.existing[period];
   return existing && Object.keys(existing).length ? {vals:existing, edited:true}
-                                                  : {vals:STATE.prefill[period]||{}, edited:false};
+                                                  : {vals:{}, edited:false};
 }
 
 function render(){
   const fields = period==="M" ? STATE.template.monday : STATE.template.friday;
   const {vals, edited} = valuesForRender();
-  $("#statusNote").textContent = edited ? "Editing this week's entry" : "Pre-filled from last week";
+  $("#statusNote").textContent = edited ? "Editing this week's entry" : "Enter this week's numbers";
   const host = $("#fields");
   host.innerHTML = `<div class="card">${fields.map(f=>row(f, vals[f.key])).join("")}</div>`;
   host.querySelectorAll(".stepper button").forEach(b=>{
