@@ -24,6 +24,7 @@ export async function initSchema() {
       name          TEXT UNIQUE NOT NULL,
       email         TEXT NOT NULL,
       notify_email  TEXT,
+      person        TEXT,
       role          TEXT NOT NULL DEFAULT 'reporter',
       template_key  TEXT NOT NULL,
       location      TEXT,
@@ -60,6 +61,7 @@ export async function initSchema() {
 
     -- Backfill the contact-email column on tables created before it existed.
     ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS notify_email TEXT;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS person TEXT;
 
     -- Migrate existing databases: one person can own several reporting roles,
     -- so email must NOT be unique; the role NAME is the unique identity instead.

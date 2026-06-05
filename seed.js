@@ -11,42 +11,42 @@ import { createMagicToken } from "./auth.js";
 // Two "unsure" roles (Brian, Joe) keep placeholders until someone is assigned.
 const TEAM = [
   // --- Admins ---
-  { name: "Jen Fox",      email: "jen.fox@dorceylaw.com",  template_key: "admin_none",  is_admin: true },
-  { name: "Josh Dorcey",  email: "msilva@dorceylaw.com",   template_key: "attorney_ep", is_admin: true, location: "Fort Myers HQ" },   // Marissa
-  { name: "Mike Scott",   email: "bgonzalez@dorceylaw.com", template_key: "attorney_ep", is_admin: true, location: "LaBelle" },        // Bianca
+  { name: "Jen Fox",      person: "Jen",     email: "jen.fox@dorceylaw.com",  template_key: "admin_none",  is_admin: true },
+  { name: "Josh Dorcey",  person: "Marissa", email: "msilva@dorceylaw.com",   template_key: "attorney_ep", is_admin: true, location: "Fort Myers HQ" },
+  { name: "Mike Scott",   person: "Bianca",  email: "bgonzalez@dorceylaw.com", template_key: "attorney_ep", is_admin: true, location: "LaBelle" },
 
   // --- Estate Planning attorneys ---
-  { name: "Erica Johnson", email: "alebert@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },          // Amanda
-  { name: "Kara Sajdak",   email: "aking@dorceylaw.com",   template_key: "attorney_ep", location: "Naples / Marco Island" },  // Lexi
-  { name: "Joe LoTempio",  email: "joe.lotempio@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },     // TODO assign
+  { name: "Erica Johnson", person: "Amanda", email: "alebert@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" },
+  { name: "Kara Sajdak",   person: "Lexi",   email: "aking@dorceylaw.com",   template_key: "attorney_ep", location: "Naples / Marco Island" },
+  { name: "Joe LoTempio",  person: null,     email: "joe.lotempio@dorceylaw.com", template_key: "attorney_ep", location: "Fort Myers HQ" }, // TODO assign
 
   // --- Real Estate attorney ---
-  { name: "Brad Butcher",  email: "cwoodcraft@dorceylaw.com", template_key: "attorney_realestate", location: "Fort Myers HQ" }, // Carri
+  { name: "Brad Butcher",  person: "Carri",  email: "cwoodcraft@dorceylaw.com", template_key: "attorney_realestate", location: "Fort Myers HQ" },
 
   // --- Probate / TA specialists ---
-  { name: "Doug Dodson",     email: "ADiazFelipe@dorceylaw.com", template_key: "probate_specialist" }, // Arlethys
-  { name: "Brian Bronsther", email: "brian.bronsther@dorceylaw.com", template_key: "probate_specialist" }, // TODO assign
+  { name: "Doug Dodson",     person: "Arlethys", email: "ADiazFelipe@dorceylaw.com", template_key: "probate_specialist" },
+  { name: "Brian Bronsther", person: null,       email: "brian.bronsther@dorceylaw.com", template_key: "probate_specialist" }, // TODO assign
 
   // --- Operational departments ---
-  { name: "File Creation",        email: "krenaud@dorceylaw.com",  template_key: "op_file_creation" },     // Kayla
-  { name: "Processed Funding",    email: "abowes@dorceylaw.com",   template_key: "op_processed_funding" }, // Alyse
-  { name: "Business Planning",    email: "MVillagracia@dorceylaw.com", template_key: "op_business_planning" }, // Michael
-  { name: "Drafting",             email: "alebert@dorceylaw.com",  template_key: "op_drafting" },          // Amanda (also Erica)
-  { name: "APP Funding",          email: "mpena@dorceylaw.com",    template_key: "op_app_funding" },       // Mariela
-  { name: "Drafting Funding",     email: "cconnell@dorceylaw.com", template_key: "op_drafting_funding" },  // Cherrian
-  { name: "Deeds",                email: "apavy@dorceylaw.com",    template_key: "op_deeds" },             // Amy
-  { name: "DLF Registered Agent", email: "Jarandia@dorceylaw.com", template_key: "op_dlf_ra" },            // John
-  { name: "Marketing Global",     email: "CArandia@dorceylaw.com", template_key: "op_marketing_global" }, // Cristina
-  { name: "Drafting Global",      email: "SHayo@dorceylaw.com",    template_key: "op_drafting_global" },   // Saira
-  { name: "Probate-TA",           email: "ellie@dorceylaw.com", notify_email: "kroth@dorceylaw.com", template_key: "op_probate_ta" },   // Kait & Ellie
-  { name: "Probate Intake",       email: "ADiazFelipe@dorceylaw.com", template_key: "op_probate_intake" }, // Arlethys (also Doug)
-  { name: "Probate Department",   email: "ellie@dorceylaw.com", notify_email: "kroth@dorceylaw.com", template_key: "op_probate_dept" }, // Kait & Ellie
-  { name: "Admin / Marketing",    email: "jeana@dorceylaw.com",    template_key: "op_admin_marketing" },   // Jeana
-  { name: "Receptionist",         email: "kchapas@dorceylaw.com",  template_key: "op_receptionist" },      // Karina
+  { name: "File Creation",        person: "Kayla",        email: "krenaud@dorceylaw.com",  template_key: "op_file_creation" },
+  { name: "Processed Funding",    person: "Alyse",        email: "abowes@dorceylaw.com",   template_key: "op_processed_funding" },
+  { name: "Business Planning",    person: "Michael",      email: "MVillagracia@dorceylaw.com", template_key: "op_business_planning" },
+  { name: "Drafting",             person: "Amanda",       email: "alebert@dorceylaw.com",  template_key: "op_drafting" },
+  { name: "APP Funding",          person: "Mariela",      email: "mpena@dorceylaw.com",    template_key: "op_app_funding" },
+  { name: "Drafting Funding",     person: "Cherrian",     email: "cconnell@dorceylaw.com", template_key: "op_drafting_funding" },
+  { name: "Deeds",                person: "Amy",          email: "apavy@dorceylaw.com",    template_key: "op_deeds" },
+  { name: "DLF Registered Agent", person: "John",         email: "Jarandia@dorceylaw.com", template_key: "op_dlf_ra" },
+  { name: "Marketing Global",     person: "Cristina",     email: "CArandia@dorceylaw.com", template_key: "op_marketing_global" },
+  { name: "Drafting Global",      person: "Saira",        email: "SHayo@dorceylaw.com",    template_key: "op_drafting_global" },
+  { name: "Probate-TA",           person: "Kait / Ellie", email: "ellie@dorceylaw.com", notify_email: "kroth@dorceylaw.com", template_key: "op_probate_ta" },
+  { name: "Probate Intake",       person: "Arlethys",     email: "ADiazFelipe@dorceylaw.com", template_key: "op_probate_intake" },
+  { name: "Probate Department",   person: "Kait / Ellie", email: "ellie@dorceylaw.com", notify_email: "kroth@dorceylaw.com", template_key: "op_probate_dept" },
+  { name: "Admin / Marketing",    person: "Jeana",        email: "jeana@dorceylaw.com",    template_key: "op_admin_marketing" },
+  { name: "Receptionist",         person: "Karina",       email: "kchapas@dorceylaw.com",  template_key: "op_receptionist" },
 
   // --- Attribution / rollup trackers ---
-  { name: "APP Department",    email: "krenaud@dorceylaw.com", template_key: "tracker_app" },    // Kayla (also File Creation)
-  { name: "Intake Department", email: "kwright@dorceylaw.com",  template_key: "tracker_intake" }, // Karen
+  { name: "APP Department",    person: "Kayla", email: "krenaud@dorceylaw.com", template_key: "tracker_app" },
+  { name: "Intake Department", person: "Karen", email: "kwright@dorceylaw.com",  template_key: "tracker_intake" },
 ];
 
 async function run() {
@@ -63,16 +63,16 @@ async function run() {
     if (rows.length) {
       await pool.query(
         `UPDATE rpt_users
-            SET email=$1, notify_email=$2, template_key=$3, location=$4, is_admin=$5, active=TRUE
-          WHERE name=$6`,
-        [m.email, m.notify_email || null, m.template_key, m.location || null, !!m.is_admin, m.name]
+            SET email=$1, notify_email=$2, person=$3, template_key=$4, location=$5, is_admin=$6, active=TRUE
+          WHERE name=$7`,
+        [m.email, m.notify_email || null, m.person || null, m.template_key, m.location || null, !!m.is_admin, m.name]
       );
       updated++;
     } else {
       await pool.query(
-        `INSERT INTO rpt_users (name, email, notify_email, template_key, location, is_admin)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [m.name, m.email, m.notify_email || null, m.template_key, m.location || null, !!m.is_admin]
+        `INSERT INTO rpt_users (name, email, notify_email, person, template_key, location, is_admin)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [m.name, m.email, m.notify_email || null, m.person || null, m.template_key, m.location || null, !!m.is_admin]
       );
       inserted++;
     }

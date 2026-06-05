@@ -141,6 +141,7 @@ app.get("/api/me", requireUser, async (req, res) => {
   res.json({
     user: {
       name: u.name,
+      person: u.person,
       location: u.location,
       template_key: u.template_key,
       is_admin: u.is_admin,
