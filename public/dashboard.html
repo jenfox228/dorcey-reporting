@@ -61,7 +61,33 @@
   .detail .f .lab{color:var(--muted)}.detail .f .val{font-weight:700;color:var(--navy)}
   .hint{font-size:.7rem;color:#b9b09a;margin-top:8px}
   .loading{padding:80px;text-align:center;color:var(--muted)}
-  @media(max-width:680px){.band{grid-template-columns:repeat(2,1fr)}.masthead{padding:22px 20px}}
+
+  /* View switcher (Scorecards / Compliance) */
+  .viewswitch{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:5px;box-shadow:var(--shadow);margin-bottom:6px}
+  .viewswitch button{border:0;background:transparent;padding:9px 18px;border-radius:8px;cursor:pointer;
+    font:700 .9rem "Libre Franklin",sans-serif;color:var(--muted)}
+  .viewswitch button[aria-selected="true"]{background:var(--gold);color:var(--navy)}
+
+  /* Compliance table */
+  .comptable{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .comprow{display:grid;grid-template-columns:1.6fr 1fr .8fr 1.4fr;gap:10px;align-items:center;
+    padding:11px 16px;border-bottom:1px solid var(--line);font-size:.9rem}
+  .comprow:last-child{border-bottom:0}
+  .comphead{background:#faf7ef;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .cname b{color:var(--navy)} .cname .who{color:var(--muted);font-size:.82rem}
+  .clast{color:var(--muted)}
+  .badge2{font-size:.74rem;font-weight:700;padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .badge2.ok{background:#e7f3ec;color:var(--up)}
+  .badge2.warn{background:#fbf3da;color:#9a7a13}
+  .badge2.bad{background:#f7e3df;color:var(--down)}
+  .cdots{display:flex;gap:4px;flex-wrap:wrap}
+  .cdots .dot{width:13px;height:13px;border-radius:3px;background:#eee;border:1px solid var(--line)}
+  .cdots .dot.on{background:var(--up);border-color:var(--up)}
+  @media(max-width:680px){
+    .band{grid-template-columns:repeat(2,1fr)}.masthead{padding:22px 20px}
+    .comprow{grid-template-columns:1.4fr 1fr;gap:6px}.clast,.cdots{display:none}
+  }
 </style>
 </head>
 <body>
@@ -77,7 +103,7 @@
   </div>
 
 <script>
-let DATA=null, period="F";  // F=Actuals default, M=Forecast
+let DATA=null, period="F", view="scores";  // F=Actuals default; view=scores|compliance
 const $=(s)=>document.querySelector(s);
 const FAMS=[["A","Attorneys"],["B","Probate / TA Specialists"],["C","Departments"],["D","Trackers"],["?","Other"],["-","Other"]];
 
@@ -104,7 +130,25 @@ async function load(){
   render();
 }
 
+function viewSwitcher(){
+  return `<div class="viewswitch" id="vsw">
+    <button data-v="scores" role="tab">📊 Scorecards</button>
+    <button data-v="compliance" role="tab">✅ Compliance</button>
+  </div>`;
+}
+function wireSwitcher(){
+  document.querySelectorAll("#vsw button").forEach(b=>{
+    b.setAttribute("aria-selected", b.dataset.v===view);
+    b.onclick=()=>{ view=b.dataset.v; render(); };
+  });
+}
+
 function render(){
+  if(view==="compliance"){
+    $("#content").innerHTML = viewSwitcher() + renderCompliance();
+    wireSwitcher();
+    return;
+  }
   const u=DATA.users;
   const key=period==="F"?"F":"M";
   const totalNow=u.reduce((s,x)=>s+x.thisWeek[key].total,0);
@@ -146,12 +190,62 @@ function render(){
       members.map(x=>card(x,key)).join("")+`</div>`;
   }
 
-  $("#content").innerHTML=band+toolbar+groups;
+  $("#content").innerHTML=viewSwitcher()+band+toolbar+groups;
+  wireSwitcher();
   document.querySelectorAll("#tog button").forEach(b=>{
     b.setAttribute("aria-selected", b.dataset.p===period);
     b.onclick=()=>{period=b.dataset.p;render();};
   });
   document.querySelectorAll(".card").forEach(c=>c.onclick=()=>c.classList.toggle("open"));
+}
+
+function weeksBetween(aIso,bIso){
+  return Math.round((new Date(bIso+"T00:00:00")-new Date(aIso+"T00:00:00"))/(7*86400000));
+}
+
+function renderCompliance(){
+  const u=DATA.users.map(x=>({...x, wAgo: x.lastReported ? weeksBetween(x.lastReported, DATA.thisWeek) : null}));
+  const upToDate=u.filter(x=>x.wAgo===0).length;
+  const never=u.filter(x=>x.wAgo===null).length;
+  const behind=u.length-upToDate-never;
+  // worst first: never at top, then most weeks behind
+  u.sort((a,b)=>(b.wAgo===null?9999:b.wAgo)-(a.wAgo===null?9999:a.wAgo));
+
+  const band=`<div class="band">
+    <div class="stat"><div class="k">Up to date this week</div>
+      <div class="v">${upToDate}<span style="font-size:1rem;color:var(--muted)"> / ${u.length}</span></div>
+      <div class="d ${upToDate>=u.length?'up':'flat'}">reported this week</div></div>
+    <div class="stat"><div class="k">Behind</div>
+      <div class="v" style="color:${behind?'var(--down)':'var(--navy)'}">${behind}</div>
+      <div class="d flat">missed this week</div></div>
+    <div class="stat"><div class="k">Never reported</div>
+      <div class="v" style="color:${never?'var(--down)':'var(--navy)'}">${never}</div>
+      <div class="d flat">no entries yet</div></div>
+    <div class="stat"><div class="k">Week of</div>
+      <div class="v" style="font-size:1.5rem">${fmtWeek(DATA.thisWeek)}</div>
+      <div class="d flat">Compliance view</div></div>
+  </div>`;
+
+  const head=`<div class="comprow comphead">
+    <div class="cname">Who</div><div class="cstatus">Status</div>
+    <div class="clast">Last reported</div><div class="cdots">Recent weeks →</div></div>`;
+  const rows=u.map(x=>{
+    let badge, cls;
+    if(x.wAgo===null){ badge="Never reported"; cls="bad"; }
+    else if(x.wAgo===0){ badge="Up to date"; cls="ok"; }
+    else { badge=`${x.wAgo} wk${x.wAgo>1?"s":""} behind`; cls=x.wAgo>=3?"bad":"warn"; }
+    const last=x.lastReported?fmtWeek(x.lastReported):"—";
+    const dots=x.history.map(h=>`<span class="dot ${h.reported?"on":""}" title="${fmtWeek(h.week)}"></span>`).join("");
+    return `<div class="comprow">
+      <div class="cname"><b>${x.name}</b>${x.person?` <span class="who">(${x.person})</span>`:""}</div>
+      <div class="cstatus"><span class="badge2 ${cls}">${badge}</span></div>
+      <div class="clast">${last}</div>
+      <div class="cdots">${dots}</div></div>`;
+  }).join("");
+
+  return band+`<div class="group">Who's behind — most overdue at the top</div>
+    <div class="comptable">${head}${rows}</div>
+    <div class="hint">Each square = one of the last 8 weeks. Filled = reported, empty = missed. Hover a square for its date.</div>`;
 }
 
 function card(x,key){
