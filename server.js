@@ -218,7 +218,7 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
   const thisWeek = weeks[weeks.length - 1];
 
   const { rows: users } = await pool.query(
-    `SELECT id, name, template_key, location FROM rpt_users
+    `SELECT id, name, person, template_key, location FROM rpt_users
       WHERE active = TRUE AND template_key <> 'admin_none'
       ORDER BY name`
   );
@@ -233,6 +233,16 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
     (byUser[s.user_id] ??= {})[`${s.week_of}|${s.period_type}`] = s.data;
   }
 
+  // All-time compliance: when did each person last report, and how many
+  // distinct weeks total (looks back further than the 8-week window).
+  const { rows: lastRep } = await pool.query(
+    `SELECT user_id, max(week_of)::text AS last_week,
+            count(DISTINCT week_of) AS weeks_reported
+       FROM rpt_submissions GROUP BY user_id`
+  );
+  const compBy = {};
+  for (const r of lastRep) compBy[r.user_id] = r;
+
   const out = users.map((u) => {
     const tpl = TEMPLATES[u.template_key] || { label: u.template_key, family: "?" };
     const cell = (wk, p) => byUser[u.id]?.[`${wk}|${p}`] || null;
@@ -246,6 +256,7 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
     const curF = cell(thisWeek, "F");
     return {
       name: u.name,
+      person: u.person,
       location: u.location,
       family: tpl.family,
       templateLabel: tpl.label,
@@ -254,6 +265,8 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
         F: { submitted: !!curF, total: sumNumeric(curF), fields: curF ? fieldDetail(u.template_key, "F", curF) : [] },
       },
       history,
+      lastReported: compBy[u.id]?.last_week || null,
+      weeksReported: Number(compBy[u.id]?.weeks_reported || 0),
     };
   });
 
