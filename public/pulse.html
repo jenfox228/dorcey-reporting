@@ -434,6 +434,7 @@ function rowMonthIdx(r) {
 }
 function DorceyRevenuePulse() {
   const [rows, setRows] = useState(null);
+  const [rows25, setRows25] = useState(null);
   const [status, setStatus] = useState("loading");
   const [updated, setUpdated] = useState(null);
   const [attoView, setAttoView] = useState("orig");
@@ -476,6 +477,19 @@ function DorceyRevenuePulse() {
     const t = setInterval(load, CONFIG.REFRESH_MS);
     return () => clearInterval(t);
   }, [load]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(CONFIG.FEED_URL + "?tab=2025&_=" + Date.now(), {
+          redirect: "follow",
+          cache: "no-store"
+        });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d && Array.isArray(d.rows) && d.rows.length) setRows25(d.rows);
+      } catch (_) {}
+    })();
+  }, []);
   const M = useMemo(() => {
     if (!rows) return null;
     const yr = rows.filter(r => rowYear(r) === CONFIG.YEAR);
@@ -533,10 +547,21 @@ function DorceyRevenuePulse() {
     const now = new Date();
     const curMonth = now.getUTCFullYear() === CONFIG.YEAR ? now.getUTCMonth() : 11;
     const dayOfYear = Math.floor((now - new Date(Date.UTC(CONFIG.YEAR, 0, 0))) / 86400000);
+    const m25 = Array(12).fill(0);
+    let have25 = false;
+    if (rows25) {
+      for (const r of rows25) {
+        const d = r._date ? new Date(r._date) : null;
+        if (d && !isNaN(d) && d.getUTCFullYear() === 2025) {
+          m25[d.getUTCMonth()] += num(r["Fee Billed"]);
+          have25 = true;
+        }
+      }
+    }
     const monthly = MONTHS.map((m, i) => ({
       month: m,
       "2026": monthlyTotal[i],
-      "2025": BASELINE_2025[m] || 0,
+      "2025": have25 ? m25[i] : BASELINE_2025[m] || 0,
       partial: i === curMonth,
       future: i > curMonth
     })).filter(d => !d.future || d["2025"] > 0).slice(0, Math.max(curMonth + 1, 6));
@@ -561,6 +586,7 @@ function DorceyRevenuePulse() {
         name,
         value
       })),
+      have25,
       pace: CONFIG.ANNUAL_GOAL * (dayOfYear / 365),
       dayOfYear,
       projected: dayOfYear > 0 ? grand / dayOfYear * 365 : 0,
@@ -573,7 +599,7 @@ function DorceyRevenuePulse() {
         } : best;
       }, null)
     };
-  }, [rows]);
+  }, [rows, rows25]);
   const grid = useMemo(() => {
     if (!rows) return [];
     const yr = rows.filter(r => rowYear(r) === CONFIG.YEAR);
@@ -871,7 +897,7 @@ function DorceyRevenuePulse() {
     style: hStyle
   }, "Monthly revenue \xB7 2026 vs 2025"), /*#__PURE__*/React.createElement("p", {
     style: subStyle
-  }, "Total fee billed by month. ", MONTHS[M.curMonth], " is still in progress \u2014 don\u2019t read the dip as a decline."), /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }, "Total fee billed by month. ", MONTHS[M.curMonth], " is still in progress \u2014 don\u2019t read the dip as a decline.", M.have25 ? " 2025 bars are live from the sheet." : " 2025 bars are pinned estimates."), /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 300
   }, /*#__PURE__*/React.createElement(BarChart, {
