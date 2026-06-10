@@ -294,6 +294,27 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
   res.json({ weeks, thisWeek, users: out });
 });
 
+// ---- Revenue Pulse (Jen & Josh only) ---------------------------------------
+
+// Server-side relay to the Google Sheets feed. The Apps Script URL — including
+// its access token — lives in the REVENUE_FEED_URL environment variable on
+// Render, so it never appears in any page source or browser request.
+app.get("/api/revenue-feed", requireUser, requireAdmin, async (_req, res) => {
+  try {
+    const url = process.env.REVENUE_FEED_URL;
+    if (!url) return res.status(500).json({ error: "feed_not_configured" });
+    const bust = url.includes("?") ? "&" : "?";
+    const r = await fetch(`${url}${bust}_=${Date.now()}`, { redirect: "follow" });
+    if (!r.ok) return res.status(502).json({ error: "feed_unreachable" });
+    const data = await r.json();
+    res.set("Cache-Control", "no-store");
+    res.json(data);
+  } catch (e) {
+    console.error("revenue feed error", e);
+    res.status(502).json({ error: "feed_error" });
+  }
+});
+
 // ---- Page routes ----------------------------------------------------------
 
 app.get("/report", (req, res) => {
@@ -309,6 +330,24 @@ app.get("/admin", (req, res) => {
 app.get("/dashboard", (req, res) => {
   if (!req.user?.is_admin) return res.status(403).send(loginError());
   res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+app.get("/pulse", (req, res) => {
+  if (!req.user?.is_admin) return res.status(403).send(loginError());
+  res.sendFile(path.join(__dirname, "public", "pulse.html"));
+});
+
+// Durable Revenue Pulse link (for Josh): sign in via token, land on Pulse.
+app.get("/pulse/:token", async (req, res) => {
+  try {
+    const user = await consumeMagicToken(req.params.token);
+    if (!user || !user.is_admin) return res.status(401).send(loginError());
+    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
+    res.sendFile(path.join(__dirname, "public", "pulse.html"));
+  } catch (e) {
+    console.error("pulse login error", e);
+    res.status(500).send(loginError());
+  }
 });
 
 // Durable dashboard link (for Josh): sign in via token, land on the dashboard.
