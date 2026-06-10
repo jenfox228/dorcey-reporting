@@ -299,11 +299,37 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
 // Server-side relay to the Google Sheets feed. The Apps Script URL — including
 // its access token — lives in the REVENUE_FEED_URL environment variable on
 // Render, so it never appears in any page source or browser request.
-app.get("/api/revenue-feed", requireUser, requireAdmin, async (_req, res) => {
+// The 2025 history tab — the sheet's name has quirky spacing, so we try a few
+// spellings and use whichever one answers. (?tab=2025 on this route.)
+const TAB_2025_CANDIDATES = [
+  "ONLY 2025 Clients",
+  " ONLY 2025 Clients",
+  " ONLY 2025 Clients ",
+  "Only 2025 Clients",
+];
+
+app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
   try {
     const url = process.env.REVENUE_FEED_URL;
     if (!url) return res.status(500).json({ error: "feed_not_configured" });
     const bust = url.includes("?") ? "&" : "?";
+
+    if (req.query.tab === "2025") {
+      for (const name of TAB_2025_CANDIDATES) {
+        const r = await fetch(
+          `${url}${bust}tab=${encodeURIComponent(name)}&_=${Date.now()}`,
+          { redirect: "follow" }
+        );
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (data && !data.error) {
+          res.set("Cache-Control", "no-store");
+          return res.json(data);
+        }
+      }
+      return res.status(502).json({ error: "tab_2025_not_found" });
+    }
+
     const r = await fetch(`${url}${bust}_=${Date.now()}`, { redirect: "follow" });
     if (!r.ok) return res.status(502).json({ error: "feed_unreachable" });
     const data = await r.json();
