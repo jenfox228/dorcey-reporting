@@ -432,9 +432,22 @@ function rowMonthIdx(r) {
   const d = r._date ? new Date(r._date) : r.Month ? new Date(r.Month) : null;
   return d && !isNaN(d) ? d.getUTCMonth() : null;
 }
+function rowMatches(r, filt) {
+  if (!filt) return true;
+  const t = filt.type,
+    v = filt.value;
+  if (t === "attorney") return String(r["Originating Attorney"] || "").trim() === v || String(r["Closing Attorney"] || "").trim() === v;
+  if (t === "branch") return String(r.Branch || "").trim() === v;
+  if (t === "area") return practiceArea(r.Matter) === v;
+  if (t === "matter") return String(r.Matter || "").trim() === v;
+  if (t === "source") return (String(r["Referral Source"] || "").trim() || "Unspecified") === v;
+  if (t === "month") return rowMonthIdx(r) === v;
+  return true;
+}
 function DorceyRevenuePulse() {
   const [rows, setRows] = useState(null);
   const [rows25, setRows25] = useState(null);
+  const [filt, setFilt] = useState(null);
   const [status, setStatus] = useState("loading");
   const [updated, setUpdated] = useState(null);
   const [attoView, setAttoView] = useState("orig");
@@ -493,6 +506,8 @@ function DorceyRevenuePulse() {
   const M = useMemo(() => {
     if (!rows) return null;
     const yr = rows.filter(r => rowYear(r) === CONFIG.YEAR);
+    const all = yr;
+    const sel = filt ? yr.filter(r => rowMatches(r, filt)) : yr;
     const buckets = {
       "New-Matter": 0,
       APP: 0,
@@ -511,7 +526,7 @@ function DorceyRevenuePulse() {
     let newMatterCount = 0,
       newClient = 0,
       existingClient = 0;
-    for (const r of yr) {
+    for (const r of sel) {
       const fee = num(r["Fee Billed"]);
       const b = classify(r);
       buckets[b] += fee;
@@ -537,6 +552,13 @@ function DorceyRevenuePulse() {
         refSrc[rs] = (refSrc[rs] || 0) + fee;
       }
     }
+    let grandAll = 0;
+    const branchCount = {};
+    for (const r of all) {
+      grandAll += num(r["Fee Billed"]);
+      const b = String(r.Branch || "").trim();
+      if (b) branchCount[b] = (branchCount[b] || 0) + 1;
+    }
     const grand = Object.values(buckets).reduce((a, x) => a + x, 0);
     const newMatter = buckets["New-Matter"];
     const pooled = grand - newMatter;
@@ -547,6 +569,14 @@ function DorceyRevenuePulse() {
     const now = new Date();
     const curMonth = now.getUTCFullYear() === CONFIG.YEAR ? now.getUTCMonth() : 11;
     const dayOfYear = Math.floor((now - new Date(Date.UTC(CONFIG.YEAR, 0, 0))) / 86400000);
+    let ytd25 = 0;
+    if (rows25) {
+      const cut = Date.UTC(2025, now.getUTCMonth(), now.getUTCDate(), 23, 59, 59);
+      for (const r of rows25) {
+        const d = r._date ? new Date(r._date) : null;
+        if (d && !isNaN(d) && d.getUTCFullYear() === 2025 && d.getTime() <= cut) ytd25 += num(r["Fee Billed"]);
+      }
+    }
     const m25 = Array(12).fill(0);
     let have25 = false;
     if (rows25) {
@@ -587,9 +617,12 @@ function DorceyRevenuePulse() {
         value
       })),
       have25,
+      grandAll,
+      ytd25,
+      branchList: Object.entries(branchCount).sort((a, b) => b[1] - a[1]).map(e => e[0]),
       pace: CONFIG.ANNUAL_GOAL * (dayOfYear / 365),
       dayOfYear,
-      projected: dayOfYear > 0 ? grand / dayOfYear * 365 : 0,
+      projected: dayOfYear > 0 ? grandAll / dayOfYear * 365 : 0,
       latest: yr.reduce((best, r) => {
         const d = r._date ? new Date(r._date).getTime() : 0;
         return !best || d > best.t ? {
@@ -599,10 +632,11 @@ function DorceyRevenuePulse() {
         } : best;
       }, null)
     };
-  }, [rows, rows25]);
+  }, [rows, rows25, filt]);
   const grid = useMemo(() => {
     if (!rows) return [];
-    const yr = rows.filter(r => rowYear(r) === CONFIG.YEAR);
+    const yr0 = rows.filter(r => rowYear(r) === CONFIG.YEAR);
+    const yr = filt ? yr0.filter(r => rowMatches(r, filt)) : yr0;
     const q = query.trim().toLowerCase();
     const filtered = q ? yr.filter(r => [r.Client, r.Matter, r["Originating Attorney"], r["Closing Attorney"], r["Referral Source"], r.Branch].some(v => String(v || "").toLowerCase().includes(q))) : yr;
     const dir = sortDir === "asc" ? 1 : -1;
@@ -621,7 +655,7 @@ function DorceyRevenuePulse() {
       }
       return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
     });
-  }, [rows, query, sortKey, sortDir]);
+  }, [rows, filt, query, sortKey, sortDir]);
   const sortBy = k => {
     if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");else {
       setSortKey(k);
@@ -837,8 +871,8 @@ function DorceyRevenuePulse() {
     style: {
       color: C.navy
     }
-  }, usd0(M.grand)), " booked \xB7 ", (M.grand / CONFIG.ANNUAL_GOAL * 100).toFixed(1), "% of goal")), /*#__PURE__*/React.createElement(GoalTrack, {
-    grand: M.grand,
+  }, usd0(M.grandAll)), " booked \xB7 ", (M.grandAll / CONFIG.ANNUAL_GOAL * 100).toFixed(1), "% of goal")), /*#__PURE__*/React.createElement(GoalTrack, {
+    grand: M.grandAll,
     pace: M.pace,
     goal: CONFIG.ANNUAL_GOAL
   }), /*#__PURE__*/React.createElement("div", {
@@ -856,16 +890,55 @@ function DorceyRevenuePulse() {
     c: C.navy
   }), " Pace line (", usd0(M.pace), " \u2014 where ", usdK(CONFIG.ANNUAL_GOAL), " expects you today)"), /*#__PURE__*/React.createElement("span", {
     style: {
-      color: M.grand >= M.pace ? "#3c8c54" : "#b06a3a",
+      color: M.grandAll >= M.pace ? "#3c8c54" : "#b06a3a",
       fontWeight: 600
     }
-  }, M.grand >= M.pace ? "▲ Ahead of pace by " : "▼ Behind pace by ", usd0(Math.abs(M.grand - M.pace))), /*#__PURE__*/React.createElement("span", {
+  }, M.grandAll >= M.pace ? "▲ Ahead of pace by " : "▼ Behind pace by ", usd0(Math.abs(M.grandAll - M.pace))), /*#__PURE__*/React.createElement("span", {
     style: {
       fontWeight: 600,
       color: "#1b2f4d"
     }
-  }, "At this pace: ", usdK(M.projected), " by Dec 31", M.projected >= CONFIG.ANNUAL_GOAL ? " 🎯" : ""))), /*#__PURE__*/React.createElement(Grid, null, /*#__PURE__*/React.createElement(Tile, {
-    label: "Total revenue (YTD)",
+  }, "At this pace: ", usdK(M.projected), " by Dec 31", M.projected >= CONFIG.ANNUAL_GOAL ? " 🎯" : ""), M.have25 && M.ytd25 > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600,
+      color: M.grandAll >= M.ytd25 ? "#3c8c54" : "#b06a3a"
+    }
+  }, M.grandAll >= M.ytd25 ? "▲ Up " : "▼ Down ", (Math.abs(M.grandAll / M.ytd25 - 1) * 100).toFixed(1), "% vs same period 2025 (", usd0(M.ytd25), " then)"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      flexWrap: "wrap",
+      margin: "0 0 18px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#8a8a8a",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em"
+    }
+  }, "Slice"), /*#__PURE__*/React.createElement(Chip, {
+    active: !filt,
+    onClick: () => setFilt(null)
+  }, "All firm"), M.branchList.map(b => /*#__PURE__*/React.createElement(Chip, {
+    key: b,
+    active: !!filt && filt.type === "branch" && filt.value === b,
+    onClick: () => setFilt(filt && filt.type === "branch" && filt.value === b ? null : {
+      type: "branch",
+      value: b,
+      label: "Branch: " + b
+    })
+  }, b)), filt && filt.type !== "branch" && /*#__PURE__*/React.createElement(Chip, {
+    active: true,
+    onClick: () => setFilt(null)
+  }, filt.label, " \u2715"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#8a8a8a"
+    }
+  }, "\xB7 click any bar, pie slice, or month to drill in")), /*#__PURE__*/React.createElement(Grid, null, /*#__PURE__*/React.createElement(Tile, {
+    label: filt ? "Revenue (this slice)" : "Total revenue (YTD)",
     value: usd0(M.grand),
     sub: M.monthly.length + " months in",
     accent: C.navy
@@ -940,7 +1013,19 @@ function DorceyRevenuePulse() {
     radius: [3, 3, 0, 0]
   }), /*#__PURE__*/React.createElement(Bar, {
     dataKey: "2026",
-    radius: [3, 3, 0, 0]
+    radius: [3, 3, 0, 0],
+    style: {
+      cursor: "pointer"
+    },
+    onClick: d => {
+      const m = d && (d.month || d.payload && d.payload.month);
+      const i = m ? MONTHS.indexOf(m) : -1;
+      if (i >= 0) setFilt({
+        type: "month",
+        value: i,
+        label: m + " 2026"
+      });
+    }
   }, M.monthly.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
     key: i,
     fill: d.partial ? C.goldSoft : C.gold
@@ -969,7 +1054,12 @@ function DorceyRevenuePulse() {
     style: subStyle
   }, "New-matter revenue only. \u201CDLF\u201D = firm-sourced (marketing / intake), not an individual."), /*#__PURE__*/React.createElement(HBars, {
     data: attoView === "orig" ? M.orig : M.close,
-    color: C.navy
+    color: C.navy,
+    onPick: n => n !== "—" && setFilt({
+      type: "attorney",
+      value: n,
+      label: "Attorney: " + n
+    })
   })), /*#__PURE__*/React.createElement(Grid, {
     cols: 2
   }, /*#__PURE__*/React.createElement(Section, {
@@ -990,7 +1080,15 @@ function DorceyRevenuePulse() {
     cy: "50%",
     outerRadius: 92,
     innerRadius: 48,
-    paddingAngle: 1
+    paddingAngle: 1,
+    style: {
+      cursor: "pointer"
+    },
+    onClick: d => d && d.name && setFilt({
+      type: "area",
+      value: d.name,
+      label: d.name
+    })
   }, M.area.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
     key: i,
     fill: PIE[i % PIE.length]
@@ -1011,7 +1109,12 @@ function DorceyRevenuePulse() {
   }, "New-matter revenue by where it came from."), /*#__PURE__*/React.createElement(HBars, {
     data: M.refSrc,
     color: C.gold,
-    compact: true
+    compact: true,
+    onPick: n => setFilt({
+      type: "source",
+      value: n,
+      label: "Source: " + n
+    })
   }))), /*#__PURE__*/React.createElement(Section, null, /*#__PURE__*/React.createElement("h2", {
     className: "serif",
     style: hStyle
@@ -1022,7 +1125,12 @@ function DorceyRevenuePulse() {
     color: C.navy2,
     valueFmt: v => v.toLocaleString(),
     compact: true,
-    wide: true
+    wide: true,
+    onPick: n => setFilt({
+      type: "matter",
+      value: n,
+      label: n
+    })
   })), /*#__PURE__*/React.createElement(Section, null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -1362,7 +1470,8 @@ function HBars({
   color,
   valueFmt = usd0,
   compact,
-  wide
+  wide,
+  onPick
 }) {
   const max = Math.max(...data.map(d => d.value), 1);
   return /*#__PURE__*/React.createElement("div", {
@@ -1374,11 +1483,13 @@ function HBars({
     }
   }, data.map(d => /*#__PURE__*/React.createElement("div", {
     key: d.name,
+    onClick: onPick ? () => onPick(d.name) : undefined,
     style: {
       display: "grid",
       gridTemplateColumns: (wide ? "210px" : "120px") + " 1fr 96px",
       alignItems: "center",
-      gap: 10
+      gap: 10,
+      cursor: onPick ? "pointer" : "default"
     }
   }, /*#__PURE__*/React.createElement("div", {
     title: d.name,
@@ -1442,6 +1553,26 @@ function Toggle({
   }, o.t)));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(DorceyRevenuePulse, null));
+function Chip({
+  active,
+  onClick,
+  children
+}) {
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    style: {
+      border: "1px solid " + (active ? C.navy : C.line),
+      background: active ? C.navy : "#fff",
+      color: active ? "#fff" : C.navy2,
+      borderRadius: 999,
+      padding: "5px 14px",
+      fontSize: 13,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontWeight: 600
+    }
+  }, children);
+}
 </script>
 </body>
 </html>
