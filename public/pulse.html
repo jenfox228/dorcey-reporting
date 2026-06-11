@@ -432,6 +432,13 @@ function rowMonthIdx(r) {
   const d = r._date ? new Date(r._date) : r.Month ? new Date(r.Month) : null;
   return d && !isNaN(d) ? d.getUTCMonth() : null;
 }
+function isRefund(r) {
+  if (String(r.Refunded ?? "").trim() !== "") return true;
+  return /refund/i.test(String(r.Notes || "")) || /refund/i.test(String(r.Client || ""));
+}
+function isDiseng(r) {
+  return String(r["Non-client / Disengaged"] ?? "").trim() !== "";
+}
 function rowMatches(r, filt) {
   if (!filt) return true;
   const t = filt.type,
@@ -526,10 +533,21 @@ function DorceyRevenuePulse() {
     let newMatterCount = 0,
       newClient = 0,
       existingClient = 0;
+    let refundCount = 0,
+      refundAmt = 0,
+      disengCount = 0,
+      newCount = 0,
+      existCount = 0;
     for (const r of sel) {
       const fee = num(r["Fee Billed"]);
       const b = classify(r);
       buckets[b] += fee;
+      if (isRefund(r)) {
+        refundCount++;
+        const ra = num(r.Refunded);
+        if (ra > 0) refundAmt += ra;
+      }
+      if (isDiseng(r)) disengCount++;
       const mi = rowMonthIdx(r);
       if (mi != null) {
         monthlyTotal[mi] += fee;
@@ -540,7 +558,13 @@ function DorceyRevenuePulse() {
       if (b === "New-Matter") {
         newMatterCount++;
         const ct = String(r["Client Type"] || "").trim().toLowerCase();
-        if (ct === "new") newClient += fee;else if (ct === "existing") existingClient += fee;
+        if (ct === "new") {
+          newClient += fee;
+          newCount++;
+        } else if (ct === "existing") {
+          existingClient += fee;
+          existCount++;
+        }
         const o = String(r["Originating Attorney"] || "").trim() || "—";
         const c = String(r["Closing Attorney"] || "").trim() || "—";
         orig[o] = (orig[o] || 0) + fee;
@@ -603,6 +627,12 @@ function DorceyRevenuePulse() {
       newMatterCount,
       newClient,
       existingClient,
+      refundCount,
+      refundAmt,
+      disengCount,
+      newCount,
+      existCount,
+      untracked: newMatterCount - newCount - existCount,
       avgNew: newMatterCount ? newMatter / newMatterCount : 0,
       monthly,
       curMonth,
@@ -965,7 +995,111 @@ function DorceyRevenuePulse() {
   }, "The headline number blends real new client work with recurring program money and pass-throughs. Here\u2019s the honest split."), /*#__PURE__*/React.createElement(CompBar, {
     comp: M.composition,
     total: M.grand
-  })), /*#__PURE__*/React.createElement(Section, null, /*#__PURE__*/React.createElement("h2", {
+  })), /*#__PURE__*/React.createElement(Section, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      flexWrap: "wrap",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "serif",
+    style: hStyle
+  }, "New vs. existing clients"), M.refundCount > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: "#a04545",
+      fontWeight: 600
+    }
+  }, M.refundCount, " refund", M.refundCount === 1 ? "" : "s", " YTD", M.refundAmt > 0 ? " · " + usd0(M.refundAmt) + " returned" : "", M.disengCount > 0 ? " · " + M.disengCount + " disengaged" : "")), /*#__PURE__*/React.createElement("p", {
+    style: subStyle
+  }, "New-matter revenue by client relationship \u2014 brand-new families vs. clients coming back for more.", M.untracked > 0 ? " (" + M.untracked.toLocaleString() + " matters missing a Client Type on the sheet.)" : "", " Refunded fees are zeroed on the sheet, so totals already exclude returned money; refunded rows are tagged in the grid below."), M.newClient + M.existingClient > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      height: 44,
+      borderRadius: 8,
+      overflow: "hidden",
+      border: "1px solid " + C.line
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    title: "New · " + usd0(M.newClient),
+    style: {
+      width: M.newClient / (M.newClient + M.existingClient) * 100 + "%",
+      background: C.gold,
+      minWidth: 2
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    title: "Existing · " + usd0(M.existingClient),
+    style: {
+      width: M.existingClient / (M.newClient + M.existingClient) * 100 + "%",
+      background: C.navy2,
+      minWidth: 2
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      gap: 10,
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 12,
+      height: 12,
+      borderRadius: 3,
+      background: C.gold,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      lineHeight: 1.3
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 600,
+      color: C.navy
+    }
+  }, "New clients"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#6b6b6b"
+    }
+  }, usd0(M.newClient), " \xB7 ", (M.newClient / (M.newClient + M.existingClient) * 100).toFixed(1), "% \xB7 ", M.newCount.toLocaleString(), " matters \xB7 avg ", usd0(M.newCount ? M.newClient / M.newCount : 0)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 12,
+      height: 12,
+      borderRadius: 3,
+      background: C.navy2,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      lineHeight: 1.3
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 600,
+      color: C.navy
+    }
+  }, "Existing clients"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#6b6b6b"
+    }
+  }, usd0(M.existingClient), " \xB7 ", (M.existingClient / (M.newClient + M.existingClient) * 100).toFixed(1), "% \xB7 ", M.existCount.toLocaleString(), " matters \xB7 avg ", usd0(M.existCount ? M.existingClient / M.existCount : 0))))))), /*#__PURE__*/React.createElement(Section, null, /*#__PURE__*/React.createElement("h2", {
     className: "serif",
     style: hStyle
   }, "Monthly revenue \xB7 2026 vs 2025"), /*#__PURE__*/React.createElement("p", {
@@ -1218,7 +1352,16 @@ function DorceyRevenuePulse() {
         padding: "1px 6px",
         borderRadius: 4
       }
-    }, b === "Title Pass-through" ? "TITLE" : b === "Registered Agent" ? "RA" : b === "Referral Income" ? "REF" : b)), /*#__PURE__*/React.createElement("td", {
+    }, b === "Title Pass-through" ? "TITLE" : b === "Registered Agent" ? "RA" : b === "Referral Income" ? "REF" : b), isRefund(r) && /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 6,
+        fontSize: 10,
+        background: "#a04545",
+        color: "#fff",
+        padding: "1px 6px",
+        borderRadius: 4
+      }
+    }, "REFUND")), /*#__PURE__*/React.createElement("td", {
       style: tdStyle
     }, r.Matter), /*#__PURE__*/React.createElement("td", {
       style: tdStyle
