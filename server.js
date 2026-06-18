@@ -64,6 +64,18 @@ function lastNWeeks(n = 8) {
   return out;
 }
 
+// Like lastNWeeks, but ends at the given ISO Monday instead of "this week".
+// Used by the dashboard's week picker so admins can browse past weeks.
+function lastNWeeksEnding(n, isoMonday) {
+  const [y, m, d] = isoMonday.split("-").map(Number);
+  const base = Date.UTC(y, m - 1, d);
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) {
+    out.push(new Date(base - i * 7 * 86400000).toISOString().slice(0, 10));
+  }
+  return out;
+}
+
 // A Monday string N weeks before the given Monday string.
 function weekMinus(iso, n) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -233,8 +245,13 @@ app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
 
 // ---- Dashboard API (leadership) -------------------------------------------
 
-app.get("/api/dashboard", requireUser, requireAdmin, async (_req, res) => {
-  const weeks = lastNWeeks(8);
+app.get("/api/dashboard", requireUser, requireAdmin, async (req, res) => {
+  // Optional ?week=YYYY-MM-DD lets the dashboard look at a past week.
+  // If absent (or invalid), default to the current week.
+  const requested = req.query.week;
+  const isValidWeek = typeof requested === "string" && /^\d{4}-\d{2}-\d{2}$/.test(requested);
+  const anchor = isValidWeek ? requested : null;
+  const weeks = anchor ? lastNWeeksEnding(8, anchor) : lastNWeeks(8);
   const earliest = weeks[0];
   const thisWeek = weeks[weeks.length - 1];
 
