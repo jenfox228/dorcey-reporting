@@ -406,65 +406,7 @@ app.get("/dash/:token", async (req, res) => {
   }
 });
 
-// ============================================================
-// TEMPORARY RECOVERY ROUTE — DELETE THIS ENTIRE BLOCK AFTER USE
-// Usage:
-//   /recover-admin?key=YOUR_KEY            -> lists all admin users
-//   /recover-admin?key=YOUR_KEY&id=N       -> mints a fresh dash link for user id N
-// ============================================================
-app.get("/recover-admin", async (req, res) => {
-  if (!process.env.RECOVERY_KEY || req.query.key !== process.env.RECOVERY_KEY) {
-    return res.status(404).send("Not found");
-  }
-  try {
-    if (req.query.id) {
-      const { rows } = await pool.query(
-        `SELECT id, name, email FROM rpt_users
-          WHERE id = $1 AND is_admin = TRUE LIMIT 1`,
-        [req.query.id]
-      );
-      if (!rows[0]) return res.send("No admin user with that id.");
-      const token = await createMagicToken(rows[0].id);
-      return res.send(
-        `<pre style="font-family:monospace;padding:20px;font-size:14px">
-Fresh admin link for ${rows[0].name} (${rows[0].email}):
 
-${appUrl(req)}/dash/${token}
-
-Click that link to sign in. Then REMOVE this recovery route + the RECOVERY_KEY env var.
-</pre>`
-      );
-    }
-    const { rows } = await pool.query(
-      `SELECT id, name, email, active FROM rpt_users
-        WHERE is_admin = TRUE ORDER BY id`
-    );
-    const list = rows
-      .map(
-        (r) =>
-          `  id=${r.id}  ${r.active ? "✓" : "✗"}  ${r.name.padEnd(30)} ${r.email}`
-      )
-      .join("\n");
-    res.send(
-      `<pre style="font-family:monospace;padding:20px;font-size:14px">
-Admin users in database (✓ = active, ✗ = inactive):
-
-${list || "  (no admins found)"}
-
-To get a fresh sign-in link, visit:
-  /recover-admin?key=YOUR_KEY&id=THE_ID_NUMBER
-
-Pick the row that's you, then re-visit with &id=that_number.
-</pre>`
-    );
-  } catch (e) {
-    console.error("recover error", e);
-    res.status(500).send("Recovery error: " + e.message);
-  }
-});
-// ============================================================
-// END OF TEMPORARY RECOVERY ROUTE
-// ============================================================
 app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));
 
 function loginError() {
