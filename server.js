@@ -406,6 +406,42 @@ app.get("/dash/:token", async (req, res) => {
   }
 });
 
+// ============================================================
+// TEMPORARY RECOVERY ROUTE — DELETE THIS ENTIRE BLOCK AFTER USE
+// Usage: visit /recover-admin?key=YOUR_RECOVERY_KEY (the key is
+// set in Render env vars as RECOVERY_KEY). Returns a fresh
+// admin magic link for jfox@dorceylaw.com. After you're back in,
+// delete this whole section AND remove the RECOVERY_KEY env var.
+// ============================================================
+app.get("/recover-admin", async (req, res) => {
+  if (!process.env.RECOVERY_KEY || req.query.key !== process.env.RECOVERY_KEY) {
+    return res.status(404).send("Not found");
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name FROM rpt_users
+        WHERE email = 'jfox@dorceylaw.com' AND is_admin = TRUE LIMIT 1`
+    );
+    if (!rows[0]) return res.send("No admin user found for that email.");
+    const token = await createMagicToken(rows[0].id);
+    res.send(
+      `<pre style="font-family:monospace;padding:20px;font-size:14px">
+Fresh admin link for ${rows[0].name}:
+
+${appUrl(req)}/dash/${token}
+
+Click that link to sign in. Then REMOVE this /recover-admin route from server.js.
+</pre>`
+    );
+  } catch (e) {
+    console.error("recover error", e);
+    res.status(500).send("Recovery error: " + e.message);
+  }
+});
+// ============================================================
+// END OF TEMPORARY RECOVERY ROUTE
+// ============================================================
+
 app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));
 
 function loginError() {
