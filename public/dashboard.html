@@ -33,6 +33,21 @@
 
   .wrap{max-width:1100px;margin:0 auto;padding:24px 20px 80px}
 
+  /* Week picker bar */
+  .weekbar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;
+    box-shadow:var(--shadow);margin-bottom:18px;flex-wrap:wrap}
+  .weekbar .lab{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .weekbar select{font:600 .95rem "Libre Franklin",sans-serif;color:var(--navy);
+    background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer}
+  .weekbar select:focus{outline:2px solid var(--gold);outline-offset:1px}
+  .weekbar .latest{font:600 .8rem "Libre Franklin",sans-serif;color:var(--gold);
+    background:transparent;border:1px solid var(--gold);border-radius:8px;padding:6px 11px;cursor:pointer}
+  .weekbar .latest:hover{background:var(--gold);color:#fff}
+  .weekbar .latest[hidden]{display:none}
+  .pastnote{background:#fbf3da;border:1px solid #ecdca0;color:#7a5d10;
+    border-radius:10px;padding:8px 12px;font-size:.85rem;margin-bottom:14px}
+
   /* firm summary band */
   .band{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:6px 0 22px}
   .celebrate{background:linear-gradient(120deg,#fbf6e8,#f3ead0);border:1px solid var(--gold);
@@ -119,11 +134,14 @@
   </div>
 
 <script>
-let DATA=null, period="F", view="scores";  // F=Actuals default; view=scores|compliance
+let DATA=null, period="F", view="scores";
+let selectedWeek=null;       // null = current week; otherwise an ISO Monday
+let availableWeeks=[];        // dropdown options (newest first)
 const $=(s)=>document.querySelector(s);
 const FAMS=[["A","Attorneys"],["B","Probate / TA Specialists"],["C","Departments"],["D","Trackers"],["?","Other"],["-","Other"]];
 
-function fmtWeek(iso){const d=new Date(iso+"T00:00:00");return d.toLocaleDateString(undefined,{month:"short",day:"numeric"});}
+function fmtWeek(iso){const d=new Date(iso+"T00:00:00");return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
+function fmtWeekShort(iso){const d=new Date(iso+"T00:00:00");return d.toLocaleDateString(undefined,{month:"short",day:"numeric"});}
 function deltaTag(now,prev){
   const d=now-prev;
   if(d===0) return `<span class="delta flat">– flat</span>`;
@@ -139,10 +157,28 @@ function sparkline(vals){
     <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.6" fill="var(--navy)"/></svg>`;
 }
 
-async function load(){
-  const r=await fetch("/api/dashboard");
+// Build the dropdown's list of pickable past weeks (12 weeks back from today).
+function buildAvailableWeeks(){
+  // Use the most recent week from the data as the anchor, then walk back.
+  // This avoids client/server timezone drift.
+  const out=[];
+  const seed = DATA && DATA.thisWeek ? DATA.thisWeek : null;
+  if(!seed){ availableWeeks=[]; return; }
+  const [y,m,d] = seed.split("-").map(Number);
+  const base = Date.UTC(y, m-1, d);
+  for(let i=0;i<12;i++){
+    out.push(new Date(base - i*7*86400000).toISOString().slice(0,10));
+  }
+  availableWeeks = out;
+}
+
+async function load(weekIso){
+  const url = weekIso ? `/api/dashboard?week=${weekIso}` : `/api/dashboard`;
+  const r=await fetch(url);
   if(!r.ok){ $("#content").innerHTML="<div class='loading'>Leadership view only — sign in as an admin.</div>"; return; }
   DATA=await r.json();
+  // First load: figure out the dropdown options based on the live "this week".
+  if(availableWeeks.length===0) buildAvailableWeeks();
   render();
 }
 
@@ -159,9 +195,44 @@ function wireSwitcher(){
   });
 }
 
+// The picker bar at the top of the page — same on both views.
+function weekBar(){
+  const opts = availableWeeks.map((w,i)=>{
+    const label = i===0 ? `${fmtWeekShort(w)} · current week` : `Week of ${fmtWeekShort(w)}`;
+    const sel = (DATA.thisWeek===w) ? " selected" : "";
+    return `<option value="${w}"${sel}>${label}</option>`;
+  }).join("");
+  const isPast = selectedWeek && selectedWeek !== availableWeeks[0];
+  return `
+    <div class="weekbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="lab">Viewing</span>
+        <select id="wkpick">${opts}</select>
+      </div>
+      <button class="latest" id="wklatest" ${isPast?"":"hidden"}>↻ Jump to current week</button>
+    </div>
+    ${isPast ? `<div class="pastnote">📅 You're looking at a past week. Numbers here are historical — not live.</div>` : ""}
+  `;
+}
+function wireWeekBar(){
+  const sel = document.getElementById("wkpick");
+  if(sel) sel.onchange = (e) => {
+    selectedWeek = e.target.value;
+    $("#content").innerHTML = "<div class='loading'>Loading that week…</div>";
+    load(selectedWeek);
+  };
+  const btn = document.getElementById("wklatest");
+  if(btn) btn.onclick = () => {
+    selectedWeek = null;
+    $("#content").innerHTML = "<div class='loading'>Loading the current week…</div>";
+    load(null);
+  };
+}
+
 function render(){
   if(view==="compliance"){
-    $("#content").innerHTML = viewSwitcher() + renderCompliance();
+    $("#content").innerHTML = weekBar() + viewSwitcher() + renderCompliance();
+    wireWeekBar();
     wireSwitcher();
     return;
   }
@@ -169,12 +240,10 @@ function render(){
   const key=period==="F"?"F":"M";
   const totalNow=u.reduce((s,x)=>s+x.thisWeek[key].total,0);
   const reported=u.filter(x=>x.thisWeek[key].submitted).length;
-  // firm trend: this week vs last week, summed across everyone
   const idx=DATA.weeks.length-1;
   const firmSeries=DATA.weeks.map((_,i)=>u.reduce((s,x)=>s+(key==="F"?x.history[i].fTotal:x.history[i].mTotal),0));
   const firmPrev=firmSeries[idx-1]||0;
 
-  // Biggest movers this week vs last (current period)
   const movers=u.map(x=>{
     const now = key==="F"?x.history[idx].fTotal:x.history[idx].mTotal;
     const prev = idx>0 ? (key==="F"?x.history[idx-1].fTotal:x.history[idx-1].mTotal) : 0;
@@ -197,7 +266,7 @@ function render(){
       <div class="stat"><div class="k">8-week trend</div>
         <div style="margin-top:6px">${sparkline(firmSeries)}</div></div>
       <div class="stat"><div class="k">Week of</div>
-        <div class="v" style="font-size:1.5rem">${fmtWeek(DATA.thisWeek)}</div>
+        <div class="v" style="font-size:1.5rem">${fmtWeekShort(DATA.thisWeek)}</div>
         <div class="d flat">${period==="F"?"Actuals view":"Forecast view"}</div></div>
     </div>`;
 
@@ -219,7 +288,8 @@ function render(){
       members.map(x=>card(x,key)).join("")+`</div>`;
   }
 
-  $("#content").innerHTML=viewSwitcher()+celebrate+band+moversStrip+toolbar+groups;
+  $("#content").innerHTML=weekBar()+viewSwitcher()+celebrate+band+moversStrip+toolbar+groups;
+  wireWeekBar();
   wireSwitcher();
   document.querySelectorAll("#tog button").forEach(b=>{
     b.setAttribute("aria-selected", b.dataset.p===period);
@@ -237,7 +307,6 @@ function renderCompliance(){
   const upToDate=u.filter(x=>x.wAgo===0).length;
   const never=u.filter(x=>x.wAgo===null).length;
   const behind=u.length-upToDate-never;
-  // worst first: never at top, then most weeks behind
   u.sort((a,b)=>(b.wAgo===null?9999:b.wAgo)-(a.wAgo===null?9999:a.wAgo));
 
   const band=`<div class="band">
@@ -251,7 +320,7 @@ function renderCompliance(){
       <div class="v" style="color:${never?'var(--down)':'var(--navy)'}">${never}</div>
       <div class="d flat">no entries yet</div></div>
     <div class="stat"><div class="k">Week of</div>
-      <div class="v" style="font-size:1.5rem">${fmtWeek(DATA.thisWeek)}</div>
+      <div class="v" style="font-size:1.5rem">${fmtWeekShort(DATA.thisWeek)}</div>
       <div class="d flat">Compliance view</div></div>
   </div>`;
 
@@ -263,8 +332,8 @@ function renderCompliance(){
     if(x.wAgo===null){ badge="Never reported"; cls="bad"; }
     else if(x.wAgo===0){ badge="Up to date"; cls="ok"; }
     else { badge=`${x.wAgo} wk${x.wAgo>1?"s":""} behind`; cls=x.wAgo>=3?"bad":"warn"; }
-    const last=x.lastReported?fmtWeek(x.lastReported):"—";
-    const dots=x.history.map(h=>`<span class="dot ${h.reported?"on":""}" title="${fmtWeek(h.week)}"></span>`).join("");
+    const last=x.lastReported?fmtWeekShort(x.lastReported):"—";
+    const dots=x.history.map(h=>`<span class="dot ${h.reported?"on":""}" title="${fmtWeekShort(h.week)}"></span>`).join("");
     return `<div class="comprow">
       <div class="cname"><b>${x.name}</b>${x.person?` <span class="who">(${x.person})</span>`:""}</div>
       <div class="cstatus"><span class="badge2 ${cls}">${badge}</span></div>
@@ -295,7 +364,7 @@ function card(x,key){
     ${body}</div>`;
 }
 
-load();
+load(null);
 </script>
 </body>
 </html>
