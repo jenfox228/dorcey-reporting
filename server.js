@@ -406,7 +406,6 @@ app.get("/dash/:token", async (req, res) => {
   }
 });
 
-
 app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));
 
 function loginError() {
