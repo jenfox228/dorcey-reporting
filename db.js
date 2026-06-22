@@ -2,11 +2,8 @@
 // Reuses the same Render PostgreSQL instance as the Estate AI platform,
 // but every table here is namespaced with rpt_ so the reporting data
 // stays cleanly separated from the client-document side.
-
 import pg from "pg";
-
 const { Pool } = pg;
-
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // Render's managed Postgres requires SSL; relax cert checking the same
@@ -15,7 +12,6 @@ export const pool = new Pool({
     ? false
     : { rejectUnauthorized: false },
 });
-
 // Creates tables if they don't exist. Safe to run on every boot.
 export async function initSchema() {
   await pool.query(`
@@ -32,7 +28,6 @@ export async function initSchema() {
       active        BOOLEAN NOT NULL DEFAULT TRUE,
       created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     );
-
     CREATE TABLE IF NOT EXISTS rpt_magic_tokens (
       id         SERIAL PRIMARY KEY,
       user_id    INTEGER NOT NULL REFERENCES rpt_users(id) ON DELETE CASCADE,
@@ -41,7 +36,6 @@ export async function initSchema() {
       expires_at TIMESTAMPTZ NOT NULL,
       used_at    TIMESTAMPTZ
     );
-
     -- One row per person, per reporting period (Monday "M" or Friday "F"),
     -- per week. The JSONB payload holds whatever fields that person's
     -- template defines, so adding/changing fields never requires a migration.
@@ -55,14 +49,36 @@ export async function initSchema() {
       submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (user_id, period_type, week_of)
     );
-
     CREATE INDEX IF NOT EXISTS rpt_submissions_week_idx
       ON rpt_submissions (week_of);
-
+    -- Audit log for past-week edits + backfills. One row per save action
+    -- that touched a previous week. Captures before/after snapshots so we
+    -- can always reconstruct what changed and when.
+    --   action = 'backfill' (no prior submission for that week)
+    --          | 'edit'     (overwrote an existing submission)
+    --   edited_by_user_id = who made the change (often same as user_id, but
+    --                       could be an admin editing someone else's data)
+    --   data_before / data_after = JSONB snapshots; data_before is NULL for
+    --                              backfills since there was nothing there.
+    CREATE TABLE IF NOT EXISTS rpt_audit_log (
+      id                 SERIAL PRIMARY KEY,
+      user_id            INTEGER NOT NULL REFERENCES rpt_users(id) ON DELETE CASCADE,
+      edited_by_user_id  INTEGER NOT NULL REFERENCES rpt_users(id) ON DELETE CASCADE,
+      template_key       TEXT NOT NULL,
+      period_type        TEXT NOT NULL CHECK (period_type IN ('M','F')),
+      week_of            DATE NOT NULL,
+      action             TEXT NOT NULL CHECK (action IN ('backfill','edit')),
+      data_before        JSONB,
+      data_after         JSONB NOT NULL,
+      edited_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS rpt_audit_log_user_idx
+      ON rpt_audit_log (user_id, week_of DESC);
+    CREATE INDEX IF NOT EXISTS rpt_audit_log_when_idx
+      ON rpt_audit_log (edited_at DESC);
     -- Backfill the contact-email column on tables created before it existed.
     ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS notify_email TEXT;
     ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS person TEXT;
-
     -- Migrate existing databases: one person can own several reporting roles,
     -- so email must NOT be unique; the role NAME is the unique identity instead.
     DO $$ BEGIN
