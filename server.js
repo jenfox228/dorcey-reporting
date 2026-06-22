@@ -134,6 +134,7 @@ app.get("/api/me", requireUser, async (req, res) => {
   if (!tpl) return res.status(500).json({ error: "unknown_template" });
 
   const thisWeek = weekMonday();
+  const lastWeek = weekMinus(thisWeek, 1);
 
   // Existing submissions for THIS week (so people can edit, not double-enter).
   const { rows: cur } = await pool.query(
@@ -170,6 +171,10 @@ app.get("/api/me", requireUser, async (req, res) => {
     probe = weekMinus(probe, 1);
   }
 
+  // Did they miss LAST week entirely (neither M nor F)? Drives the proactive
+  // "You missed last week" banner on the report form.
+  const missedLastWeek = !reportedWeeks.has(lastWeek);
+
   res.json({
     user: {
       name: u.name,
@@ -184,6 +189,8 @@ app.get("/api/me", requireUser, async (req, res) => {
     prefill,
     existing,
     streak,
+    missedLastWeek,
+    lastWeek,
   });
 });
 
@@ -207,6 +214,107 @@ app.post("/api/submit", requireUser, async (req, res) => {
     [req.user.id, req.user.template_key, period, weekMonday(), JSON.stringify(clean)]
   );
   res.json({ ok: true });
+});
+
+// ---- Past-week editing (last 2 weeks only) --------------------------------
+// People miss weeks. The form lets them go back up to 2 weeks to fill in or
+// fix what they reported. Every save here writes a row to rpt_audit_log so
+// admins can see exactly what was changed, by whom, and when.
+
+// Returns the 2 most recent past weeks (NOT this week) along with whatever
+// the user has on file for each period of each week. Also returns the
+// template's field definitions so the front end can render the form.
+app.get("/api/past-weeks", requireUser, async (req, res) => {
+  const u = req.user;
+  const tpl = TEMPLATES[u.template_key];
+  if (!tpl) return res.status(500).json({ error: "unknown_template" });
+
+  const thisWeek = weekMonday();
+  const weeks = [weekMinus(thisWeek, 1), weekMinus(thisWeek, 2)]; // newest first
+  const earliest = weeks[weeks.length - 1];
+
+  const { rows } = await pool.query(
+    `SELECT period_type, week_of::text AS week_of, data
+       FROM rpt_submissions
+      WHERE user_id = $1 AND week_of >= $2 AND week_of < $3`,
+    [u.id, earliest, thisWeek]
+  );
+  const byKey = {};
+  for (const r of rows) byKey[`${r.week_of}|${r.period_type}`] = r.data;
+
+  const out = weeks.map((w) => ({
+    week: w,
+    M: { existing: byKey[`${w}|M`] || null },
+    F: { existing: byKey[`${w}|F`] || null },
+  }));
+
+  res.json({
+    template: { label: tpl.label, monday: tpl.monday, friday: tpl.friday },
+    weeks: out,
+  });
+});
+
+// Submits or updates a past week's data. Validates that the week is within
+// the 2-week lookback window; refuses anything older. Logs to audit table.
+app.post("/api/submit-past", requireUser, async (req, res) => {
+  const u = req.user;
+  const { week, period, data } = req.body || {};
+
+  if (!["M", "F"].includes(period))
+    return res.status(400).json({ error: "bad_period" });
+  if (typeof week !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(week))
+    return res.status(400).json({ error: "bad_week" });
+
+  const thisWeek = weekMonday();
+  const earliest = weekMinus(thisWeek, 2);
+  // Allowed range: [earliest, thisWeek) — strictly before this week.
+  if (week >= thisWeek || week < earliest)
+    return res.status(400).json({ error: "week_out_of_range" });
+
+  // Same field whitelist as the current-week submit.
+  const allowed = new Set(fieldsFor(u.template_key, period).map((f) => f.key));
+  const clean = {};
+  for (const [k, v] of Object.entries(data || {})) {
+    if (allowed.has(k)) clean[k] = v;
+  }
+
+  // Capture the BEFORE state for the audit log (null if no prior submission).
+  const { rows: before } = await pool.query(
+    `SELECT data FROM rpt_submissions
+      WHERE user_id = $1 AND period_type = $2 AND week_of = $3`,
+    [u.id, period, week]
+  );
+  const dataBefore = before[0]?.data || null;
+  const action = dataBefore === null ? "backfill" : "edit";
+
+  // Upsert the submission itself.
+  await pool.query(
+    `INSERT INTO rpt_submissions (user_id, template_key, period_type, week_of, data)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, period_type, week_of)
+     DO UPDATE SET data = EXCLUDED.data, submitted_at = now()`,
+    [u.id, u.template_key, period, week, JSON.stringify(clean)]
+  );
+
+  // Record the change in the audit log.
+  await pool.query(
+    `INSERT INTO rpt_audit_log
+       (user_id, edited_by_user_id, template_key, period_type, week_of,
+        action, data_before, data_after)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      u.id,
+      u.id, // editor = same as user; (admin editing someone else is a future feature)
+      u.template_key,
+      period,
+      week,
+      action,
+      dataBefore === null ? null : JSON.stringify(dataBefore),
+      JSON.stringify(clean),
+    ]
+  );
+
+  res.json({ ok: true, action });
 });
 
 // ---- Admin API ------------------------------------------------------------
@@ -241,6 +349,35 @@ app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
   if (!rows[0].is_admin) return res.status(400).json({ error: "not_admin" });
   const token = await createMagicToken(user_id);
   res.json({ url: `${appUrl(req)}/dash/${token}` });
+});
+
+// Recent past-week edits + backfills, with the names of the people involved.
+// Admin viewer uses this to show the audit trail in /admin.
+app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+  const { rows } = await pool.query(
+    `SELECT
+       a.id,
+       a.user_id,
+       u.name        AS user_name,
+       u.person      AS user_person,
+       a.edited_by_user_id,
+       e.name        AS editor_name,
+       a.template_key,
+       a.period_type,
+       a.week_of::text AS week_of,
+       a.action,
+       a.data_before,
+       a.data_after,
+       a.edited_at
+     FROM rpt_audit_log a
+     JOIN rpt_users u ON u.id = a.user_id
+     JOIN rpt_users e ON e.id = a.edited_by_user_id
+     ORDER BY a.edited_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  res.json({ entries: rows });
 });
 
 // ---- Dashboard API (leadership) -------------------------------------------
