@@ -32,17 +32,16 @@ const COOKIE_OPTS = {
 
 // ---- Date helpers ---------------------------------------------------------
 
-// Monday (YYYY-MM-DD) of the reporting week containing `d`.
 function weekMonday(d = new Date()) {
   const x = new Date(d);
-  const day = x.getDay(); // 0 Sun .. 6 Sat
-  const diff = (day === 0 ? -6 : 1) - day; // shift back to Monday
+  const day = x.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
   x.setDate(x.getDate() + diff);
   return x.toISOString().slice(0, 10);
 }
 
 function suggestedPeriod(d = new Date()) {
-  const day = d.getDay(); // Mon-Wed -> forecast (M), Thu-Sun -> actuals (F)
+  const day = d.getDay();
   return day >= 1 && day <= 3 ? "M" : "F";
 }
 
@@ -53,7 +52,6 @@ function appUrl(req) {
   );
 }
 
-// Last N reporting weeks (Monday YYYY-MM-DD), oldest -> newest. UTC-safe.
 function lastNWeeks(n = 8) {
   const [y, m, d] = weekMonday().split("-").map(Number);
   const base = Date.UTC(y, m - 1, d);
@@ -64,8 +62,6 @@ function lastNWeeks(n = 8) {
   return out;
 }
 
-// Like lastNWeeks, but ends at the given ISO Monday instead of "this week".
-// Used by the dashboard's week picker so admins can browse past weeks.
 function lastNWeeksEnding(n, isoMonday) {
   const [y, m, d] = isoMonday.split("-").map(Number);
   const base = Date.UTC(y, m - 1, d);
@@ -76,13 +72,11 @@ function lastNWeeksEnding(n, isoMonday) {
   return out;
 }
 
-// A Monday string N weeks before the given Monday string.
 function weekMinus(iso, n) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d) - n * 7 * 86400000).toISOString().slice(0, 10);
 }
 
-// Sum the numeric values in a JSONB data object (ignores text fields).
 function sumNumeric(obj) {
   let s = 0;
   for (const v of Object.values(obj || {})) {
@@ -92,7 +86,6 @@ function sumNumeric(obj) {
   return s;
 }
 
-// Map a stored data object to labeled field rows using the template.
 function fieldDetail(templateKey, period, data) {
   return fieldsFor(templateKey, period).map((f) => ({
     label: f.label,
@@ -111,9 +104,6 @@ app.get("/login/:token", async (req, res) => {
     const user = await consumeMagicToken(req.params.token);
     if (!user) return res.status(401).send(loginError());
     res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    // Serve the form here (no redirect) so the URL stays the unique link —
-    // bookmarking it re-opens THIS person's form every time, even if they
-    // also use a second link for a different role.
     res.sendFile(path.join(__dirname, "public", "report.html"));
   } catch (e) {
     console.error("login error", e);
@@ -136,7 +126,6 @@ app.get("/api/me", requireUser, async (req, res) => {
   const thisWeek = weekMonday();
   const lastWeek = weekMinus(thisWeek, 1);
 
-  // Existing submissions for THIS week (so people can edit, not double-enter).
   const { rows: cur } = await pool.query(
     `SELECT period_type, data FROM rpt_submissions
       WHERE user_id = $1 AND week_of = $2`,
@@ -145,7 +134,6 @@ app.get("/api/me", requireUser, async (req, res) => {
   const existing = {};
   for (const r of cur) existing[r.period_type] = r.data;
 
-  // Most recent prior submission of each period type, for prefill.
   const prefill = {};
   for (const p of ["M", "F"]) {
     const { rows } = await pool.query(
@@ -157,8 +145,6 @@ app.get("/api/me", requireUser, async (req, res) => {
     prefill[p] = rows[0]?.data || {};
   }
 
-  // Reporting streak: consecutive weeks (ending LAST week) with any submission.
-  // After they submit this week, the form shows streak + 1.
   const { rows: wkRows } = await pool.query(
     `SELECT DISTINCT week_of::text AS w FROM rpt_submissions WHERE user_id = $1`,
     [u.id]
@@ -171,8 +157,6 @@ app.get("/api/me", requireUser, async (req, res) => {
     probe = weekMinus(probe, 1);
   }
 
-  // Did they miss LAST week entirely (neither M nor F)? Drives the proactive
-  // "You missed last week" banner on the report form.
   const missedLastWeek = !reportedWeeks.has(lastWeek);
 
   res.json({
@@ -199,7 +183,6 @@ app.post("/api/submit", requireUser, async (req, res) => {
   if (!["M", "F"].includes(period))
     return res.status(400).json({ error: "bad_period" });
 
-  // Whitelist incoming keys against the template so nothing junk lands in DB.
   const allowed = new Set(fieldsFor(req.user.template_key, period).map((f) => f.key));
   const clean = {};
   for (const [k, v] of Object.entries(data || {})) {
@@ -217,20 +200,14 @@ app.post("/api/submit", requireUser, async (req, res) => {
 });
 
 // ---- Past-week editing (last 2 weeks only) --------------------------------
-// People miss weeks. The form lets them go back up to 2 weeks to fill in or
-// fix what they reported. Every save here writes a row to rpt_audit_log so
-// admins can see exactly what was changed, by whom, and when.
 
-// Returns the 2 most recent past weeks (NOT this week) along with whatever
-// the user has on file for each period of each week. Also returns the
-// template's field definitions so the front end can render the form.
 app.get("/api/past-weeks", requireUser, async (req, res) => {
   const u = req.user;
   const tpl = TEMPLATES[u.template_key];
   if (!tpl) return res.status(500).json({ error: "unknown_template" });
 
   const thisWeek = weekMonday();
-  const weeks = [weekMinus(thisWeek, 1), weekMinus(thisWeek, 2)]; // newest first
+  const weeks = [weekMinus(thisWeek, 1), weekMinus(thisWeek, 2)];
   const earliest = weeks[weeks.length - 1];
 
   const { rows } = await pool.query(
@@ -254,8 +231,6 @@ app.get("/api/past-weeks", requireUser, async (req, res) => {
   });
 });
 
-// Submits or updates a past week's data. Validates that the week is within
-// the 2-week lookback window; refuses anything older. Logs to audit table.
 app.post("/api/submit-past", requireUser, async (req, res) => {
   const u = req.user;
   const { week, period, data } = req.body || {};
@@ -267,18 +242,15 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
 
   const thisWeek = weekMonday();
   const earliest = weekMinus(thisWeek, 2);
-  // Allowed range: [earliest, thisWeek) — strictly before this week.
   if (week >= thisWeek || week < earliest)
     return res.status(400).json({ error: "week_out_of_range" });
 
-  // Same field whitelist as the current-week submit.
   const allowed = new Set(fieldsFor(u.template_key, period).map((f) => f.key));
   const clean = {};
   for (const [k, v] of Object.entries(data || {})) {
     if (allowed.has(k)) clean[k] = v;
   }
 
-  // Capture the BEFORE state for the audit log (null if no prior submission).
   const { rows: before } = await pool.query(
     `SELECT data FROM rpt_submissions
       WHERE user_id = $1 AND period_type = $2 AND week_of = $3`,
@@ -287,7 +259,6 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
   const dataBefore = before[0]?.data || null;
   const action = dataBefore === null ? "backfill" : "edit";
 
-  // Upsert the submission itself.
   await pool.query(
     `INSERT INTO rpt_submissions (user_id, template_key, period_type, week_of, data)
      VALUES ($1, $2, $3, $4, $5)
@@ -296,7 +267,6 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
     [u.id, u.template_key, period, week, JSON.stringify(clean)]
   );
 
-  // Record the change in the audit log.
   await pool.query(
     `INSERT INTO rpt_audit_log
        (user_id, edited_by_user_id, template_key, period_type, week_of,
@@ -304,7 +274,7 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       u.id,
-      u.id, // editor = same as user; (admin editing someone else is a future feature)
+      u.id,
       u.template_key,
       period,
       week,
@@ -327,6 +297,62 @@ app.get("/api/admin/users", requireUser, requireAdmin, async (_req, res) => {
   res.json({ users: rows });
 });
 
+// Returns the template list (key + label) so the admin's Add User form can
+// populate its dropdown. Just reads from the in-memory TEMPLATES map.
+app.get("/api/admin/templates", requireUser, requireAdmin, async (_req, res) => {
+  const out = Object.entries(TEMPLATES)
+    .filter(([key]) => key !== "admin_none")
+    .map(([key, tpl]) => ({ key, label: tpl.label, family: tpl.family || "?" }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  res.json({ templates: out });
+});
+
+// Create a new reporting user. Admin-only. Name is the unique identity
+// (one person can hold several reporting roles under different names, e.g.
+// "Probate Department - Ellie" and "Probate-TA - Ellie" for the same human).
+app.post("/api/admin/create-user", requireUser, requireAdmin, async (req, res) => {
+  const {
+    name,
+    email,
+    person,
+    template_key,
+    location,
+    is_admin,
+  } = req.body || {};
+
+  // Basic validation.
+  if (!name || typeof name !== "string" || name.trim().length < 2)
+    return res.status(400).json({ error: "name_required" });
+  if (!email || typeof email !== "string" || !email.includes("@"))
+    return res.status(400).json({ error: "email_required" });
+  if (!template_key || !TEMPLATES[template_key])
+    return res.status(400).json({ error: "unknown_template" });
+
+  const cleanName = name.trim();
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPerson = (person || "").trim() || null;
+  const cleanLocation = (location || "").trim() || null;
+  const admin = !!is_admin;
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO rpt_users
+        (name, email, person, template_key, location, is_admin, role, active)
+       VALUES ($1, $2, $3, $4, $5, $6, 'reporter', TRUE)
+       RETURNING id, name, email, person, template_key, location, is_admin`,
+      [cleanName, cleanEmail, cleanPerson, template_key, cleanLocation, admin]
+    );
+    res.json({ ok: true, user: rows[0] });
+  } catch (e) {
+    // Unique-constraint violation on rpt_users_name_key => name already taken.
+    if (e.code === "23505") {
+      return res.status(409).json({ error: "name_taken" });
+    }
+    console.error("create-user error", e);
+    res.status(500).json({ error: "create_failed" });
+  }
+});
+
 app.post("/api/admin/link", requireUser, requireAdmin, async (req, res) => {
   const { user_id } = req.body || {};
   const { rows } = await pool.query(
@@ -338,7 +364,6 @@ app.post("/api/admin/link", requireUser, requireAdmin, async (req, res) => {
   res.json({ url: `${appUrl(req)}/login/${token}` });
 });
 
-// A durable link that drops an admin straight onto the dashboard (for Josh).
 app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
   const { user_id } = req.body || {};
   const { rows } = await pool.query(
@@ -351,8 +376,6 @@ app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
   res.json({ url: `${appUrl(req)}/dash/${token}` });
 });
 
-// Recent past-week edits + backfills, with the names of the people involved.
-// Admin viewer uses this to show the audit trail in /admin.
 app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
   const { rows } = await pool.query(
@@ -383,8 +406,6 @@ app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
 // ---- Dashboard API (leadership) -------------------------------------------
 
 app.get("/api/dashboard", requireUser, requireAdmin, async (req, res) => {
-  // Optional ?week=YYYY-MM-DD lets the dashboard look at a past week.
-  // If absent (or invalid), default to the current week.
   const requested = req.query.week;
   const isValidWeek = typeof requested === "string" && /^\d{4}-\d{2}-\d{2}$/.test(requested);
   const anchor = isValidWeek ? requested : null;
@@ -408,8 +429,6 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (req, res) => {
     (byUser[s.user_id] ??= {})[`${s.week_of}|${s.period_type}`] = s.data;
   }
 
-  // All-time compliance: when did each person last report, and how many
-  // distinct weeks total (looks back further than the 8-week window).
   const { rows: lastRep } = await pool.query(
     `SELECT user_id, max(week_of)::text AS last_week,
             count(DISTINCT week_of) AS weeks_reported
@@ -450,11 +469,6 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (req, res) => {
 
 // ---- Revenue Pulse (Jen & Josh only) ---------------------------------------
 
-// Server-side relay to the Google Sheets feed. The Apps Script URL — including
-// its access token — lives in the REVENUE_FEED_URL environment variable on
-// Render, so it never appears in any page source or browser request.
-// The 2025 history tab — the sheet's name has quirky spacing, so we try a few
-// spellings and use whichever one answers. (?tab=2025 on this route.)
 const TAB_2025_CANDIDATES = [
   "ONLY 2025 Clients",
   " ONLY 2025 Clients",
@@ -517,7 +531,6 @@ app.get("/pulse", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "pulse.html"));
 });
 
-// Durable Revenue Pulse link (for Josh): sign in via token, land on Pulse.
 app.get("/pulse/:token", async (req, res) => {
   try {
     const user = await consumeMagicToken(req.params.token);
@@ -530,7 +543,6 @@ app.get("/pulse/:token", async (req, res) => {
   }
 });
 
-// Durable dashboard link (for Josh): sign in via token, land on the dashboard.
 app.get("/dash/:token", async (req, res) => {
   try {
     const user = await consumeMagicToken(req.params.token);
