@@ -6,14 +6,50 @@
 <title>Dorcey · Reporting Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  :root{--navy:#0f1f3a;--gold:#c9a14a;--parchment:#f6f1e4;--line:#e3dcc9;--muted:#7d7666;--ok:#2f7d57}
+  :root{--navy:#0f1f3a;--gold:#c9a14a;--parchment:#f6f1e4;--line:#e3dcc9;--muted:#7d7666;--ok:#2f7d57;--down:#b04a3a}
   *{box-sizing:border-box}
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:#1b1b1b}
   header{background:var(--navy);color:var(--parchment);padding:24px;border-bottom:3px solid var(--gold)}
   header h1{font-family:"Playfair Display",serif;margin:.2rem 0;font-size:1.5rem}
   header .eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:#e7d3a1}
-  .wrap{max-width:780px;margin:0 auto;padding:22px 18px 80px}
+  .wrap{max-width:820px;margin:0 auto;padding:22px 18px 80px}
   p.lead{color:var(--muted);font-size:.92rem}
+
+  /* Add user card */
+  .adduser{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 16px 36px -22px rgba(15,31,58,.4);margin-bottom:22px}
+  .adduser .head{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;background:#faf7ef}
+  .adduser .head:hover{background:#f3ecd6}
+  .adduser .head .h-title{flex:1;font:700 .98rem "Libre Franklin",sans-serif;color:var(--navy)}
+  .adduser .head .h-sub{font-size:.78rem;color:var(--muted);font-weight:500}
+  .adduser .head .chev{font-size:1rem;color:var(--muted);transition:transform .18s}
+  .adduser.open .head .chev{transform:rotate(90deg)}
+  .adduser .body{display:none;padding:18px;border-top:1px solid var(--line)}
+  .adduser.open .body{display:block}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row2 > div{display:flex;flex-direction:column}
+  .fld{display:flex;flex-direction:column;margin-bottom:12px}
+  .fld label{font-size:.75rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+    font-weight:700;margin-bottom:5px}
+  .fld input, .fld select{font:500 .95rem "Libre Franklin",sans-serif;padding:10px 12px;
+    border:1px solid var(--line);border-radius:9px;color:#1b1b1b;background:#fff}
+  .fld input:focus, .fld select:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+  .fld .hint{font-size:.72rem;color:#a39c8b;margin-top:4px}
+  .fld.check{flex-direction:row;align-items:center;gap:8px}
+  .fld.check input{width:18px;height:18px;margin:0}
+  .fld.check label{margin-bottom:0;color:var(--navy);text-transform:none;letter-spacing:0;font-size:.9rem}
+  .actions{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .btn-primary{border:0;background:var(--navy);color:#fff;border-radius:10px;
+    padding:11px 18px;font:600 .9rem "Libre Franklin",sans-serif;cursor:pointer}
+  .btn-primary:hover{background:#16294b}
+  .btn-primary:disabled{opacity:.5;cursor:default}
+  .btn-secondary{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:10px;
+    padding:10px 16px;font:600 .88rem "Libre Franklin",sans-serif;cursor:pointer}
+  .status{font-size:.88rem;font-weight:600;margin-left:auto}
+  .status.ok{color:var(--ok)}
+  .status.err{color:var(--down)}
+
+  /* Users table */
   table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
     border-radius:14px;overflow:hidden;box-shadow:0 16px 36px -22px rgba(15,31,58,.4)}
   th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-size:.92rem;vertical-align:middle}
@@ -22,11 +58,14 @@
   .name{font-weight:600;color:var(--navy)}
   .tpl{color:var(--muted);font-size:.8rem}
   .badge{font-size:.68rem;background:var(--gold);color:var(--navy);padding:2px 7px;border-radius:6px;font-weight:700}
+  .newpill{font-size:.68rem;background:#e7f3ec;color:var(--ok);padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px}
   button.link{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:9px;
     padding:8px 12px;font:600 .85rem "Libre Franklin",sans-serif;cursor:pointer;white-space:nowrap}
   button.link:hover{background:var(--navy);color:#fff}
   .copied{color:var(--ok);font-weight:700;font-size:.82rem}
   .urlcell{font-size:.74rem;color:var(--muted);word-break:break-all;max-width:280px}
+  .just-created{background:#fbf9ea}
+  .just-created td:first-child{border-left:3px solid var(--gold)}
 </style>
 </head>
 <body>
@@ -35,27 +74,207 @@
     <h1>Weekly Reporting — Admin</h1>
   </header>
   <div class="wrap">
+
+    <!-- Add User form (collapsed by default). -->
+    <div class="adduser" id="adduser">
+      <div class="head" id="adduserHead">
+        <span style="font-size:1.05rem">➕</span>
+        <div class="h-title">Add New User
+          <div class="h-sub">Create a reporting role for a team member.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="body">
+        <div class="fld">
+          <label for="u_name">Role name</label>
+          <input id="u_name" type="text" placeholder="e.g. Probate Department - Ellie" autocomplete="off" />
+          <span class="hint">This is the unique identity for this reporting role. Include the person's name if they hold multiple roles.</span>
+        </div>
+        <div class="row2">
+          <div class="fld">
+            <label for="u_email">Email</label>
+            <input id="u_email" type="email" placeholder="ellie@dorceylaw.com" autocomplete="off" />
+          </div>
+          <div class="fld">
+            <label for="u_person">First name (for greeting)</label>
+            <input id="u_person" type="text" placeholder="Ellie" autocomplete="off" />
+            <span class="hint">Used in "Good morning, Ellie" on their form.</span>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fld">
+            <label for="u_template">Template</label>
+            <select id="u_template">
+              <option value="">Loading templates…</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="u_location">Location (optional)</label>
+            <select id="u_location">
+              <option value="">— none —</option>
+              <option value="Fort Myers">Fort Myers</option>
+              <option value="Naples">Naples</option>
+              <option value="Marco">Marco Island</option>
+              <option value="LaBelle">LaBelle</option>
+              <option value="Philippines">Philippines (offshore)</option>
+            </select>
+          </div>
+        </div>
+        <div class="fld check">
+          <input id="u_admin" type="checkbox" />
+          <label for="u_admin">Grant admin access (dashboard + admin panel)</label>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" id="createBtn">Create user</button>
+          <button class="btn-secondary" id="clearBtn">Clear form</button>
+          <span class="status" id="createStatus"></span>
+        </div>
+      </div>
+    </div>
+
     <p class="lead">Generate a one-tap sign-in link for anyone, then text or email it to them.
     Links are good for 3 days. Once automated email is wired up, this becomes the fallback / manual override.</p>
+
     <table id="tbl"><thead><tr><th>Name</th><th>Template</th><th>Link</th></tr></thead>
       <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">Loading team…</td></tr></tbody>
     </table>
   </div>
 <script>
-async function load(){
+let JUST_CREATED_ID = null; // highlight the row for the user just added
+
+async function loadUsers(){
   const r = await fetch("/api/admin/users");
   if(!r.ok){ document.getElementById("rows").innerHTML="<tr><td colspan=3>Admins only.</td></tr>"; return; }
   const {users} = await r.json();
   document.getElementById("rows").innerHTML = users.map(u=>`
-    <tr data-id="${u.id}">
-      <td><span class="name">${u.name}</span> ${u.is_admin?'<span class="badge">admin</span>':''}<br>
+    <tr data-id="${u.id}" class="${u.id===JUST_CREATED_ID?'just-created':''}">
+      <td><span class="name">${u.name}</span>
+        ${u.is_admin?'<span class="badge">admin</span>':''}
+        ${u.id===JUST_CREATED_ID?'<span class="newpill">new</span>':''}<br>
         <span class="tpl">${u.email}</span></td>
       <td class="tpl">${u.template_key}${u.location? " · "+u.location:""}</td>
       <td><button class="link" onclick="gen(${u.id},this)">Generate link</button>
         ${u.is_admin?`<button class="link" style="margin-left:6px" onclick="genDash(${u.id},this)">Dashboard link</button>`:''}
         <div class="urlcell"></div></td>
     </tr>`).join("");
+
+  // Scroll the newly created row into view once, then clear the flag.
+  if(JUST_CREATED_ID){
+    const row = document.querySelector(`tr[data-id="${JUST_CREATED_ID}"]`);
+    if(row) row.scrollIntoView({behavior:"smooth", block:"center"});
+    JUST_CREATED_ID = null;
+  }
 }
+
+async function loadTemplates(){
+  try{
+    const r = await fetch("/api/admin/templates");
+    if(!r.ok) throw new Error("failed");
+    const {templates} = await r.json();
+    // Group by family for a nicer dropdown: A/B/C/D/other.
+    const famNames = {A:"Attorneys", B:"Probate / TA Specialists", C:"Departments", D:"Trackers"};
+    const groups = {};
+    for(const t of templates){
+      const fam = famNames[t.family] || "Other";
+      (groups[fam] ??= []).push(t);
+    }
+    const order = ["Attorneys","Probate / TA Specialists","Departments","Trackers","Other"];
+    const html = ['<option value="">— select a template —</option>'];
+    for(const g of order){
+      if(!groups[g]) continue;
+      html.push(`<optgroup label="${g}">`);
+      for(const t of groups[g]){
+        html.push(`<option value="${t.key}">${t.label}</option>`);
+      }
+      html.push(`</optgroup>`);
+    }
+    document.getElementById("u_template").innerHTML = html.join("");
+  }catch(e){
+    document.getElementById("u_template").innerHTML =
+      '<option value="">Failed to load templates — refresh page</option>';
+  }
+}
+
+document.getElementById("adduserHead").onclick = ()=>{
+  document.getElementById("adduser").classList.toggle("open");
+};
+
+function clearForm(){
+  ["u_name","u_email","u_person","u_location"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("u_template").value="";
+  document.getElementById("u_admin").checked = false;
+  const st = document.getElementById("createStatus");
+  st.textContent = ""; st.className = "status";
+}
+document.getElementById("clearBtn").onclick = clearForm;
+
+document.getElementById("createBtn").onclick = async ()=>{
+  const btn = document.getElementById("createBtn");
+  const st = document.getElementById("createStatus");
+  st.textContent = ""; st.className = "status";
+
+  const payload = {
+    name: document.getElementById("u_name").value.trim(),
+    email: document.getElementById("u_email").value.trim(),
+    person: document.getElementById("u_person").value.trim(),
+    template_key: document.getElementById("u_template").value,
+    location: document.getElementById("u_location").value,
+    is_admin: document.getElementById("u_admin").checked,
+  };
+
+  // Client-side sanity checks (server also validates).
+  if(payload.name.length < 2){ st.textContent="Name is required."; st.className="status err"; return; }
+  if(!payload.email.includes("@")){ st.textContent="Valid email required."; st.className="status err"; return; }
+  if(!payload.template_key){ st.textContent="Pick a template."; st.className="status err"; return; }
+
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = "Creating…";
+
+  try{
+    const r = await fetch("/api/admin/create-user", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload),
+    });
+    if(!r.ok){
+      const err = await r.json().catch(()=>({}));
+      const messages = {
+        name_taken: "That role name already exists. Try adding the person's name to make it unique.",
+        name_required: "Name is required.",
+        email_required: "Valid email required.",
+        unknown_template: "That template isn't recognized.",
+        create_failed: "Something broke on the server. Try again?",
+      };
+      st.textContent = messages[err.error] || ("Error: " + (err.error || r.status));
+      st.className = "status err";
+      btn.disabled = false; btn.textContent = orig;
+      return;
+    }
+    const {user} = await r.json();
+    JUST_CREATED_ID = user.id;
+    st.textContent = `✓ Created "${user.name}". Scroll down to generate their link.`;
+    st.className = "status ok";
+    clearFormExceptStatus();
+    await loadUsers();
+    // Re-set status because loadUsers doesn't touch it.
+    st.textContent = `✓ Created "${user.name}". Generate their link below.`;
+    st.className = "status ok";
+    btn.disabled = false; btn.textContent = orig;
+  }catch(e){
+    st.textContent = "Network hiccup — try again?";
+    st.className = "status err";
+    btn.disabled = false; btn.textContent = orig;
+  }
+};
+
+// Same as clearForm but leaves the status message alone so we can show success.
+function clearFormExceptStatus(){
+  ["u_name","u_email","u_person","u_location"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("u_template").value="";
+  document.getElementById("u_admin").checked = false;
+}
+
 async function genDash(id, btn){
   btn.textContent="…";
   const r = await fetch("/api/admin/dashlink",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -78,7 +297,9 @@ async function gen(id, btn){
   btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
     btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy",1500); };
 }
-load();
+
+loadTemplates();
+loadUsers();
 </script>
 </body>
 </html>
