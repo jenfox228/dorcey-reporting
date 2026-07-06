@@ -291,14 +291,12 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
 
 app.get("/api/admin/users", requireUser, requireAdmin, async (_req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, role, template_key, location, is_admin, active
+    `SELECT id, name, email, person, role, template_key, location, is_admin, active
        FROM rpt_users ORDER BY is_admin DESC, name ASC`
   );
   res.json({ users: rows });
 });
 
-// Returns the template list (key + label) so the admin's Add User form can
-// populate its dropdown. Just reads from the in-memory TEMPLATES map.
 app.get("/api/admin/templates", requireUser, requireAdmin, async (_req, res) => {
   const out = Object.entries(TEMPLATES)
     .filter(([key]) => key !== "admin_none")
@@ -307,9 +305,6 @@ app.get("/api/admin/templates", requireUser, requireAdmin, async (_req, res) => 
   res.json({ templates: out });
 });
 
-// Create a new reporting user. Admin-only. Name is the unique identity
-// (one person can hold several reporting roles under different names, e.g.
-// "Probate Department - Ellie" and "Probate-TA - Ellie" for the same human).
 app.post("/api/admin/create-user", requireUser, requireAdmin, async (req, res) => {
   const {
     name,
@@ -320,7 +315,6 @@ app.post("/api/admin/create-user", requireUser, requireAdmin, async (req, res) =
     is_admin,
   } = req.body || {};
 
-  // Basic validation.
   if (!name || typeof name !== "string" || name.trim().length < 2)
     return res.status(400).json({ error: "name_required" });
   if (!email || typeof email !== "string" || !email.includes("@"))
@@ -344,12 +338,83 @@ app.post("/api/admin/create-user", requireUser, requireAdmin, async (req, res) =
     );
     res.json({ ok: true, user: rows[0] });
   } catch (e) {
-    // Unique-constraint violation on rpt_users_name_key => name already taken.
     if (e.code === "23505") {
       return res.status(409).json({ error: "name_taken" });
     }
     console.error("create-user error", e);
     res.status(500).json({ error: "create_failed" });
+  }
+});
+
+// Update an existing user. Any subset of fields can be sent; only sent fields
+// are updated. `id` is required. Guardrails:
+//   - Name must remain unique (409 name_taken on collision).
+//   - You cannot demote yourself from admin (prevents locking yourself out).
+//   - You cannot deactivate yourself (same reason).
+//   - Template must be a known key.
+app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  const id = parseInt(b.id, 10);
+  if (!id) return res.status(400).json({ error: "id_required" });
+
+  // Build the SET clause dynamically from what the client sent.
+  const sets = [];
+  const vals = [];
+  const push = (col, val) => { vals.push(val); sets.push(`${col} = $${vals.length}`); };
+
+  if (typeof b.name === "string") {
+    const v = b.name.trim();
+    if (v.length < 2) return res.status(400).json({ error: "name_required" });
+    push("name", v);
+  }
+  if (typeof b.email === "string") {
+    const v = b.email.trim().toLowerCase();
+    if (!v.includes("@")) return res.status(400).json({ error: "email_required" });
+    push("email", v);
+  }
+  if (typeof b.person === "string") {
+    const v = b.person.trim();
+    push("person", v.length ? v : null);
+  }
+  if (typeof b.template_key === "string") {
+    if (!TEMPLATES[b.template_key]) return res.status(400).json({ error: "unknown_template" });
+    push("template_key", b.template_key);
+  }
+  if (typeof b.location === "string") {
+    const v = b.location.trim();
+    push("location", v.length ? v : null);
+  }
+  if (typeof b.is_admin === "boolean") {
+    // Prevent self-demotion.
+    if (id === req.user.id && !b.is_admin) {
+      return res.status(400).json({ error: "cannot_demote_self" });
+    }
+    push("is_admin", b.is_admin);
+  }
+  if (typeof b.active === "boolean") {
+    // Prevent self-deactivation.
+    if (id === req.user.id && !b.active) {
+      return res.status(400).json({ error: "cannot_deactivate_self" });
+    }
+    push("active", b.active);
+  }
+
+  if (!sets.length) return res.status(400).json({ error: "nothing_to_update" });
+
+  vals.push(id);
+  try {
+    const { rows } = await pool.query(
+      `UPDATE rpt_users SET ${sets.join(", ")}
+        WHERE id = $${vals.length}
+        RETURNING id, name, email, person, template_key, location, is_admin, active`,
+      vals
+    );
+    if (!rows[0]) return res.status(404).json({ error: "no_user" });
+    res.json({ ok: true, user: rows[0] });
+  } catch (e) {
+    if (e.code === "23505") return res.status(409).json({ error: "name_taken" });
+    console.error("update-user error", e);
+    res.status(500).json({ error: "update_failed" });
   }
 });
 
