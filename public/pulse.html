@@ -90,6 +90,7 @@
   .togchip button{border:0;background:transparent;padding:6px 12px;border-radius:6px;cursor:pointer;
     font:600 .75rem "Libre Franklin",sans-serif;color:var(--muted)}
   .togchip button[aria-selected="true"]{background:var(--navy);color:#fff}
+  .togwrap{display:flex;gap:8px;flex-wrap:wrap}
 
   /* Composition strip */
   .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
@@ -101,9 +102,11 @@
   .comp-legend .swatch{width:12px;height:12px;border-radius:3px}
   .comp-legend .amt{color:var(--muted);margin-left:4px}
 
-  /* Two-column grid */
+  /* Two- and three-column grids */
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
   .cols .col + .col{border-left:1px dashed var(--line);padding-left:22px}
+  .cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px}
+  .cols3 .col + .col{border-left:1px dashed var(--line);padding-left:22px}
 
   /* Monthly bars */
   .months{display:flex;align-items:flex-end;gap:8px;height:180px;margin-top:14px;padding-bottom:20px}
@@ -117,9 +120,14 @@
     background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:.72rem;white-space:nowrap;
     opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
   .months .m:hover .tip{opacity:1}
-  .months-legend{display:flex;gap:14px;font-size:.75rem;color:var(--muted);margin-top:-8px;justify-content:flex-end}
+  .months-legend{display:flex;gap:14px;font-size:.75rem;color:var(--muted);margin-top:-8px;justify-content:flex-end;flex-wrap:wrap}
   .months-legend .item{display:flex;align-items:center;gap:6px}
   .months-legend .swatch{width:14px;height:12px;border-radius:2px}
+
+  /* Stacked monthly bars (client mix) */
+  .months .m .sbar{width:70%;max-width:34px;display:flex;flex-direction:column-reverse;
+    border-radius:4px 4px 0 0;overflow:hidden}
+  .months .m .sbar .sseg{width:100%}
 
   /* Ranked lists */
   .rank{margin-top:6px}
@@ -128,11 +136,14 @@
     border-radius:6px;padding-left:8px;padding-right:8px;transition:background .12s}
   .rank .r:last-child{border-bottom:0}
   .rank .r:hover{background:var(--parchment)}
+  .rank .r.static{cursor:default}
+  .rank .r.static:hover{background:transparent}
   .rank .r.active{background:var(--gold-soft);border-left:3px solid var(--gold);padding-left:5px}
   .rank .r .lbl{flex:1;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap}
   .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;min-width:50px;white-space:nowrap}
   .rank .r .files{font-size:.7rem;color:#999;margin-left:6px}
+  .rank .more{font-size:.75rem;color:var(--muted);padding:8px;text-align:center}
 
   /* Recent big entries */
   .strip{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
@@ -151,6 +162,39 @@
   .refund .body b{display:block;font-size:1rem;color:#7a2f0f}
   .refund .body small{color:#8a4020}
 
+  /* Avg-fee matrix */
+  .matrix-scroll{overflow-x:auto;margin-top:8px}
+  table.matrix{border-collapse:collapse;width:100%;font-size:.82rem;min-width:640px}
+  table.matrix th, table.matrix td{padding:8px 10px;text-align:right;border-bottom:1px dashed var(--line);white-space:nowrap}
+  table.matrix th{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  table.matrix th:first-child, table.matrix td:first-child{text-align:left;position:sticky;left:0;background:#fff;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+  table.matrix td.mxcat{cursor:pointer;font-weight:600;color:var(--navy)}
+  table.matrix tr:hover td{background:var(--parchment)}
+  table.matrix tr:hover td:first-child{background:var(--parchment)}
+  table.matrix tr.active td{background:var(--gold-soft)}
+  table.matrix tr.active td:first-child{background:var(--gold-soft)}
+  table.matrix .cnt{display:block;font-size:.66rem;color:#999;font-weight:400}
+  table.matrix td.allcol, table.matrix th.allcol{border-left:1px solid var(--line);font-weight:700;color:var(--navy)}
+  table.matrix tr.totrow td{border-top:2px solid var(--line);font-weight:700;color:var(--navy)}
+
+  /* Grade bars */
+  .grow{display:grid;grid-template-columns:170px 1fr 56px;gap:10px;align-items:center;
+    padding:6px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
+  .grow:last-child{border-bottom:0}
+  .grow .glbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+  .grow .gpct{text-align:right;font-weight:700;color:var(--navy);font-size:.8rem}
+  .gbar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#f0e8d3}
+  .gbar .gseg{height:100%}
+  .glegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-bottom:10px}
+  .glegend .item{display:flex;align-items:center;gap:6px}
+  .glegend .swatch{width:12px;height:12px;border-radius:3px}
+
+  /* Mix header chips */
+  .mixchips{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .mixchip{background:#faf7ef;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:.85rem}
+  .mixchip .amt{font-weight:700;color:var(--navy);display:block;font-size:1rem}
+  .mixchip small{color:var(--muted)}
+
   .footer-note{text-align:center;font-size:.75rem;color:var(--muted);margin-top:24px}
   .footer-note b{color:var(--navy)}
 
@@ -159,6 +203,9 @@
     .kpis{grid-template-columns:repeat(2,1fr)}
     .cols{grid-template-columns:1fr}
     .cols .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
+    .cols3{grid-template-columns:1fr}
+    .cols3 .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
+    .grow{grid-template-columns:110px 1fr 48px}
   }
 </style>
 </head>
@@ -180,9 +227,11 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// DORCEY REVENUE PULSE — live dashboard (definitive HTML port of the June 11
-// React version). Source: /api/revenue-feed → the "2026 Clients" tab.
-// Everything below is computed in-browser from that feed.
+// DORCEY REVENUE PULSE — live dashboard.
+// July 2026 expansion: avg-fee matrix (category × attorney), refund
+// diagnostics, referral-source dollars, top referrers, new-vs-existing
+// client mix, and grade distribution. All sections respect the global
+// click-to-filter. Source: /api/revenue-feed → the "2026 Clients" tab.
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
@@ -199,6 +248,13 @@ const SEG_COLORS = {
   "Referral Income":    "#b07f5a",
 };
 const SEG_ORDER = ["New-Matter","APP","Registered Agent","Title Pass-through","Referral Income"];
+
+// Grade palette — A is money, D is a problem.
+const GRADE_COLORS = { "A":"#2d6a4f", "B":"#c6a04e", "C":"#d98e32", "D":"#9b2335", "F":"#6b1626" };
+const GRADE_ORDER = ["A","B","C","D","F"];
+
+// Client-mix palette
+const MIX_COLORS = { "New":"#c6a04e", "Existing":"#3f6184", "Other":"#c7cfdd" };
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -223,7 +279,9 @@ let ROWS_2025 = [];
 
 // UI state — persisted across renders
 let viewMode = "blended";        // "blended" = all fees, "growth" = new-matter only
-let filter   = null;             // {kind:"attorney"|"matter"|"segment", value:"MAS"} etc.
+let filter   = null;             // {kind:"attorney"|"matter"|"segment"|"category"|"refsource", value:"..."}
+let matrixYear = CONFIG.year;    // avg-fee matrix year toggle
+let matrixRole = "clos";         // "clos" | "orig" — which attorney column the matrix uses
 
 // ---------------------------------------------------------------------------
 // Utility helpers
@@ -262,6 +320,10 @@ function usdK(n){
   return usd0(n);
 }
 
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 function monthIndex(row){
   const candidates = [row["_date"], row["Month"], row["Date Scheduled"]];
   for(const c of candidates){
@@ -274,6 +336,24 @@ function monthIndex(row){
     }
   }
   return null;
+}
+
+// Column readers — one place to define how we interpret the sheet's columns.
+function catOf(row){ return String(row["Category"] || "").trim() || "Uncategorized"; }
+function refSourceOf(row){ return String(row["Referral Source"] || "").trim() || "Unknown"; }
+function refNameOf(row){ return String(row["Referral Name"] || "").trim(); }
+function gradeOf(row){
+  const g = String(row["Grade"] || "").trim().toUpperCase();
+  if(!g) return null;
+  const c = g[0];
+  return GRADE_ORDER.includes(c) ? c : null;
+}
+function clientTypeBucket(row){
+  const s = String(row["Client Type"] || "").trim().toLowerCase();
+  if(!s) return "Other";
+  if(s.includes("exist") || s.includes("return") || s.includes("repeat")) return "Existing";
+  if(s.includes("new")) return "New";
+  return "Other";
 }
 
 // Classifier — assigns each row to exactly one revenue bucket.
@@ -314,6 +394,8 @@ function passesFilter(row){
   if(filter.kind === "attorney_clos")return attC === filter.value;
   if(filter.kind === "matter")       return matter === filter.value;
   if(filter.kind === "segment")      return seg === filter.value;
+  if(filter.kind === "category")     return catOf(row) === filter.value;
+  if(filter.kind === "refsource")    return refSourceOf(row) === filter.value;
   return true;
 }
 
@@ -382,6 +464,11 @@ function render(){
     compositionSection(),
     monthlyTrendSection(stats, stats25),
     attorneyAndMatterSection(),
+    avgFeeMatrixSection(),
+    refundDiagnosticsSection(),
+    referralSection(stats, stats25),
+    clientMixSection(),
+    gradeSection(),
     recentBigSection(rows),
     footerNote(),
   ].join("");
@@ -395,17 +482,19 @@ function filterLabel(){
                  : filter.kind === "attorney_clos" ? " (closing)" : "";
     return `Filtered to ${attorneyLabel(filter.value)}${suffix}`;
   }
-  if(filter.kind === "matter")  return `Filtered to matter: ${filter.value}`;
-  if(filter.kind === "segment") return `Filtered to segment: ${filter.value}`;
+  if(filter.kind === "matter")    return `Filtered to matter: ${filter.value}`;
+  if(filter.kind === "segment")   return `Filtered to segment: ${filter.value}`;
+  if(filter.kind === "category")  return `Filtered to category: ${filter.value}`;
+  if(filter.kind === "refsource") return `Filtered to referral source: ${filter.value}`;
   return "Filtered";
 }
 
 function filterBar(){
   if(!filter){
-    return `<div class="filter-bar"><span class="filter-hint">💡 Tip: click any attorney, matter, or segment to filter the whole dashboard.</span></div>`;
+    return `<div class="filter-bar"><span class="filter-hint">💡 Tip: click any attorney, matter, category, segment, or referral source to filter the whole dashboard.</span></div>`;
   }
   return `<div class="filter-bar">
-    <span class="filter-pill" id="clearFilter">${filterLabel()} <span class="x">×</span></span>
+    <span class="filter-pill" id="clearFilter">${esc(filterLabel())} <span class="x">×</span></span>
     <span class="filter-hint">Click × to clear the filter.</span>
   </div>`;
 }
@@ -418,6 +507,8 @@ function computeStats(rows){
   const byAttorneyOrig = {};
   const byAttorneyClos = {};
   const byMatter = {};
+  const byCategory = {};
+  const byRefSource = {};
 
   let total = 0, files = 0, newMatterTotal = 0, newMatterFiles = 0;
   const refundList = [];
@@ -459,13 +550,28 @@ function computeStats(rows){
       byMatter[matter].files++;
     }
 
-    if(fee < 0) refundList.push({fee, name:row["Client"], date:row["_date"] || row["Month"]});
+    const cat = catOf(row);
+    if(!byCategory[cat]) byCategory[cat] = {revenue:0, files:0};
+    byCategory[cat].revenue += fee;
+    byCategory[cat].files++;
+
+    const rs = refSourceOf(row);
+    if(!byRefSource[rs]) byRefSource[rs] = {revenue:0, files:0};
+    byRefSource[rs].revenue += fee;
+    byRefSource[rs].files++;
+
+    if(fee < 0) refundList.push({
+      fee,
+      name: row["Client"],
+      date: row["_date"] || row["Month"],
+      closAtt, cat, refSource: rs,
+    });
   }
 
   return {
     total, newMatterTotal, files, newMatterFiles,
     buckets, byMonth,
-    byAttorneyOrig, byAttorneyClos, byMatter,
+    byAttorneyOrig, byAttorneyClos, byMatter, byCategory, byRefSource,
     refundList,
   };
 }
@@ -556,13 +662,13 @@ function thermoSection(s){
 function refundSpotlight(s){
   if(!s.refundList.length) return "";
   const total = s.refundList.reduce((a,r)=>a+r.fee,0);
-  const latest = s.refundList.sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")))[0];
+  const latest = [...s.refundList].sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")))[0];
   const latestDate = latest.date ? String(latest.date).slice(0,10) : "unknown date";
   return `<div class="refund">
     <div class="icon">⚠️</div>
     <div class="body">
       <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))}${filter?' (in filter)':''}</b>
-      <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${latest.name || '—'} · ${latestDate}</small>
+      <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${esc(latest.name || '—')} · ${latestDate} · Full breakdown in the Refund Diagnostics section below.</small>
     </div>
   </div>`;
 }
@@ -657,7 +763,7 @@ function attorneyAndMatterSection(){
 
   return `<div class="section">
     <h2>Where the money's coming from</h2>
-    <p class="sh">Click any row to filter the whole dashboard to that person or matter type.</p>
+    <p class="sh">Click any row to filter the whole dashboard to that person, matter type, or category.</p>
     <div class="cols">
       <div class="col">
         ${rankedList("Originating attorney", s.byAttorneyOrig, s25.byAttorneyOrig, "attorney_orig")}
@@ -666,17 +772,22 @@ function attorneyAndMatterSection(){
         ${rankedList("Closing attorney", s.byAttorneyClos, s25.byAttorneyClos, "attorney_clos")}
       </div>
     </div>
-    <div style="margin-top:22px">
-      ${rankedList("Matter type", s.byMatter, s25.byMatter, "matter", true)}
+    <div class="cols" style="margin-top:22px">
+      <div class="col">
+        ${rankedList("Matter type", s.byMatter, s25.byMatter, "matter", true, 12)}
+      </div>
+      <div class="col">
+        ${rankedList("Category (department)", s.byCategory, s25.byCategory, "category", true, 12)}
+      </div>
     </div>
   </div>`;
 }
 
-function rankedList(title, dataMap, data25Map, kind, isMatter){
-  const rows = Object.entries(dataMap)
+function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
+  let rows = Object.entries(dataMap)
     .map(([k, v]) => ({
       key:k,
-      label: isMatter ? k : attorneyLabel(k),
+      label: isRawKey ? k : attorneyLabel(k),
       revenue: v.revenue,
       files: v.files,
       revenue25: (data25Map && data25Map[k]) ? data25Map[k].revenue : 0,
@@ -685,6 +796,8 @@ function rankedList(title, dataMap, data25Map, kind, isMatter){
 
   const total = rows.reduce((a,r)=>a+r.revenue,0);
   const has25 = rows.some(r => r.revenue25 > 0);
+  const hiddenCount = limit && rows.length > limit ? rows.length - limit : 0;
+  if(limit) rows = rows.slice(0, limit);
 
   const html = rows.map(r => {
     const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
@@ -693,19 +806,344 @@ function rankedList(title, dataMap, data25Map, kind, isMatter){
       `<span class="d" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
     const isActive = filter && filter.kind === kind && filter.value === r.key;
     // For attorney filter kinds, we normalize the value to the UPPERCASE key.
-    // For matter, we keep it as-is.
-    const filterVal = isMatter ? r.key : r.key.toUpperCase();
-    return `<div class="r ${isActive?'active':''}" data-kind="${kind}" data-val="${filterVal}">
-      <span class="lbl">${r.label}<span class="files">· ${r.files}</span></span>
+    // For raw-key lists (matter, category, refsource), we keep it as-is.
+    const filterVal = isRawKey ? r.key : r.key.toUpperCase();
+    return `<div class="r ${isActive?'active':''}" data-kind="${kind}" data-val="${esc(filterVal)}">
+      <span class="lbl">${esc(r.label)}<span class="files">· ${r.files}</span></span>
       <span class="v">${usd0(r.revenue)}</span>
       <span class="d">${pct}%</span>
       ${yoyTag}
     </div>`;
   }).join("");
 
+  const moreNote = hiddenCount ? `<div class="more">+ ${hiddenCount} more (smaller)</div>` : "";
+
   return `<div>
     <b style="color:var(--navy);font-size:.95rem">${title}</b>
-    <div class="rank">${html || '<div style="color:var(--muted);padding:14px 4px">No entries.</div>'}</div>
+    <div class="rank">${html || '<div style="color:var(--muted);padding:14px 4px">No entries.</div>'}${moreNote}</div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · Average fee per matter — category × attorney matrix
+// ---------------------------------------------------------------------------
+
+function avgFeeMatrixSection(){
+  const source = matrixYear === 2025 ? ROWS_2025 : ROWS;
+  const useRows = source.filter(r => passesFilter(r) && passesViewMode(r));
+  const roleCol = matrixRole === "orig" ? "Originating Attorney" : "Closing Attorney";
+
+  const cells = {};   // cat -> att -> {rev, files}
+  const catAgg = {};  // cat -> {rev, files}
+  const attAgg = {};  // att -> {rev, files}
+
+  for(const r of useRows){
+    const fee = num(r["Fee Billed"]);
+    if(fee <= 0) continue; // averages exclude refunds and zero-fee rows
+    const cat = catOf(r);
+    const att = String(r[roleCol]||"").trim().toUpperCase() || "—";
+    ((cells[cat] ??= {})[att] ??= {rev:0, files:0});
+    cells[cat][att].rev += fee; cells[cat][att].files++;
+    (catAgg[cat] ??= {rev:0, files:0}); catAgg[cat].rev += fee; catAgg[cat].files++;
+    (attAgg[att] ??= {rev:0, files:0}); attAgg[att].rev += fee; attAgg[att].files++;
+  }
+
+  const cats = Object.keys(catAgg).sort((a,b)=>catAgg[b].rev-catAgg[a].rev);
+  const atts = Object.keys(attAgg).sort((a,b)=>attAgg[b].rev-attAgg[a].rev);
+
+  const yearTog = `
+    <div class="togchip" id="matrixYearTog">
+      <button data-y="${CONFIG.year}" aria-selected="${matrixYear===CONFIG.year}">${CONFIG.year}</button>
+      <button data-y="2025" aria-selected="${matrixYear===2025}">2025</button>
+    </div>`;
+  const roleTog = `
+    <div class="togchip" id="matrixRoleTog">
+      <button data-r="clos" aria-selected="${matrixRole==='clos'}">Closing</button>
+      <button data-r="orig" aria-selected="${matrixRole==='orig'}">Originating</button>
+    </div>`;
+
+  if(!cats.length){
+    return `<div class="section">
+      <h2>Average fee — category × attorney <span class="togwrap">${yearTog}${roleTog}</span></h2>
+      <p class="sh">No positive-fee entries for this view yet${matrixYear===2025?' (the 2025 tab may not include a Category column)':''}.</p>
+    </div>`;
+  }
+
+  const headCells = atts.map(a =>
+    `<th title="${esc(attorneyLabel(a))}">${esc(a)}</th>`).join("");
+
+  const bodyRows = cats.map(cat => {
+    const isActive = filter && filter.kind === "category" && filter.value === cat;
+    const cellsHtml = atts.map(a => {
+      const c = cells[cat][a];
+      if(!c) return `<td style="color:#ccc">—</td>`;
+      const avg = c.rev / c.files;
+      return `<td title="${esc(cat)} · ${esc(attorneyLabel(a))}: ${usd0(c.rev)} across ${c.files} file${c.files>1?'s':''}">
+        ${usdK(avg)}<span class="cnt">${c.files} file${c.files>1?'s':''}</span></td>`;
+    }).join("");
+    const catAvg = catAgg[cat].rev / catAgg[cat].files;
+    return `<tr class="${isActive?'active':''}">
+      <td class="mxcat" data-kind="category" data-val="${esc(cat)}" title="Click to filter dashboard to ${esc(cat)}">${esc(cat)}</td>
+      ${cellsHtml}
+      <td class="allcol">${usdK(catAvg)}<span class="cnt">${catAgg[cat].files} files</span></td>
+    </tr>`;
+  }).join("");
+
+  const totCells = atts.map(a => {
+    const t = attAgg[a];
+    return `<td>${usdK(t.rev/t.files)}<span class="cnt">${t.files} files</span></td>`;
+  }).join("");
+  const grandRev = cats.reduce((s,c)=>s+catAgg[c].rev,0);
+  const grandFiles = cats.reduce((s,c)=>s+catAgg[c].files,0);
+
+  return `<div class="section">
+    <h2>Average fee — category × attorney <span class="togwrap">${yearTog}${roleTog}</span></h2>
+    <p class="sh">The matter-mix decoder: what each attorney's average fee looks like inside each category. Refunds excluded. Click a category name to filter the whole dashboard. Hover any cell for total dollars.</p>
+    <div class="matrix-scroll">
+      <table class="matrix">
+        <thead><tr><th>Category</th>${headCells}<th class="allcol">All</th></tr></thead>
+        <tbody>
+          ${bodyRows}
+          <tr class="totrow"><td>All categories</td>${totCells}
+            <td class="allcol">${grandFiles ? usdK(grandRev/grandFiles) : '—'}<span class="cnt">${grandFiles} files</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · Refund diagnostics — dollars and rate by attorney / category / source
+// ---------------------------------------------------------------------------
+
+function refundDiagnosticsSection(){
+  const rows = getWorkingRows();
+  const refunds = rows.filter(r => num(r["Fee Billed"]) < 0);
+  if(!refunds.length){
+    return `<div class="section">
+      <h2>Refund diagnostics</h2>
+      <p class="sh">No refunds in the current view. 🎉</p>
+    </div>`;
+  }
+
+  // Slice totals (for rates) and refund aggregates, by three dimensions.
+  function slice(fnLabel){
+    const tot = {}; const ref = {};
+    for(const r of rows){
+      const k = fnLabel(r);
+      (tot[k] ??= 0); tot[k]++;
+      const fee = num(r["Fee Billed"]);
+      if(fee < 0){
+        (ref[k] ??= {dollars:0, count:0});
+        ref[k].dollars += Math.abs(fee); ref[k].count++;
+      }
+    }
+    return Object.entries(ref)
+      .map(([k,v]) => ({key:k, dollars:v.dollars, count:v.count, rate:(v.count/tot[k])*100}))
+      .sort((a,b)=>b.dollars-a.dollars)
+      .slice(0, 6);
+  }
+
+  const byAtt = slice(r => attorneyLabel(r["Closing Attorney"]));
+  const byCat = slice(r => catOf(r));
+  const bySrc = slice(r => refSourceOf(r));
+
+  function mini(title, items){
+    const html = items.map(i => `
+      <div class="r static">
+        <span class="lbl">${esc(i.key)}<span class="files">· ${i.count}×</span></span>
+        <span class="v" style="color:var(--down)">-${usd0(i.dollars)}</span>
+        <span class="d">${i.rate.toFixed(1)}% of files</span>
+      </div>`).join("");
+    return `<div class="col"><b style="color:var(--navy);font-size:.95rem">${title}</b>
+      <div class="rank">${html}</div></div>`;
+  }
+
+  const totalDollars = refunds.reduce((a,r)=>a+Math.abs(num(r["Fee Billed"])),0);
+
+  return `<div class="section">
+    <h2>Refund diagnostics</h2>
+    <p class="sh">${refunds.length} refund${refunds.length>1?'s':''} · ${usd0(totalDollars)} total${filter?' (in current filter)':''}. Sliced by who closed it, what kind of work it was, and where the client came from. Rate = refunds as a share of that slice's entries.</p>
+    <div class="cols3">
+      ${mini("By closing attorney", byAtt)}
+      ${mini("By category", byCat)}
+      ${mini("By referral source", bySrc)}
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · Referral engine — source dollars + top individual referrers
+// ---------------------------------------------------------------------------
+
+function referralSection(s, s25){
+  // Top individual referrers, by dollars. Pooled markers and blanks excluded.
+  const rows = getWorkingRows();
+  const m = {};
+  for(const r of rows){
+    const n = refNameOf(r);
+    if(!n) continue;
+    const ln = n.toLowerCase();
+    if(ln === "payments" || ln === "bulk payment") continue;
+    const fee = num(r["Fee Billed"]);
+    if(fee <= 0) continue;
+    (m[n] ??= {revenue:0, files:0});
+    m[n].revenue += fee; m[n].files++;
+  }
+  const referrers = Object.entries(m)
+    .map(([k,v]) => ({key:k, ...v}))
+    .sort((a,b)=>b.revenue-a.revenue)
+    .slice(0, 15);
+
+  const refHtml = referrers.map((r,i) => `
+    <div class="r static">
+      <span class="lbl">${i<3?'💌 ':''}${esc(r.key)}<span class="files">· ${r.files} client${r.files>1?'s':''}</span></span>
+      <span class="v">${usd0(r.revenue)}</span>
+      <span class="d">${usdK(r.revenue/r.files)}/ea</span>
+    </div>`).join("");
+
+  return `<div class="section">
+    <h2>Referral engine</h2>
+    <p class="sh">Dollars, not just counts — five $15K referrals beat twenty $2K ones. Click a source to filter. The right column is your thank-you-card list, built automatically.</p>
+    <div class="cols">
+      <div class="col">
+        ${rankedList("Revenue by referral source", s.byRefSource, s25.byRefSource, "refsource", true, 12)}
+      </div>
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">Top individual referrers (by dollars)</b>
+        <div class="rank">${refHtml || '<div style="color:var(--muted);padding:14px 4px">No named referrers in this view.</div>'}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · New vs. existing client revenue mix by month
+// ---------------------------------------------------------------------------
+
+function clientMixSection(){
+  const rows = getWorkingRows();
+  const byM = Array.from({length:12}, () => ({New:0, Existing:0, Other:0}));
+  const tot = {New:0, Existing:0, Other:0};
+
+  for(const r of rows){
+    const fee = num(r["Fee Billed"]);
+    if(fee <= 0) continue;
+    const b = clientTypeBucket(r);
+    tot[b] += fee;
+    const mi = monthIndex(r);
+    if(mi !== null) byM[mi][b] += fee;
+  }
+  const grand = tot.New + tot.Existing + tot.Other;
+  if(grand === 0){
+    return `<div class="section">
+      <h2>New vs. existing revenue mix</h2>
+      <p class="sh">No Client Type data in this view — check that the Client Type column is populated on the sheet.</p>
+    </div>`;
+  }
+
+  const showOther = tot.Other > 0;
+  const keys = showOther ? ["New","Existing","Other"] : ["New","Existing"];
+  const maxMonth = Math.max(1, ...byM.map(o => o.New + o.Existing + o.Other));
+
+  const barsHtml = MONTH_NAMES.map((name, i) => {
+    const o = byM[i];
+    const mTotal = o.New + o.Existing + o.Other;
+    const totalH = (mTotal / maxMonth) * 145;
+    const segs = keys.map(k => {
+      const h = mTotal > 0 ? (o[k]/mTotal) * totalH : 0;
+      return `<div class="sseg" style="height:${h}px;background:${MIX_COLORS[k]}"></div>`;
+    }).join("");
+    const pctNew = mTotal > 0 ? (o.New/mTotal*100).toFixed(0) : "0";
+    return `<div class="m">
+      <span class="tip">${name} · New: ${usdK(o.New)} · Existing: ${usdK(o.Existing)}${showOther?` · Other: ${usdK(o.Other)}`:''} (${pctNew}% new)</span>
+      <div class="sbar" style="height:${Math.max(2,totalH)}px">${segs}</div>
+      <div class="lbl">${name}</div>
+    </div>`;
+  }).join("");
+
+  const chips = keys.map(k => `
+    <div class="mixchip">
+      <span class="amt">${usd0(tot[k])}</span>
+      <small><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${MIX_COLORS[k]};margin-right:5px"></span>${k} · ${(tot[k]/grand*100).toFixed(1)}%</small>
+    </div>`).join("");
+
+  return `<div class="section">
+    <h2>New vs. existing revenue mix</h2>
+    <p class="sh">Is growth coming from new business, or from mining the base? Gold is new-client revenue; navy is existing. Hover any month for the split.</p>
+    <div class="mixchips">${chips}</div>
+    <div class="months" style="height:190px">${barsHtml}</div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · Grade distribution — by closing attorney and by referral source
+// ---------------------------------------------------------------------------
+
+function gradeSection(){
+  const rows = getWorkingRows().filter(r => num(r["Fee Billed"]) > 0);
+  const graded = rows.filter(r => gradeOf(r));
+
+  if(!graded.length){
+    return `<div class="section">
+      <h2>Client grade distribution</h2>
+      <p class="sh">No graded entries in this view — check that the Grade column is populated on the sheet.</p>
+    </div>`;
+  }
+
+  function dist(fnLabel, minFiles, limit){
+    const m = {};
+    for(const r of graded){
+      const k = fnLabel(r);
+      const g = gradeOf(r);
+      (m[k] ??= {total:0}); (m[k][g] ??= 0);
+      m[k][g]++; m[k].total++;
+    }
+    return Object.entries(m)
+      .map(([k,v]) => ({key:k, ...v}))
+      .filter(x => x.total >= minFiles)
+      .sort((a,b)=>b.total-a.total)
+      .slice(0, limit);
+  }
+
+  function bars(items){
+    return items.map(it => {
+      const segs = GRADE_ORDER.map(g => {
+        const n = it[g] || 0;
+        if(!n) return "";
+        return `<div class="gseg" style="width:${(n/it.total*100)}%;background:${GRADE_COLORS[g]}"
+          title="${g}: ${n} of ${it.total} (${(n/it.total*100).toFixed(0)}%)"></div>`;
+      }).join("");
+      const pctA = ((it["A"]||0)/it.total*100).toFixed(0);
+      return `<div class="grow">
+        <span class="glbl" title="${esc(it.key)}">${esc(it.key)}<span class="files" style="font-size:.7rem;color:#999"> · ${it.total}</span></span>
+        <div class="gbar">${segs}</div>
+        <span class="gpct">${pctA}% A</span>
+      </div>`;
+    }).join("");
+  }
+
+  const byAtt = dist(r => attorneyLabel(r["Closing Attorney"]), 3, 12);
+  const bySrc = dist(r => refSourceOf(r), 3, 10);
+
+  const legend = `<div class="glegend">${GRADE_ORDER.map(g =>
+    `<div class="item"><span class="swatch" style="background:${GRADE_COLORS[g]}"></span>${g}</div>`).join("")}
+    <div class="item" style="margin-left:auto">${graded.length} graded entries</div></div>`;
+
+  return `<div class="section">
+    <h2>Client grade distribution</h2>
+    <p class="sh">Do certain attorneys or referral sources attract A-clients? 100% stacked by grade; slices with fewer than 3 graded files are hidden. Hover a bar segment for counts.</p>
+    ${legend}
+    <div class="cols">
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">By closing attorney</b>
+        ${bars(byAtt) || '<div style="color:var(--muted);padding:14px 4px">Not enough graded files.</div>'}
+      </div>
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">By referral source</b>
+        ${bars(bySrc) || '<div style="color:var(--muted);padding:14px 4px">Not enough graded files.</div>'}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -720,7 +1158,7 @@ function recentBigSection(rows){
     const dateStr = date ? String(date).slice(0,10) : "";
     return `<span class="chip">
       <span class="amt">${usd0(num(r["Fee Billed"]))}</span>
-      <span class="name">${r["Client"] || '—'}</span>
+      <span class="name">${esc(r["Client"] || '—')}</span>
       <span class="date">${dateStr}</span>
     </span>`;
   }).join("");
@@ -744,11 +1182,12 @@ function footerNote(){
 // ---------------------------------------------------------------------------
 
 function wireInteractions(){
-  // Ranked-list rows -> set filter
+  // Ranked-list rows -> set filter (static rows have no data-kind and are skipped)
   document.querySelectorAll(".rank .r").forEach(el => {
     el.onclick = () => {
       const kind = el.getAttribute("data-kind");
       const val  = el.getAttribute("data-val");
+      if(!kind || !val) return;
       // Toggle: clicking the active one clears it
       if(filter && filter.kind === kind && filter.value === val){
         filter = null;
@@ -757,6 +1196,27 @@ function wireInteractions(){
       }
       render();
     };
+  });
+
+  // Matrix category names -> filter by category
+  document.querySelectorAll("table.matrix td.mxcat").forEach(el => {
+    el.onclick = () => {
+      const val = el.getAttribute("data-val");
+      if(filter && filter.kind === "category" && filter.value === val){
+        filter = null;
+      } else {
+        filter = { kind:"category", value:val };
+      }
+      render();
+    };
+  });
+
+  // Matrix toggles: year and attorney role
+  document.querySelectorAll("#matrixYearTog button").forEach(b => {
+    b.onclick = () => { matrixYear = parseInt(b.getAttribute("data-y"), 10); render(); };
+  });
+  document.querySelectorAll("#matrixRoleTog button").forEach(b => {
+    b.onclick = () => { matrixRole = b.getAttribute("data-r"); render(); };
   });
 
   // Composition strip -> filter by segment
