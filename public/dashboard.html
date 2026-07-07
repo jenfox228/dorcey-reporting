@@ -24,6 +24,17 @@
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:var(--ink);-webkit-font-smoothing:antialiased}
   a{color:inherit}
 
+  /* Top nav bar for jumping between admin / dashboard / pulse */
+  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;padding:0;
+    border-bottom:1px solid rgba(201,161,74,.25)}
+  .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
+    color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent;
+    transition:background .15s,color .15s,border-color .15s}
+  .topnav a:hover{background:#132849;color:#e7d3a1}
+  .topnav a.active{color:#c9a14a;border-bottom-color:#c9a14a;background:#132849}
+  .topnav a .ico{display:block;font-size:1.05rem;margin-bottom:2px}
+
   header.masthead{background:linear-gradient(155deg,var(--navy),var(--navy-2));color:var(--parchment);
     padding:26px 32px;border-bottom:3px solid var(--gold)}
   .eyebrow{font-size:.7rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-soft);font-weight:600}
@@ -122,6 +133,11 @@
 </style>
 </head>
 <body>
+  <nav class="topnav">
+    <a href="/admin"><span class="ico">⚙️</span>Admin</a>
+    <a href="/dashboard" class="active"><span class="ico">📊</span>Dashboard</a>
+    <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+  </nav>
   <header class="masthead">
     <a class="nav" href="/admin">Admin / Links →</a>
     <div class="eyebrow">Dorcey Law Firm · Leadership</div>
@@ -135,8 +151,8 @@
 
 <script>
 let DATA=null, period="F", view="scores";
-let selectedWeek=null;       // null = current week; otherwise an ISO Monday
-let availableWeeks=[];        // dropdown options (newest first)
+let selectedWeek=null;
+let availableWeeks=[];
 const $=(s)=>document.querySelector(s);
 const FAMS=[["A","Attorneys"],["B","Probate / TA Specialists"],["C","Departments"],["D","Trackers"],["?","Other"],["-","Other"]];
 
@@ -157,10 +173,7 @@ function sparkline(vals){
     <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.6" fill="var(--navy)"/></svg>`;
 }
 
-// Build the dropdown's list of pickable past weeks (12 weeks back from today).
 function buildAvailableWeeks(){
-  // Use the most recent week from the data as the anchor, then walk back.
-  // This avoids client/server timezone drift.
   const out=[];
   const seed = DATA && DATA.thisWeek ? DATA.thisWeek : null;
   if(!seed){ availableWeeks=[]; return; }
@@ -177,7 +190,6 @@ async function load(weekIso){
   const r=await fetch(url);
   if(!r.ok){ $("#content").innerHTML="<div class='loading'>Leadership view only — sign in as an admin.</div>"; return; }
   DATA=await r.json();
-  // First load: figure out the dropdown options based on the live "this week".
   if(availableWeeks.length===0) buildAvailableWeeks();
   render();
 }
@@ -195,7 +207,6 @@ function wireSwitcher(){
   });
 }
 
-// The picker bar at the top of the page — same on both views.
 function weekBar(){
   const opts = availableWeeks.map((w,i)=>{
     const label = i===0 ? `${fmtWeekShort(w)} · current week` : `Week of ${fmtWeekShort(w)}`;
