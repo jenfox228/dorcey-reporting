@@ -7,105 +7,119 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --navy:#0f1f3a; --navy-2:#16294b; --gold:#c9a14a; --gold-soft:#e7d3a1;
-    --parchment:#f6f1e4; --ink:#1b1b1b; --muted:#7d7666; --line:#e3dcc9;
-    --up:#2f7d57; --down:#b04a3a; --shadow:0 16px 38px -22px rgba(15,31,58,.4);
+    --navy:#0f1d33; --navy-2:#1b2f4d; --gold:#c6a04e; --gold-soft:#e3cd97;
+    --cream:#f7f3ea; --parchment:#f6f1e4; --ink:#2a2a2a; --muted:#7d7666;
+    --line:#e7e0d2; --up:#2d6a4f; --down:#9b2335; --shadow:0 16px 38px -22px rgba(15,29,51,.4);
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:var(--ink)}
 
   /* Top nav bar for jumping between admin / dashboard / pulse */
   .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;padding:0;
-    border-bottom:1px solid rgba(201,161,74,.25)}
+    border-bottom:1px solid rgba(198,160,78,.25)}
   .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
     color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
     letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent;
     transition:background .15s,color .15s,border-color .15s}
-  .topnav a:hover{background:#132849;color:#e7d3a1}
-  .topnav a.active{color:#c9a14a;border-bottom-color:#c9a14a;background:#132849}
+  .topnav a:hover{background:#132849;color:#e3cd97}
+  .topnav a.active{color:var(--gold);border-bottom-color:var(--gold);background:#132849}
   .topnav a .ico{display:block;font-size:1.05rem;margin-bottom:2px}
 
-  header.masthead{background:linear-gradient(155deg,var(--navy),var(--navy-2));color:var(--parchment);
+  header.masthead{background:linear-gradient(155deg,var(--navy),var(--navy-2));color:var(--cream);
     padding:24px 28px;border-bottom:3px solid var(--gold)}
   .eyebrow{font-size:.7rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-soft);font-weight:600}
   .masthead h1{font-family:"Playfair Display",serif;font-weight:700;margin:.15rem 0 .1rem;font-size:1.7rem}
   .masthead .sub{color:#c7cfdd;font-size:.88rem}
   .wrap{max-width:1200px;margin:0 auto;padding:22px 20px 60px}
   .loading{padding:80px;text-align:center;color:var(--muted)}
+  .error{padding:40px;text-align:center;color:var(--down);background:#fff;border-radius:14px;box-shadow:var(--shadow)}
 
-  /* KPI cards ---------------------------------------------------------- */
-  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
-  .kpi .k{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
-  .kpi .v{font-family:"Playfair Display",serif;font-size:1.7rem;color:var(--navy);line-height:1.1;margin-top:4px}
-  .kpi .d{font-size:.78rem;margin-top:3px}
-  .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--muted)}
+  /* Headline row: total + new-matter side by side */
+  .headline{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:22px}
+  .headline .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;box-shadow:var(--shadow)}
+  .headline .stat.hero{background:linear-gradient(150deg,var(--navy),var(--navy-2));color:#fff;border-color:var(--navy)}
+  .headline .stat.hero .k{color:var(--gold-soft)}
+  .headline .stat.hero .v{color:#fff}
+  .headline .stat.hero .d{color:#c7cfdd}
+  .headline .stat .k{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .headline .stat .v{font-family:"Playfair Display",serif;font-size:1.9rem;color:var(--navy);line-height:1.05;margin-top:5px}
+  .headline .stat .d{font-size:.82rem;color:var(--muted);margin-top:4px}
+  .headline .stat .d .up{color:var(--up);font-weight:700}
+  .headline .stat .d .down{color:var(--down);font-weight:700}
 
-  /* Thermometer -------------------------------------------------------- */
-  .thermo{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;
+  /* Secondary KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+  .kpi .k{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .kpi .v{font-family:"Playfair Display",serif;font-size:1.3rem;color:var(--navy);line-height:1.1;margin-top:3px}
+  .kpi .d{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+  /* Thermometer */
+  .thermo{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;
     box-shadow:var(--shadow);margin-bottom:22px}
-  .thermo .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-  .thermo .goal{font-weight:700;color:var(--navy)}
-  .thermo .bar{height:16px;background:#f5efdd;border-radius:9px;overflow:hidden;position:relative}
-  .thermo .fill{height:100%;background:linear-gradient(90deg,var(--gold),#e0b959);
-    transition:width .6s ease-out}
-  .thermo .fill.over{background:linear-gradient(90deg,var(--up),#4aa87a)}
-  .thermo .marks{position:relative;height:14px;margin-top:4px;font-size:.68rem;color:var(--muted)}
-  .thermo .mark{position:absolute;transform:translateX(-50%)}
-  .thermo .pace{margin-top:6px;font-size:.85rem;color:var(--muted)}
+  .thermo .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+  .thermo .goal{font-weight:700;color:var(--navy);font-size:1rem}
+  .thermo .pct{font-family:"Playfair Display",serif;font-size:1.4rem;color:var(--navy)}
+  .thermo .bar{height:18px;background:#f0e8d3;border-radius:10px;overflow:hidden;position:relative}
+  .thermo .fill{height:100%;background:linear-gradient(90deg,var(--gold),#dcbf7d);transition:width .6s ease-out}
+  .thermo .fill.over{background:linear-gradient(90deg,var(--up),#4a9d70)}
+  .thermo .pace-marker{position:absolute;top:-3px;height:24px;width:2px;background:var(--navy);opacity:.55}
+  .thermo .pace-marker::after{content:"today's pace";position:absolute;top:-14px;left:4px;font-size:.62rem;color:var(--navy);white-space:nowrap;font-weight:600}
+  .thermo .pace{margin-top:8px;font-size:.85rem;color:var(--muted)}
   .thermo .pace b{color:var(--navy)}
 
-  /* Section chrome ----------------------------------------------------- */
+  /* Section chrome */
   .section{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
-    padding:18px 20px;margin-bottom:22px}
-  .section h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 6px;font-size:1.15rem;
-    border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;align-items:center;justify-content:space-between}
-  .section h2 .hint{font-family:"Libre Franklin",sans-serif;font-size:.72rem;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+    padding:18px 22px;margin-bottom:22px}
+  .section h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 4px;font-size:1.15rem;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .section .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 12px}
 
-  /* Two-column grid used by weekly + attorney/dept blocks */
-  .cols{display:grid;grid-template-columns:1.2fr .8fr;gap:22px}
+  /* Revenue composition strip */
+  .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  .comp .seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.72rem;font-weight:700;
+    min-width:24px;padding:0 6px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .comp-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:.78rem}
+  .comp-legend .item{display:flex;align-items:center;gap:6px;color:var(--ink)}
+  .comp-legend .swatch{width:12px;height:12px;border-radius:3px}
+  .comp-legend .amt{color:var(--muted);margin-left:4px}
+
+  /* Two-column grid */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
   .cols .col + .col{border-left:1px dashed var(--line);padding-left:22px}
 
-  /* Weekly trend bars */
-  .weeks{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:14px}
-  .weeks .w{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:default}
-  .weeks .w .bar{width:100%;background:var(--gold);border-radius:5px 5px 0 0;transition:height .5s ease-out;
-    min-height:2px;position:relative}
-  .weeks .w .lbl{font-size:.65rem;color:var(--muted);margin-top:5px;transform:rotate(-30deg);white-space:nowrap;
-    transform-origin:right center;height:20px}
-  .weeks .w .tip{position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:var(--navy);
-    color:#fff;padding:4px 8px;border-radius:6px;font-size:.72rem;white-space:nowrap;opacity:0;pointer-events:none;
-    transition:opacity .15s}
-  .weeks .w:hover .tip{opacity:1}
+  /* Monthly trend bars */
+  .months{display:flex;align-items:flex-end;gap:8px;height:180px;margin-top:14px;padding-bottom:20px}
+  .months .m{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
+  .months .m .bars{width:100%;display:flex;gap:2px;align-items:flex-end;height:150px}
+  .months .m .bar{flex:1;border-radius:4px 4px 0 0;transition:height .5s ease-out;min-height:2px;position:relative;cursor:default}
+  .months .m .bar.cur{background:var(--gold)}
+  .months .m .bar.prev{background:#c7cfdd}
+  .months .m .lbl{font-size:.7rem;color:var(--muted);margin-top:6px;font-weight:600}
+  .months .m .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:.72rem;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
+  .months .m:hover .tip{opacity:1}
+  .months-legend{display:flex;gap:14px;font-size:.75rem;color:var(--muted);margin-top:-8px;justify-content:flex-end}
+  .months-legend .item{display:flex;align-items:center;gap:6px}
+  .months-legend .swatch{width:14px;height:12px;border-radius:2px}
 
   /* Ranked lists */
-  .rank{margin-top:8px}
-  .rank .r{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px dashed var(--line);
-    font-size:.92rem}
+  .rank{margin-top:6px}
+  .rank .r{display:flex;justify-content:space-between;align-items:center;padding:7px 4px;
+    border-bottom:1px dashed var(--line);font-size:.92rem;gap:10px}
   .rank .r:last-child{border-bottom:0}
-  .rank .r.clickable{cursor:pointer}
-  .rank .r.clickable:hover{background:#faf7ef;border-radius:6px}
-  .rank .r.selected{background:#fbf3da;border-left:3px solid var(--gold);padding-left:8px}
-  .rank .r .lbl{flex:1;color:var(--ink)}
-  .rank .r .v{font-weight:700;color:var(--navy);margin-left:12px}
-  .rank .r .d{font-size:.7rem;color:var(--muted);text-align:right;min-width:60px}
+  .rank .r .lbl{flex:1;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap}
+  .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;min-width:50px;white-space:nowrap}
+  .rank .r .files{font-size:.7rem;color:#999;margin-left:6px}
 
-  /* Filter pill */
-  .filter-pill{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:var(--navy);
-    padding:5px 11px;border-radius:20px;font-size:.78rem;font-weight:600;margin-left:8px;cursor:pointer}
-  .filter-pill .x{font-size:1rem;line-height:1;font-weight:700}
-
-  /* View toggle */
-  .toggle{display:inline-flex;background:#faf7ef;border:1px solid var(--line);border-radius:10px;padding:3px}
-  .toggle button{border:0;background:transparent;padding:6px 12px;border-radius:7px;cursor:pointer;
-    font:600 .75rem "Libre Franklin",sans-serif;color:var(--muted)}
-  .toggle button[aria-selected="true"]{background:var(--navy);color:#fff}
-
-  /* Recent big clients strip */
-  .strip{display:flex;flex-wrap:wrap;gap:10px}
+  /* Recent big entries */
+  .strip{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
   .chip{background:#faf7ef;border:1px solid var(--line);border-radius:10px;padding:8px 12px;
     font-size:.85rem;display:flex;align-items:center;gap:8px}
   .chip .amt{font-weight:700;color:var(--navy)}
+  .chip .name{color:var(--ink)}
   .chip .date{color:var(--muted);font-size:.72rem}
 
   /* Refund spotlight */
@@ -117,7 +131,11 @@
   .refund .body b{display:block;font-size:1rem;color:#7a2f0f}
   .refund .body small{color:#8a4020}
 
+  .footer-note{text-align:center;font-size:.75rem;color:var(--muted);margin-top:24px}
+  .footer-note b{color:var(--navy)}
+
   @media(max-width:900px){
+    .headline{grid-template-columns:1fr}
     .kpis{grid-template-columns:repeat(2,1fr)}
     .cols{grid-template-columns:1fr}
     .cols .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
@@ -142,89 +160,136 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// Config — column names, all sanitized to trimmed uppercase form.
-// The Google Sheet is riddled with trailing spaces on header names ("TOTAL "
-// with a space, "MOD ATTORNEY  " with two, etc). We normalize every incoming
-// key on the way in so all references below can use the clean version.
+// DORCEY REVENUE PULSE — live dashboard
+// Source: /api/revenue-feed (Node relay to the Google Apps Script "2026 Clients" tab).
+// Everything below is computed in-browser from that feed.
 // ---------------------------------------------------------------------------
+
 const CONFIG = {
-  yearGoal: 5000000,
-  colWEEK: "REPORTING WEEK",
-  colDATE: "PAY DATE",
-  colAMOUNT: "TOTAL",
-  colREVSTREAM: "NEW MATTER",
-  colREVSEGMENT: "TRUST FUNDING",
-  colCLIENT: "NAME",
-  colATTY: "MOD ATTORNEY"
+  yearGoal: 7000000,   // $7M — updated whenever the annual target shifts
+  year: 2026,
 };
 
-// Column groups so we can auto-detect which columns belong to which "family."
-const GROUPS = {
-  streams: { start: "NEW MATTER", end: "APP" },
-  segments: { start: "TRUST FUNDING", end: "APP.1" },
-  attorneys: [
-    "PAID DORCEY","PAID SCOTT","PAID JOHNSON","PAID SAJDAK","PAID DODSON",
-    "PAID BUTCHER","PAID CAHOONE","PAID MICHIGAN"
-  ],
-  practiceCategories: [
-    "PAID EST PLAN","PAID BIZ PLAN","PAID EL","PAID PROB","PAID TA",
-    "PAID ADV PLAN","PAID PRE-NUP","PAID APP","PAID GUNTRUST","PAID EQUINE"
-  ]
+// Brand palette for the composition strip (revenue by bucket)
+const SEG_COLORS = {
+  "New-Matter":         "#c6a04e",
+  "APP":                "#3f6184",
+  "Registered Agent":   "#6e8aa6",
+  "Title Pass-through": "#9aae8e",
+  "Referral Income":    "#b07f5a",
 };
+const SEG_ORDER = ["New-Matter","APP","Registered Agent","Title Pass-through","Referral Income"];
 
-// Client-side state --------------------------------------------------------
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Client-side state
 let ROWS = [];
-let HEADERS = [];
 let ROWS_2025 = [];
-let compareYoY = false;
-let filter = null;
 
 // ---------------------------------------------------------------------------
-// Feed helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
-// Clean an incoming column name so we can match it consistently later.
-// - Trim leading/trailing whitespace
-// - Collapse internal doubled spaces
-// - Strip trailing period ("PAID PROB." -> "PAID PROB")
+// Trim trailing/leading spaces, collapse doubled spaces, strip trailing periods.
+// Google Sheets loves leaving trailing spaces on column names.
 function cleanKey(k){
-  return String(k)
-    .replace(/\s+/g, " ")     // "MOD  ATTORNEY" -> "MOD ATTORNEY"
-    .trim()                    // "TOTAL " -> "TOTAL"
-    .replace(/\.$/, "");       // "PAID PROB." -> "PAID PROB"
+  return String(k).replace(/\s+/g," ").trim().replace(/\.$/,"");
 }
 
-// Rewrite every key in a row so downstream code sees clean names.
 function normalizeKeys(row){
   const out = {};
-  for(const [k, v] of Object.entries(row)){
-    out[cleanKey(k)] = v;
-  }
+  for(const [k,v] of Object.entries(row)) out[cleanKey(k)] = v;
   return out;
 }
 
-// Accepts either { rows: [...] } or { entries: [...] } from the Apps Script.
-function extractRowsAndHeaders(feed){
-  const raw = Array.isArray(feed.rows) ? feed.rows
-            : Array.isArray(feed.entries) ? feed.entries
+function extractRows(feed){
+  const raw = Array.isArray(feed.entries) ? feed.entries
+            : Array.isArray(feed.rows)    ? feed.rows
             : [];
-  // Normalize keys BEFORE we derive headers, so headers match row lookups.
-  const rows = raw.map(normalizeKeys);
-  let headers = Array.isArray(feed.headers) ? feed.headers.map(cleanKey) : [];
-  if(!headers.length){
-    const seen = new Set();
-    for(const row of rows){
-      for(const key of Object.keys(row)){
-        if(!seen.has(key)){ seen.add(key); headers.push(key); }
-      }
+  return raw.map(normalizeKeys);
+}
+
+function num(v){
+  if(v === null || v === undefined || v === "") return 0;
+  if(typeof v === "number") return isFinite(v) ? v : 0;
+  const cleaned = String(v).replace(/[$,\s]/g,"");
+  const n = parseFloat(cleaned);
+  return isFinite(n) ? n : 0;
+}
+
+function usd0(n){ return "$" + Math.round(n).toLocaleString("en-US"); }
+function usdK(n){
+  const a = Math.abs(n);
+  if(a >= 1_000_000) return (n<0?"-":"") + "$" + (a/1_000_000).toFixed(2) + "M";
+  if(a >= 1_000)    return (n<0?"-":"") + "$" + Math.round(a/1_000) + "K";
+  return usd0(n);
+}
+
+// Get a row's month index (0-11) from the "_date" or "Month" or "Date Scheduled" field.
+function monthIndex(row){
+  const candidates = [row["_date"], row["Month"], row["Date Scheduled"], row["Pay Date"], row["PAY DATE"]];
+  for(const c of candidates){
+    if(!c) continue;
+    // ISO like "2026-01-07T05:00:00.000Z" or "2026-01-01"
+    if(typeof c === "string"){
+      const m = c.match(/^(\d{4})-(\d{2})/);
+      if(m) return parseInt(m[2],10) - 1;
+      // fallback: try Date parse
+      const d = new Date(c);
+      if(!isNaN(d)) return d.getUTCMonth();
     }
   }
-  return { rows, headers };
+  return null;
+}
+
+// Classify a row into a revenue bucket. Pooled money is split out from new-matter work.
+// Keyed on Matter + the "Payments" tag in Referral Name so a typo can't slip through.
+function classify(row){
+  const matter = String(row["Matter"] || "").trim();
+  const client = String(row["Client"] || "").trim().toLowerCase();
+  const ref    = String(row["Referral Name"] || "").trim().toLowerCase();
+  const pooled = ref === "payments" || ref === "bulk payment";
+
+  if(matter === "APP") return "APP";
+  if(matter === "DLF Registered Agent" && pooled) return "Registered Agent";
+  if(matter === "DLF Registed Agent" && pooled) return "Registered Agent"; // preserve the sheet's typo
+  if(client.includes("dorcey law firm title services")) return "Title Pass-through";
+  if(matter === "Referral Fee") return "Referral Income";
+  return "New-Matter";
+}
+
+// Attorney code -> friendly name (based on what I've seen in your codes so far)
+const ATTORNEY_NAMES = {
+  "DLF":"Josh Dorcey",       // "Dorcey Law Firm" (Josh's initials in the sheet)
+  "JOD":"Josh Dorcey",
+  "MAS":"Mike Scott",
+  "MIS":"Mike Scott",
+  "MSC":"Mike Scott",
+  "EJJ":"Erica Johnson",
+  "EJ":"Erica Johnson",
+  "KSS":"Kara Sajdak",
+  "KAS":"Kara Sajdak",
+  "DAD":"Doug Dodson",
+  "DOD":"Doug Dodson",
+  "BWB":"Brad Butcher",
+  "BB":"Brad Butcher",
+  "BUT":"Brad Butcher",
+  "DAC":"David Cahoone",
+  "DC":"David Cahoone",
+  "APP":"APP (bulk)",
+  "MIC":"Michigan team",
+  "MI":"Michigan team",
+};
+
+function attorneyLabel(code){
+  const c = String(code||"").trim().toUpperCase();
+  return ATTORNEY_NAMES[c] || (c || "Unassigned");
 }
 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+
 load();
 
 async function load(){
@@ -233,72 +298,23 @@ async function load(){
     if(!r.ok) throw new Error("feed returned " + r.status);
     const j = await r.json();
     if(j.error) throw new Error(j.error);
-    const { rows, headers } = extractRowsAndHeaders(j);
-    HEADERS = headers;
-    ROWS = rows.map(normalizeRow);
+    ROWS = extractRows(j);
+
+    // 2025 fetch is best-effort.
     try{
       const r25 = await fetch("/api/revenue-feed?tab=2025");
       if(r25.ok){
         const j25 = await r25.json();
-        if(!j25.error){
-          const { rows: r25rows } = extractRowsAndHeaders(j25);
-          ROWS_2025 = r25rows.map(normalizeRow);
-        }
+        if(!j25.error) ROWS_2025 = extractRows(j25);
       }
     }catch(e){ /* ignore */ }
+
     render();
   }catch(e){
     document.getElementById("content").innerHTML =
-      `<div class="loading">Couldn't reach the revenue feed. (${e.message})</div>`;
+      `<div class="error">Couldn't reach the revenue feed. (${e.message})</div>`;
+    console.error("pulse load error:", e);
   }
-}
-
-// Normalize numeric-looking strings into real numbers so downstream math works.
-function normalizeRow(row){
-  const out = {};
-  for(const k of Object.keys(row)){
-    const v = row[k];
-    if(v === "" || v == null){ out[k] = null; continue; }
-    if(typeof v === "string"){
-      const cleaned = v.replace(/[$,]/g,"").trim();
-      if(cleaned !== "" && !isNaN(+cleaned)) { out[k] = +cleaned; continue; }
-    }
-    out[k] = v;
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Group / column detection
-// ---------------------------------------------------------------------------
-
-function columnsInRange(startName, endName){
-  const start = HEADERS.indexOf(startName);
-  const end = HEADERS.indexOf(endName);
-  if(start === -1 || end === -1 || end < start) return [];
-  return HEADERS.slice(start, end+1).filter(h => h && !h.startsWith("Unnamed"));
-}
-
-function streamColumns(){ return columnsInRange(GROUPS.streams.start, GROUPS.streams.end); }
-function segmentColumns(){ return columnsInRange(GROUPS.segments.start, GROUPS.segments.end); }
-
-// ---------------------------------------------------------------------------
-// Filtering
-// ---------------------------------------------------------------------------
-
-function passesFilter(row){
-  if(!filter) return true;
-  const v = row[filter.value];
-  return typeof v === "number" && v > 0;
-}
-
-function filteredRows(rows){
-  return rows.filter(passesFilter);
-}
-
-function rowAmount(row){
-  if(filter) return +row[filter.value] || 0;
-  return +row[CONFIG.colAMOUNT] || 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,255 +322,325 @@ function rowAmount(row){
 // ---------------------------------------------------------------------------
 
 function render(){
-  const rows = filteredRows(ROWS);
-  const rows25 = filteredRows(ROWS_2025);
-  document.getElementById("periodLabel").textContent =
-    `Through ${latestReportWeek(rows) || "—"} · ${rows.length} paid entries so far`;
+  const stats = computeStats(ROWS);
+  const stats25 = computeStats(ROWS_2025);
 
-  const html = [
-    kpiSection(rows, rows25),
-    thermoSection(rows),
-    filterPillHtml(),
-    refundSpotlight(rows),
-    weeklyAndRecentSection(rows, rows25),
-    streamsAndSegmentsSection(rows, rows25),
-    attorneysAndCategoriesSection(rows, rows25),
+  document.getElementById("periodLabel").textContent =
+    `${CONFIG.year} · ${stats.files.toLocaleString()} paid entries so far`;
+
+  document.getElementById("content").innerHTML = [
+    headlineSection(stats, stats25),
+    kpiSection(stats),
+    thermoSection(stats),
+    refundSpotlight(stats),
+    compositionSection(stats),
+    monthlyTrendSection(stats, stats25),
+    attorneyAndMatterSection(stats, stats25),
+    recentBigSection(),
+    footerNote(),
   ].join("");
-  document.getElementById("content").innerHTML = html;
-  wireInteractions();
 }
 
-function kpiSection(rows, rows25){
-  const total = sum(rows.map(rowAmount));
-  const paid = rows.filter(r => rowAmount(r) > 0).length;
-  const avg = paid ? total/paid : 0;
-  const weeks = uniqueWeeks(rows).length;
-  const pace = weeks ? total/weeks : 0;
-  const throughWeek = weeks;
-  const rows25CutOff = rowsThroughWeek(rows25, throughWeek);
-  const total25 = sum(rows25CutOff.map(rowAmount));
-  const yoyPct = total25 > 0 ? ((total - total25)/total25) * 100 : null;
+function computeStats(rows){
+  const buckets = {};
+  SEG_ORDER.forEach(k => buckets[k] = {revenue:0, files:0});
 
-  const yoyLabel = yoyPct === null ? "" :
-    `<span class="${yoyPct>=0?'up':'down'}">${yoyPct>=0?'▲':'▼'} ${Math.abs(yoyPct).toFixed(1)}% vs 2025</span>`;
+  const byMonth = new Array(12).fill(0);
+  const byMonthNewMatter = new Array(12).fill(0);
+  const byAttorney = {};
+  const byMatter = {};
+
+  let total = 0, newMatterTotal = 0, files = 0, newMatterFiles = 0;
+  const refundList = [];
+
+  for(const row of rows){
+    const fee = num(row["Fee Billed"]);
+    if(fee === 0 && !row["Fee Billed"]) continue; // skip empty rows
+    files++;
+    total += fee;
+
+    const bucket = classify(row);
+    buckets[bucket].revenue += fee;
+    buckets[bucket].files++;
+
+    if(bucket === "New-Matter"){
+      newMatterTotal += fee;
+      newMatterFiles++;
+    }
+
+    const mi = monthIndex(row);
+    if(mi !== null){
+      byMonth[mi] += fee;
+      if(bucket === "New-Matter") byMonthNewMatter[mi] += fee;
+    }
+
+    // Attorney breakdown (originating)
+    const origAtt = String(row["Originating Attorney"] || "").trim();
+    if(origAtt && bucket === "New-Matter"){
+      if(!byAttorney[origAtt]) byAttorney[origAtt] = {revenue:0, files:0};
+      byAttorney[origAtt].revenue += fee;
+      byAttorney[origAtt].files++;
+    }
+
+    // Matter type breakdown (new-matter only, for a cleaner mix picture)
+    const matter = String(row["Matter"] || "").trim();
+    if(matter && bucket === "New-Matter"){
+      if(!byMatter[matter]) byMatter[matter] = {revenue:0, files:0};
+      byMatter[matter].revenue += fee;
+      byMatter[matter].files++;
+    }
+
+    if(fee < 0) refundList.push({fee, name:row["Client"], date:row["_date"] || row["Month"]});
+  }
+
+  return {
+    total, newMatterTotal, files, newMatterFiles,
+    buckets, byMonth, byMonthNewMatter,
+    byAttorney, byMatter, refundList,
+    rows,
+  };
+}
+
+function headlineSection(s, s25){
+  // Compare through equivalent month count (only months with 2026 activity count)
+  const monthsWithData = s.byMonth.filter(v => v > 0).length;
+  const s25MonthsWithData = s25.byMonth ? s25.byMonth.slice(0, monthsWithData).reduce((a,b)=>a+b,0) : 0;
+  const yoyTotal = s25MonthsWithData > 0 ? ((s.total - s25MonthsWithData) / s25MonthsWithData) * 100 : null;
+  const yoyLabel = yoyTotal === null ? "" :
+    `<span class="${yoyTotal>=0?'up':'down'}">${yoyTotal>=0?'▲':'▼'} ${Math.abs(yoyTotal).toFixed(1)}%</span> vs 2025 same period`;
+
+  const newMatterShare = s.total > 0 ? (s.newMatterTotal / s.total * 100).toFixed(1) : "0";
+
+  return `<div class="headline">
+    <div class="stat hero">
+      <div class="k">Total revenue ${CONFIG.year} YTD</div>
+      <div class="v">${usd0(s.total)}</div>
+      <div class="d">${yoyLabel || `${s.files.toLocaleString()} paid entries`}</div>
+    </div>
+    <div class="stat">
+      <div class="k">New-matter revenue</div>
+      <div class="v">${usd0(s.newMatterTotal)}</div>
+      <div class="d">${newMatterShare}% of total · ${s.newMatterFiles.toLocaleString()} files</div>
+    </div>
+    <div class="stat">
+      <div class="k">Pooled / pass-through</div>
+      <div class="v">${usd0(s.total - s.newMatterTotal)}</div>
+      <div class="d">APP + Reg Agent + Title + Referral</div>
+    </div>
+  </div>`;
+}
+
+function kpiSection(s){
+  const monthsWithData = Math.max(1, s.byMonth.filter(v => v > 0).length);
+  const monthlyPace = s.total / monthsWithData;
+  const avgPerFile = s.files > 0 ? s.total / s.files : 0;
+  const avgPerNewMatter = s.newMatterFiles > 0 ? s.newMatterTotal / s.newMatterFiles : 0;
+  const projectedAnnual = monthlyPace * 12;
 
   return `<div class="kpis">
-    <div class="kpi"><div class="k">${filter?'Filtered ':''}Revenue YTD</div>
-      <div class="v">${dollars(total)}</div><div class="d">${yoyLabel || '&nbsp;'}</div></div>
-    <div class="kpi"><div class="k">Paid entries</div>
-      <div class="v">${paid.toLocaleString()}</div><div class="d flat">${weeks} weeks tracked</div></div>
+    <div class="kpi"><div class="k">Monthly pace</div>
+      <div class="v">${usdK(monthlyPace)}</div>
+      <div class="d">avg across ${monthsWithData} months</div></div>
+    <div class="kpi"><div class="k">Avg per new matter</div>
+      <div class="v">${usd0(avgPerNewMatter)}</div>
+      <div class="d">real client work</div></div>
     <div class="kpi"><div class="k">Avg per entry</div>
-      <div class="v">${dollars(avg)}</div><div class="d flat">across all paid</div></div>
-    <div class="kpi"><div class="k">Weekly pace</div>
-      <div class="v">${dollars(pace)}</div><div class="d flat">running average</div></div>
+      <div class="v">${usd0(avgPerFile)}</div>
+      <div class="d">blended</div></div>
     <div class="kpi"><div class="k">Projected annual</div>
-      <div class="v">${dollars(pace * 52)}</div><div class="d flat">at current pace</div></div>
+      <div class="v">${usdK(projectedAnnual)}</div>
+      <div class="d">at current pace</div></div>
   </div>`;
 }
 
-function filterPillHtml(){
-  if(!filter) return "";
-  return `<div style="margin:0 2px 14px">
-    <span class="filter-pill" id="clearFilter">
-      Filtered by ${filter.value} <span class="x">×</span>
-    </span>
-    <span style="color:var(--muted);font-size:.82rem;margin-left:8px">
-      Showing only entries with revenue in this column. Click × to clear.
-    </span>
-  </div>`;
-}
+function thermoSection(s){
+  const total = s.total;
+  const pct = total / CONFIG.yearGoal;
+  const pctLabel = (pct * 100).toFixed(1);
 
-function thermoSection(rows){
-  const total = sum(ROWS.map(r => +r[CONFIG.colAMOUNT] || 0));
-  const pct = Math.min(1.5, total / CONFIG.yearGoal);
-  const pctLabel = ((total / CONFIG.yearGoal)*100).toFixed(1);
-  const weeks = uniqueWeeks(ROWS).length;
-  const expectedByNow = CONFIG.yearGoal * (weeks/52);
-  const paceLabel = total >= expectedByNow
-    ? `You're <b>ahead of pace</b> by ${dollars(total - expectedByNow)}.`
-    : `You're <b>behind pace</b> by ${dollars(expectedByNow - total)}.`;
+  // Pace marker: where "on-pace" would be given today's date.
+  const dayOfYear = Math.floor((Date.now() - new Date(CONFIG.year, 0, 1)) / (86400000));
+  const paceRatio = Math.min(1, Math.max(0, dayOfYear / 365));
+  const paceLeft = (paceRatio * 100).toFixed(1);
+  const expectedByNow = CONFIG.yearGoal * paceRatio;
+  const paceCopy = total >= expectedByNow
+    ? `You're <b>ahead of pace</b> by ${usdK(total - expectedByNow)}.`
+    : `You're <b>behind pace</b> by ${usdK(expectedByNow - total)}.`;
+
   return `<div class="thermo">
     <div class="row">
-      <div class="goal">${dollars(total)} of ${dollars(CONFIG.yearGoal)} annual goal</div>
-      <div style="font-weight:700;color:var(--navy)">${pctLabel}%</div>
+      <div class="goal">${usd0(total)} of ${usd0(CONFIG.yearGoal)} annual goal</div>
+      <div class="pct">${pctLabel}%</div>
     </div>
-    <div class="bar"><div class="fill ${pct>1?'over':''}" style="width:${Math.min(100, pct*100)}%"></div></div>
-    <div class="pace">${paceLabel} · Through ${weeks} weeks (${((weeks/52)*100).toFixed(0)}% of the year).</div>
+    <div class="bar">
+      <div class="fill ${pct>1?'over':''}" style="width:${Math.min(100, pct*100)}%"></div>
+      <div class="pace-marker" style="left:${paceLeft}%"></div>
+    </div>
+    <div class="pace">${paceCopy} · Through day ${dayOfYear} of ${CONFIG.year} (${(paceRatio*100).toFixed(0)}% of the year).</div>
   </div>`;
 }
 
-function refundSpotlight(rows){
-  const refunds = rows.filter(r => rowAmount(r) < 0);
-  if(!refunds.length) return "";
-  const total = sum(refunds.map(rowAmount));
-  const latest = refunds.sort((a,b) => (b[CONFIG.colDATE]||"").localeCompare(a[CONFIG.colDATE]||""))[0];
+function refundSpotlight(s){
+  if(!s.refundList.length) return "";
+  const total = s.refundList.reduce((a,r)=>a+r.fee,0);
+  const latest = s.refundList.sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")))[0];
+  const latestDate = latest.date ? String(latest.date).slice(0,10) : "unknown date";
   return `<div class="refund">
     <div class="icon">⚠️</div>
     <div class="body">
-      <b>${refunds.length} refund${refunds.length>1?'s':''} totaling ${dollars(Math.abs(total))} this year</b>
-      <small>Most recent: ${dollars(Math.abs(rowAmount(latest)))} on ${latest[CONFIG.colDATE] || 'unknown date'}</small>
+      <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))} this year</b>
+      <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${latest.name || '—'} · ${latestDate}</small>
     </div>
   </div>`;
 }
 
-function weeklyAndRecentSection(rows, rows25){
-  const weekly = weeklyTotals(rows);
-  const weekly25 = weeklyTotals(rows25);
-  const weeks = weekly.slice(-16);
-  const maxV = Math.max(1, ...weeks.map(w => w.total));
+function compositionSection(s){
+  const total = s.total || 1;
+  const segs = SEG_ORDER.map(k => ({
+    key:k,
+    rev:s.buckets[k].revenue,
+    files:s.buckets[k].files,
+    pct:(s.buckets[k].revenue/total)*100,
+  })).filter(x => x.rev > 0);
 
-  const bars = weeks.map(w => {
-    const h = (w.total / maxV) * 130;
-    return `<div class="w" title="${w.week}: ${dollars(w.total)}">
-      <span class="tip">${w.week}: ${dollars(w.total)}</span>
-      <div class="bar" style="height:${h}px"></div>
-      <span class="lbl">${w.week}</span>
+  const stripHtml = segs.map(seg => `
+    <div class="seg" style="background:${SEG_COLORS[seg.key]};flex:${seg.pct}"
+         title="${seg.key}: ${usd0(seg.rev)} (${seg.pct.toFixed(1)}%)">
+      ${seg.pct >= 6 ? seg.pct.toFixed(0)+'%' : ''}
+    </div>
+  `).join("");
+
+  const legendHtml = segs.map(seg => `
+    <div class="item">
+      <span class="swatch" style="background:${SEG_COLORS[seg.key]}"></span>
+      <b>${seg.key}</b>
+      <span class="amt">${usd0(seg.rev)} · ${seg.pct.toFixed(1)}%</span>
+    </div>
+  `).join("");
+
+  return `<div class="section">
+    <h2>Revenue composition</h2>
+    <p class="sh">How much of the total is genuine new-matter work vs. pooled or pass-through money. The honest growth number is the gold slice.</p>
+    <div class="comp">${stripHtml}</div>
+    <div class="comp-legend">${legendHtml}</div>
+  </div>`;
+}
+
+function monthlyTrendSection(s, s25){
+  const maxV = Math.max(1, ...s.byMonth, ...(s25.byMonth || []));
+  const has25 = s25.byMonth && s25.byMonth.some(v => v > 0);
+
+  const barsHtml = MONTH_NAMES.map((name, i) => {
+    const cur = s.byMonth[i] || 0;
+    const prev = (s25.byMonth && s25.byMonth[i]) || 0;
+    const curH = (cur / maxV) * 130;
+    const prevH = (prev / maxV) * 130;
+    const yoyPct = prev > 0 ? ((cur-prev)/prev*100).toFixed(1) : null;
+    const tipHtml = `
+      <span class="tip">
+        ${name} · ${CONFIG.year}: ${usdK(cur)}${has25 ? ` · 2025: ${usdK(prev)}` : ''}
+        ${yoyPct !== null ? ` (${yoyPct>=0?'+':''}${yoyPct}%)` : ''}
+      </span>`;
+    return `<div class="m">
+      ${tipHtml}
+      <div class="bars">
+        ${has25 ? `<div class="bar prev" style="height:${prevH}px"></div>` : ''}
+        <div class="bar cur" style="height:${curH}px"></div>
+      </div>
+      <div class="lbl">${name}</div>
     </div>`;
   }).join("");
 
-  const recentWeeks = weekly.slice(-4).map(w => w.week);
-  const recent = rows.filter(r => recentWeeks.includes(r[CONFIG.colWEEK]) && rowAmount(r) > 0)
-    .sort((a,b) => rowAmount(b) - rowAmount(a)).slice(0, 8);
-  const chips = recent.map(r => `<span class="chip">
-    <span class="amt">${dollars(rowAmount(r))}</span>
-    <span>${r[CONFIG.colCLIENT] || '—'}</span>
-    <span class="date">${r[CONFIG.colDATE] || ''}</span>
-  </span>`).join("");
+  const legendHtml = has25 ? `
+    <div class="months-legend">
+      <div class="item"><span class="swatch" style="background:#c7cfdd"></span>2025</div>
+      <div class="item"><span class="swatch" style="background:var(--gold)"></span>${CONFIG.year}</div>
+    </div>` : `
+    <div class="months-legend">
+      <div class="item"><span class="swatch" style="background:var(--gold)"></span>${CONFIG.year}</div>
+    </div>`;
 
   return `<div class="section">
-    <h2>Weekly momentum <span class="hint">Last 16 weeks · hover for detail</span></h2>
-    <div class="weeks">${bars}</div>
-  </div>
-  <div class="section">
-    <h2>Recent big paid entries <span class="hint">Last 4 weeks · top 8</span></h2>
-    <div class="strip">${chips || '<div style="color:var(--muted)">Nothing yet in the recent window.</div>'}</div>
+    <h2>Monthly trend</h2>
+    <p class="sh">Total fees billed by month. Hover any bar for the exact number.</p>
+    ${legendHtml}
+    <div class="months">${barsHtml}</div>
   </div>`;
 }
 
-function streamsAndSegmentsSection(rows, rows25){
+function attorneyAndMatterSection(s, s25){
   return `<div class="section">
-    <h2>Revenue streams &nbsp;·&nbsp; Revenue segments <span class="hint">Click any row to filter the whole page</span></h2>
+    <h2>Where the money's coming from</h2>
+    <p class="sh">New-matter revenue only — pooled APP / Registered Agent / Title / Referral money excluded so you see real client work.</p>
     <div class="cols">
-      <div class="col">${rankedListBlock("Streams", streamColumns(), rows, rows25, "STREAM")}</div>
-      <div class="col">${rankedListBlock("Segments", segmentColumns(), rows, rows25, "SEGMENT")}</div>
+      <div class="col">${rankedList("Originating attorney", s.byAttorney, s25.byAttorney, true)}</div>
+      <div class="col">${rankedList("Matter type", s.byMatter, s25.byMatter, false)}</div>
     </div>
   </div>`;
 }
 
-function attorneysAndCategoriesSection(rows, rows25){
-  return `<div class="section">
-    <h2>By attorney &nbsp;·&nbsp; By practice category <span class="hint">Click any row to filter the whole page</span></h2>
-    <div class="cols">
-      <div class="col">${rankedListBlock("Attorneys", GROUPS.attorneys, rows, rows25, "ATTORNEY")}</div>
-      <div class="col">${rankedListBlock("Categories", GROUPS.practiceCategories, rows, rows25, "CATEGORY")}</div>
-    </div>
-  </div>`;
-}
+function rankedList(title, dataMap, data25Map, isAttorney){
+  const rows = Object.entries(dataMap)
+    .map(([k, v]) => ({
+      key:k,
+      label: isAttorney ? attorneyLabel(k) : k,
+      revenue: v.revenue,
+      files: v.files,
+      revenue25: (data25Map && data25Map[k]) ? data25Map[k].revenue : 0,
+    }))
+    .sort((a,b) => b.revenue - a.revenue);
 
-function rankedListBlock(title, columns, rows, rows25, kind){
-  const totals = columns.map(col => ({
-    col,
-    total: sum(rows.map(r => +r[col] || 0)),
-    total25: sum(rows25.map(r => +r[col] || 0)),
-  })).sort((a,b) => b.total - a.total);
+  const total = rows.reduce((a,r)=>a+r.revenue,0);
+  const has25 = rows.some(r => r.revenue25 > 0);
 
-  const grand = sum(totals.map(t => t.total));
-
-  const rowsHtml = totals.map(t => {
-    const pct = grand > 0 ? ((t.total/grand)*100).toFixed(1) : "0.0";
-    const yoy = (compareYoY && t.total25 > 0) ? (((t.total - t.total25)/t.total25)*100).toFixed(1) : null;
-    const yoyTag = yoy === null ? "" :
-      `<span class="d ${yoy>=0?'up':'down'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>`;
-    const selected = (filter && filter.value === t.col) ? " selected" : "";
-    return `<div class="r clickable${selected}" data-kind="${kind}" data-col="${t.col}">
-      <span class="lbl">${prettyLabel(t.col)}</span>
-      <span class="v">${dollars(t.total)}</span>
+  const html = rows.map(r => {
+    const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
+    const yoy = has25 && r.revenue25 > 0 ? ((r.revenue - r.revenue25)/r.revenue25*100).toFixed(1) : null;
+    const yoyTag = yoy !== null ?
+      `<span class="d ${yoy>=0?'up':'down'}" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
+    return `<div class="r">
+      <span class="lbl">${r.label}<span class="files">· ${r.files}</span></span>
+      <span class="v">${usd0(r.revenue)}</span>
       <span class="d">${pct}%</span>
       ${yoyTag}
     </div>`;
   }).join("");
 
-  const toggle = ROWS_2025.length ? `<div class="toggle" style="float:right">
-    <button data-yoy="off" aria-selected="${!compareYoY}">This year</button>
-    <button data-yoy="on" aria-selected="${compareYoY}">vs 2025</button>
-  </div>` : "";
-
   return `<div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <b style="color:var(--navy)">${title}</b>
-      ${toggle}
-    </div>
-    <div class="rank">${rowsHtml}</div>
+    <b style="color:var(--navy);font-size:.95rem">${title}</b>
+    <div class="rank">${html || '<div style="color:var(--muted);padding:14px 4px">No entries yet.</div>'}</div>
   </div>`;
 }
 
-function wireInteractions(){
-  document.querySelectorAll(".rank .r.clickable").forEach(el => {
-    el.onclick = () => {
-      const col = el.getAttribute("data-col");
-      const kind = el.getAttribute("data-kind");
-      if(filter && filter.value === col){ filter = null; }
-      else { filter = { field: kind, value: col }; }
-      render();
-    };
-  });
-  const pill = document.getElementById("clearFilter");
-  if(pill) pill.onclick = () => { filter = null; render(); };
-  document.querySelectorAll(".toggle button[data-yoy]").forEach(b => {
-    b.onclick = () => { compareYoY = (b.getAttribute("data-yoy") === "on"); render(); };
-  });
+function recentBigSection(){
+  // Recent big entries = top 10 new-matter fees this year
+  const recent = ROWS
+    .filter(r => classify(r) === "New-Matter" && num(r["Fee Billed"]) > 0)
+    .sort((a,b) => num(b["Fee Billed"]) - num(a["Fee Billed"]))
+    .slice(0, 10);
+
+  const chips = recent.map(r => {
+    const date = r["_date"] || r["Month"] || "";
+    const dateStr = date ? String(date).slice(0,10) : "";
+    return `<span class="chip">
+      <span class="amt">${usd0(num(r["Fee Billed"]))}</span>
+      <span class="name">${r["Client"] || '—'}</span>
+      <span class="date">${dateStr}</span>
+    </span>`;
+  }).join("");
+
+  return `<div class="section">
+    <h2>Top 10 new-matter entries this year</h2>
+    <p class="sh">The biggest single client fees in ${CONFIG.year}.</p>
+    <div class="strip">${chips || '<div style="color:var(--muted);padding:14px 4px">No entries yet.</div>'}</div>
+  </div>`;
 }
 
-function sum(arr){ return arr.reduce((s,v) => s + (+v||0), 0); }
-
-function uniqueWeeks(rows){
-  const s = new Set();
-  for(const r of rows){ if(r[CONFIG.colWEEK]) s.add(r[CONFIG.colWEEK]); }
-  return Array.from(s);
-}
-
-function weeklyTotals(rows){
-  const map = new Map();
-  for(const r of rows){
-    const w = r[CONFIG.colWEEK]; if(!w) continue;
-    map.set(w, (map.get(w) || 0) + rowAmount(r));
-  }
-  return Array.from(map, ([week, total]) => ({week, total}))
-    .sort((a,b) => weekSortKey(a.week) - weekSortKey(b.week));
-}
-
-function weekSortKey(w){ return w; }
-
-function latestReportWeek(rows){
-  const weeks = uniqueWeeks(rows).sort();
-  return weeks.length ? weeks[weeks.length-1] : null;
-}
-
-function rowsThroughWeek(rows, weeksSoFar){
-  const weeks = uniqueWeeks(rows).sort().slice(0, weeksSoFar);
-  const set = new Set(weeks);
-  return rows.filter(r => set.has(r[CONFIG.colWEEK]));
-}
-
-function prettyLabel(col){
-  const map = {
-    "PAID DORCEY":"Josh Dorcey","PAID SCOTT":"Mike Scott","PAID JOHNSON":"Erica Johnson",
-    "PAID SAJDAK":"Kara Sajdak","PAID DODSON":"Doug Dodson","PAID BUTCHER":"Brad Butcher",
-    "PAID CAHOONE":"David Cahoone","PAID MICHIGAN":"Michigan team",
-    "PAID EST PLAN":"Estate Planning","PAID BIZ PLAN":"Business Planning","PAID EL":"Employment Law",
-    "PAID PROB":"Probate","PAID TA":"Trust Admin","PAID ADV PLAN":"Advanced Planning",
-    "PAID PRE-NUP":"Pre-nup / Post-nup","PAID APP":"APP Membership","PAID GUNTRUST":"Gun Trust",
-    "PAID EQUINE":"Equine",
-  };
-  return map[col] || col;
-}
-
-function dollars(n){
-  const negative = n < 0;
-  const abs = Math.abs(n);
-  const rounded = abs >= 1000 ? Math.round(abs) : abs;
-  const s = "$" + rounded.toLocaleString("en-US", {maximumFractionDigits: 0});
-  return negative ? "-" + s : s;
+function footerNote(){
+  return `<div class="footer-note">
+    Data pulled live from the <b>${CONFIG.year} Clients</b> sheet. Refresh to update.
+    &nbsp;·&nbsp; Goal: <b>${usd0(CONFIG.yearGoal)}</b>
+  </div>`;
 }
 </script>
 </body>
