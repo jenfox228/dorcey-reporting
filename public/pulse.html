@@ -258,27 +258,21 @@ function classify(row){
   return "New-Matter";
 }
 
-// Attorney code -> friendly name (based on what I've seen in your codes so far)
+// Attorney code -> friendly name. DLF is the firm "house" (unassigned or general
+// firm work), NOT an individual attorney — so we label it that way to make sure
+// its numbers don't quietly get credited to Josh.
 const ATTORNEY_NAMES = {
-  "DLF":"Josh Dorcey",       // "Dorcey Law Firm" (Josh's initials in the sheet)
+  "DLF":"House (Dorcey Law Firm)",
   "JOD":"Josh Dorcey",
   "MAS":"Mike Scott",
-  "MIS":"Mike Scott",
-  "MSC":"Mike Scott",
-  "EJJ":"Erica Johnson",
-  "EJ":"Erica Johnson",
-  "KSS":"Kara Sajdak",
+  "EDJ":"Erica Johnson",
   "KAS":"Kara Sajdak",
   "DAD":"Doug Dodson",
-  "DOD":"Doug Dodson",
   "BWB":"Brad Butcher",
-  "BB":"Brad Butcher",
-  "BUT":"Brad Butcher",
+  "BHB":"Brian Bronsther",
   "DAC":"David Cahoone",
-  "DC":"David Cahoone",
   "APP":"APP (bulk)",
-  "MIC":"Michigan team",
-  "MI":"Michigan team",
+};
 };
 
 function attorneyLabel(code){
