@@ -176,6 +176,30 @@ let compareYoY = false;   // toggled per-section
 let filter = null;   // { field: "REVENUE_STREAM"|"ATTORNEY"|"CATEGORY", value: string }
 
 // ---------------------------------------------------------------------------
+// Feed helpers
+// ---------------------------------------------------------------------------
+
+// Accepts either { rows: [...] } or { entries: [...] } from the Apps Script.
+// If the feed doesn't supply an explicit headers array, we derive it by
+// walking every row and collecting the union of keys in the order they first
+// appear. That way column-range logic (streams/segments) still works.
+function extractRowsAndHeaders(feed){
+  const raw = Array.isArray(feed.rows) ? feed.rows
+            : Array.isArray(feed.entries) ? feed.entries
+            : [];
+  let headers = Array.isArray(feed.headers) ? feed.headers.slice() : [];
+  if(!headers.length){
+    const seen = new Set();
+    for(const row of raw){
+      for(const key of Object.keys(row)){
+        if(!seen.has(key)){ seen.add(key); headers.push(key); }
+      }
+    }
+  }
+  return { rows: raw, headers };
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 load();
@@ -186,14 +210,18 @@ async function load(){
     if(!r.ok) throw new Error("feed returned " + r.status);
     const j = await r.json();
     if(j.error) throw new Error(j.error);
-    HEADERS = j.headers || [];
-    ROWS = (j.rows || []).map(normalizeRow);
+    const { rows, headers } = extractRowsAndHeaders(j);
+    HEADERS = headers;
+    ROWS = rows.map(normalizeRow);
     // 2025 fetch is best-effort; a failure just disables the YoY toggle.
     try{
       const r25 = await fetch("/api/revenue-feed?tab=2025");
       if(r25.ok){
         const j25 = await r25.json();
-        if(!j25.error) ROWS_2025 = (j25.rows || []).map(normalizeRow);
+        if(!j25.error){
+          const { rows: r25rows } = extractRowsAndHeaders(j25);
+          ROWS_2025 = r25rows.map(normalizeRow);
+        }
       }
     }catch(e){ /* ignore */ }
     render();
