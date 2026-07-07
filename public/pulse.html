@@ -142,61 +142,84 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// Config
+// Config — column names, all sanitized to trimmed uppercase form.
+// The Google Sheet is riddled with trailing spaces on header names ("TOTAL "
+// with a space, "MOD ATTORNEY  " with two, etc). We normalize every incoming
+// key on the way in so all references below can use the clean version.
 // ---------------------------------------------------------------------------
 const CONFIG = {
-  yearGoal: 5000000,        // $5M annual revenue target — adjust if plans change
-  colWEEK: "REPORT WEEK",
+  yearGoal: 5000000,
+  colWEEK: "REPORTING WEEK",
   colDATE: "PAY DATE",
   colAMOUNT: "TOTAL",
-  colREVSTREAM: "NEW MATTER",  // sits inside the Revenue Streams range
-  colREVSEGMENT: "TRUST FUNDING", // sits inside Revenue Segments range
-  colCLIENT: "NAME",           // client's family name for the recent-big-clients strip
-  colATTY: "MOD ATTORNEY"      // attribution to attorney
+  colREVSTREAM: "NEW MATTER",
+  colREVSEGMENT: "TRUST FUNDING",
+  colCLIENT: "NAME",
+  colATTY: "MOD ATTORNEY"
 };
 
 // Column groups so we can auto-detect which columns belong to which "family."
-// We aggregate every column between START and END (inclusive) as members of that group.
 const GROUPS = {
   streams: { start: "NEW MATTER", end: "APP" },
-  segments: { start: "TRUST FUNDING", end: "APP.1" }, // handle duplicate name in headers
+  segments: { start: "TRUST FUNDING", end: "APP.1" },
   attorneys: [
-    "PAID DORCEY","PAID SCOTT","PAID JOHNSON","PAID SAJDAK","PAID DODSON","PAID BUTCHER","PAID CAHOONE","PAID MICHIGAN"
+    "PAID DORCEY","PAID SCOTT","PAID JOHNSON","PAID SAJDAK","PAID DODSON",
+    "PAID BUTCHER","PAID CAHOONE","PAID MICHIGAN"
   ],
   practiceCategories: [
-    "PAID EST PLAN","PAID BIZ PLAN","PAID EL","PAID PROB","PAID TA","PAID ADV PLAN","PAID PRE-NUP","PAID APP","PAID GUNTRUST","PAID EQUINE"
+    "PAID EST PLAN","PAID BIZ PLAN","PAID EL","PAID PROB","PAID TA",
+    "PAID ADV PLAN","PAID PRE-NUP","PAID APP","PAID GUNTRUST","PAID EQUINE"
   ]
 };
 
 // Client-side state --------------------------------------------------------
-let ROWS = [];       // raw JSON rows
-let HEADERS = [];    // header row (used for group range detection)
-let ROWS_2025 = [];  // prior-year rows (2025)
-let compareYoY = false;   // toggled per-section
-let filter = null;   // { field: "REVENUE_STREAM"|"ATTORNEY"|"CATEGORY", value: string }
+let ROWS = [];
+let HEADERS = [];
+let ROWS_2025 = [];
+let compareYoY = false;
+let filter = null;
 
 // ---------------------------------------------------------------------------
 // Feed helpers
 // ---------------------------------------------------------------------------
 
+// Clean an incoming column name so we can match it consistently later.
+// - Trim leading/trailing whitespace
+// - Collapse internal doubled spaces
+// - Strip trailing period ("PAID PROB." -> "PAID PROB")
+function cleanKey(k){
+  return String(k)
+    .replace(/\s+/g, " ")     // "MOD  ATTORNEY" -> "MOD ATTORNEY"
+    .trim()                    // "TOTAL " -> "TOTAL"
+    .replace(/\.$/, "");       // "PAID PROB." -> "PAID PROB"
+}
+
+// Rewrite every key in a row so downstream code sees clean names.
+function normalizeKeys(row){
+  const out = {};
+  for(const [k, v] of Object.entries(row)){
+    out[cleanKey(k)] = v;
+  }
+  return out;
+}
+
 // Accepts either { rows: [...] } or { entries: [...] } from the Apps Script.
-// If the feed doesn't supply an explicit headers array, we derive it by
-// walking every row and collecting the union of keys in the order they first
-// appear. That way column-range logic (streams/segments) still works.
 function extractRowsAndHeaders(feed){
   const raw = Array.isArray(feed.rows) ? feed.rows
             : Array.isArray(feed.entries) ? feed.entries
             : [];
-  let headers = Array.isArray(feed.headers) ? feed.headers.slice() : [];
+  // Normalize keys BEFORE we derive headers, so headers match row lookups.
+  const rows = raw.map(normalizeKeys);
+  let headers = Array.isArray(feed.headers) ? feed.headers.map(cleanKey) : [];
   if(!headers.length){
     const seen = new Set();
-    for(const row of raw){
+    for(const row of rows){
       for(const key of Object.keys(row)){
         if(!seen.has(key)){ seen.add(key); headers.push(key); }
       }
     }
   }
-  return { rows: raw, headers };
+  return { rows, headers };
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +236,6 @@ async function load(){
     const { rows, headers } = extractRowsAndHeaders(j);
     HEADERS = headers;
     ROWS = rows.map(normalizeRow);
-    // 2025 fetch is best-effort; a failure just disables the YoY toggle.
     try{
       const r25 = await fetch("/api/revenue-feed?tab=2025");
       if(r25.ok){
@@ -237,7 +259,6 @@ function normalizeRow(row){
   for(const k of Object.keys(row)){
     const v = row[k];
     if(v === "" || v == null){ out[k] = null; continue; }
-    // Strip $ and commas, then check if it parses cleanly.
     if(typeof v === "string"){
       const cleaned = v.replace(/[$,]/g,"").trim();
       if(cleaned !== "" && !isNaN(+cleaned)) { out[k] = +cleaned; continue; }
@@ -251,8 +272,6 @@ function normalizeRow(row){
 // Group / column detection
 // ---------------------------------------------------------------------------
 
-// Get the ordered list of column names that fall between two header names,
-// inclusive. Handles the fact that some headers repeat by using first occurrence.
 function columnsInRange(startName, endName){
   const start = HEADERS.indexOf(startName);
   const end = HEADERS.indexOf(endName);
@@ -267,7 +286,6 @@ function segmentColumns(){ return columnsInRange(GROUPS.segments.start, GROUPS.s
 // Filtering
 // ---------------------------------------------------------------------------
 
-// Returns TRUE if the row is included given the currently active filter.
 function passesFilter(row){
   if(!filter) return true;
   const v = row[filter.value];
@@ -278,9 +296,6 @@ function filteredRows(rows){
   return rows.filter(passesFilter);
 }
 
-// Amount for a row respecting the active filter — if we're filtering by a
-// specific stream/segment/attorney/category, the "amount" for KPIs & trends
-// becomes JUST that column's value on that row, not the TOTAL.
 function rowAmount(row){
   if(filter) return +row[filter.value] || 0;
   return +row[CONFIG.colAMOUNT] || 0;
@@ -309,14 +324,12 @@ function render(){
   wireInteractions();
 }
 
-// KPI row ------------------------------------------------------------------
 function kpiSection(rows, rows25){
   const total = sum(rows.map(rowAmount));
   const paid = rows.filter(r => rowAmount(r) > 0).length;
   const avg = paid ? total/paid : 0;
   const weeks = uniqueWeeks(rows).length;
   const pace = weeks ? total/weeks : 0;
-  // 2025-through-same-week comparison
   const throughWeek = weeks;
   const rows25CutOff = rowsThroughWeek(rows25, throughWeek);
   const total25 = sum(rows25CutOff.map(rowAmount));
@@ -339,7 +352,6 @@ function kpiSection(rows, rows25){
   </div>`;
 }
 
-// Filter pill --------------------------------------------------------------
 function filterPillHtml(){
   if(!filter) return "";
   return `<div style="margin:0 2px 14px">
@@ -352,11 +364,9 @@ function filterPillHtml(){
   </div>`;
 }
 
-// Goal thermometer ---------------------------------------------------------
 function thermoSection(rows){
-  // Thermometer always shows firm-wide TOTAL, ignoring filter (goal is firm-level).
   const total = sum(ROWS.map(r => +r[CONFIG.colAMOUNT] || 0));
-  const pct = Math.min(1.5, total / CONFIG.yearGoal); // cap fill at 150%
+  const pct = Math.min(1.5, total / CONFIG.yearGoal);
   const pctLabel = ((total / CONFIG.yearGoal)*100).toFixed(1);
   const weeks = uniqueWeeks(ROWS).length;
   const expectedByNow = CONFIG.yearGoal * (weeks/52);
@@ -373,7 +383,6 @@ function thermoSection(rows){
   </div>`;
 }
 
-// Refund spotlight ---------------------------------------------------------
 function refundSpotlight(rows){
   const refunds = rows.filter(r => rowAmount(r) < 0);
   if(!refunds.length) return "";
@@ -388,11 +397,10 @@ function refundSpotlight(rows){
   </div>`;
 }
 
-// Weekly trend + recent big clients ---------------------------------------
 function weeklyAndRecentSection(rows, rows25){
   const weekly = weeklyTotals(rows);
   const weekly25 = weeklyTotals(rows25);
-  const weeks = weekly.slice(-16); // show last 16 weeks
+  const weeks = weekly.slice(-16);
   const maxV = Math.max(1, ...weeks.map(w => w.total));
 
   const bars = weeks.map(w => {
@@ -404,7 +412,6 @@ function weeklyAndRecentSection(rows, rows25){
     </div>`;
   }).join("");
 
-  // Recent big paid entries (top 8 by amount from the most recent 4 weeks)
   const recentWeeks = weekly.slice(-4).map(w => w.week);
   const recent = rows.filter(r => recentWeeks.includes(r[CONFIG.colWEEK]) && rowAmount(r) > 0)
     .sort((a,b) => rowAmount(b) - rowAmount(a)).slice(0, 8);
@@ -424,7 +431,6 @@ function weeklyAndRecentSection(rows, rows25){
   </div>`;
 }
 
-// Streams + Segments -------------------------------------------------------
 function streamsAndSegmentsSection(rows, rows25){
   return `<div class="section">
     <h2>Revenue streams &nbsp;·&nbsp; Revenue segments <span class="hint">Click any row to filter the whole page</span></h2>
@@ -435,7 +441,6 @@ function streamsAndSegmentsSection(rows, rows25){
   </div>`;
 }
 
-// Attorneys + Categories ---------------------------------------------------
 function attorneysAndCategoriesSection(rows, rows25){
   return `<div class="section">
     <h2>By attorney &nbsp;·&nbsp; By practice category <span class="hint">Click any row to filter the whole page</span></h2>
@@ -446,7 +451,6 @@ function attorneysAndCategoriesSection(rows, rows25){
   </div>`;
 }
 
-// Ranked-list helper: builds a sortable, filterable list with YoY toggle.
 function rankedListBlock(title, columns, rows, rows25, kind){
   const totals = columns.map(col => ({
     col,
@@ -484,12 +488,7 @@ function rankedListBlock(title, columns, rows, rows25, kind){
   </div>`;
 }
 
-// ---------------------------------------------------------------------------
-// Interactions
-// ---------------------------------------------------------------------------
-
 function wireInteractions(){
-  // Row click -> apply filter
   document.querySelectorAll(".rank .r.clickable").forEach(el => {
     el.onclick = () => {
       const col = el.getAttribute("data-col");
@@ -499,18 +498,12 @@ function wireInteractions(){
       render();
     };
   });
-  // Filter pill clear
   const pill = document.getElementById("clearFilter");
   if(pill) pill.onclick = () => { filter = null; render(); };
-  // YoY toggle buttons
   document.querySelectorAll(".toggle button[data-yoy]").forEach(b => {
     b.onclick = () => { compareYoY = (b.getAttribute("data-yoy") === "on"); render(); };
   });
 }
-
-// ---------------------------------------------------------------------------
-// Data helpers
-// ---------------------------------------------------------------------------
 
 function sum(arr){ return arr.reduce((s,v) => s + (+v||0), 0); }
 
@@ -520,7 +513,6 @@ function uniqueWeeks(rows){
   return Array.from(s);
 }
 
-// Weekly totals (respecting the current filter for amounts)
 function weeklyTotals(rows){
   const map = new Map();
   for(const r of rows){
@@ -531,7 +523,6 @@ function weeklyTotals(rows){
     .sort((a,b) => weekSortKey(a.week) - weekSortKey(b.week));
 }
 
-// Cheap week sort: assume week values sort lexicographically enough for display.
 function weekSortKey(w){ return w; }
 
 function latestReportWeek(rows){
@@ -539,14 +530,12 @@ function latestReportWeek(rows){
   return weeks.length ? weeks[weeks.length-1] : null;
 }
 
-// For YoY: prior year rows through the same number of weeks.
 function rowsThroughWeek(rows, weeksSoFar){
   const weeks = uniqueWeeks(rows).sort().slice(0, weeksSoFar);
   const set = new Set(weeks);
   return rows.filter(r => set.has(r[CONFIG.colWEEK]));
 }
 
-// Pretty-print column headers (strip PAID prefix, title-case).
 function prettyLabel(col){
   const map = {
     "PAID DORCEY":"Josh Dorcey","PAID SCOTT":"Mike Scott","PAID JOHNSON":"Erica Johnson",
