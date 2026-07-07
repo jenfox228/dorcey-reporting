@@ -166,7 +166,7 @@
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
-  yearGoal: 7000000,   // $7M — updated whenever the annual target shifts
+  yearGoal: 7000000,
   year: 2026,
 };
 
@@ -182,6 +182,22 @@ const SEG_ORDER = ["New-Matter","APP","Registered Agent","Title Pass-through","R
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// Attorney initials -> friendly name. DLF is the firm "house" (unassigned or
+// general firm work), NOT an individual attorney — labeled that way so its
+// numbers don't quietly get credited to Josh.
+const ATTORNEY_NAMES = {
+  "DLF": "House (Dorcey Law Firm)",
+  "JOD": "Josh Dorcey",
+  "MAS": "Mike Scott",
+  "EDJ": "Erica Johnson",
+  "KAS": "Kara Sajdak",
+  "DAD": "Doug Dodson",
+  "BWB": "Brad Butcher",
+  "BHB": "Brian Bronsther",
+  "DAC": "David Cahoone",
+  "APP": "APP (bulk)"
+};
+
 // Client-side state
 let ROWS = [];
 let ROWS_2025 = [];
@@ -190,8 +206,6 @@ let ROWS_2025 = [];
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Trim trailing/leading spaces, collapse doubled spaces, strip trailing periods.
-// Google Sheets loves leaving trailing spaces on column names.
 function cleanKey(k){
   return String(k).replace(/\s+/g," ").trim().replace(/\.$/,"");
 }
@@ -220,21 +234,18 @@ function num(v){
 function usd0(n){ return "$" + Math.round(n).toLocaleString("en-US"); }
 function usdK(n){
   const a = Math.abs(n);
-  if(a >= 1_000_000) return (n<0?"-":"") + "$" + (a/1_000_000).toFixed(2) + "M";
-  if(a >= 1_000)    return (n<0?"-":"") + "$" + Math.round(a/1_000) + "K";
+  if(a >= 1000000) return (n<0?"-":"") + "$" + (a/1000000).toFixed(2) + "M";
+  if(a >= 1000)    return (n<0?"-":"") + "$" + Math.round(a/1000) + "K";
   return usd0(n);
 }
 
-// Get a row's month index (0-11) from the "_date" or "Month" or "Date Scheduled" field.
 function monthIndex(row){
   const candidates = [row["_date"], row["Month"], row["Date Scheduled"], row["Pay Date"], row["PAY DATE"]];
   for(const c of candidates){
     if(!c) continue;
-    // ISO like "2026-01-07T05:00:00.000Z" or "2026-01-01"
     if(typeof c === "string"){
       const m = c.match(/^(\d{4})-(\d{2})/);
       if(m) return parseInt(m[2],10) - 1;
-      // fallback: try Date parse
       const d = new Date(c);
       if(!isNaN(d)) return d.getUTCMonth();
     }
@@ -242,8 +253,6 @@ function monthIndex(row){
   return null;
 }
 
-// Classify a row into a revenue bucket. Pooled money is split out from new-matter work.
-// Keyed on Matter + the "Payments" tag in Referral Name so a typo can't slip through.
 function classify(row){
   const matter = String(row["Matter"] || "").trim();
   const client = String(row["Client"] || "").trim().toLowerCase();
@@ -252,28 +261,11 @@ function classify(row){
 
   if(matter === "APP") return "APP";
   if(matter === "DLF Registered Agent" && pooled) return "Registered Agent";
-  if(matter === "DLF Registed Agent" && pooled) return "Registered Agent"; // preserve the sheet's typo
+  if(matter === "DLF Registed Agent" && pooled) return "Registered Agent";
   if(client.includes("dorcey law firm title services")) return "Title Pass-through";
   if(matter === "Referral Fee") return "Referral Income";
   return "New-Matter";
 }
-
-// Attorney code -> friendly name. DLF is the firm "house" (unassigned or general
-// firm work), NOT an individual attorney — so we label it that way to make sure
-// its numbers don't quietly get credited to Josh.
-const ATTORNEY_NAMES = {
-  "DLF":"House (Dorcey Law Firm)",
-  "JOD":"Josh Dorcey",
-  "MAS":"Mike Scott",
-  "EDJ":"Erica Johnson",
-  "KAS":"Kara Sajdak",
-  "DAD":"Doug Dodson",
-  "BWB":"Brad Butcher",
-  "BHB":"Brian Bronsther",
-  "DAC":"David Cahoone",
-  "APP":"APP (bulk)",
-};
-};
 
 function attorneyLabel(code){
   const c = String(code||"").trim().toUpperCase();
@@ -294,7 +286,6 @@ async function load(){
     if(j.error) throw new Error(j.error);
     ROWS = extractRows(j);
 
-    // 2025 fetch is best-effort.
     try{
       const r25 = await fetch("/api/revenue-feed?tab=2025");
       if(r25.ok){
@@ -349,7 +340,7 @@ function computeStats(rows){
 
   for(const row of rows){
     const fee = num(row["Fee Billed"]);
-    if(fee === 0 && !row["Fee Billed"]) continue; // skip empty rows
+    if(fee === 0 && !row["Fee Billed"]) continue;
     files++;
     total += fee;
 
@@ -368,7 +359,6 @@ function computeStats(rows){
       if(bucket === "New-Matter") byMonthNewMatter[mi] += fee;
     }
 
-    // Attorney breakdown (originating)
     const origAtt = String(row["Originating Attorney"] || "").trim();
     if(origAtt && bucket === "New-Matter"){
       if(!byAttorney[origAtt]) byAttorney[origAtt] = {revenue:0, files:0};
@@ -376,7 +366,6 @@ function computeStats(rows){
       byAttorney[origAtt].files++;
     }
 
-    // Matter type breakdown (new-matter only, for a cleaner mix picture)
     const matter = String(row["Matter"] || "").trim();
     if(matter && bucket === "New-Matter"){
       if(!byMatter[matter]) byMatter[matter] = {revenue:0, files:0};
@@ -396,7 +385,6 @@ function computeStats(rows){
 }
 
 function headlineSection(s, s25){
-  // Compare through equivalent month count (only months with 2026 activity count)
   const monthsWithData = s.byMonth.filter(v => v > 0).length;
   const s25MonthsWithData = s25.byMonth ? s25.byMonth.slice(0, monthsWithData).reduce((a,b)=>a+b,0) : 0;
   const yoyTotal = s25MonthsWithData > 0 ? ((s.total - s25MonthsWithData) / s25MonthsWithData) * 100 : null;
@@ -452,7 +440,6 @@ function thermoSection(s){
   const pct = total / CONFIG.yearGoal;
   const pctLabel = (pct * 100).toFixed(1);
 
-  // Pace marker: where "on-pace" would be given today's date.
   const dayOfYear = Math.floor((Date.now() - new Date(CONFIG.year, 0, 1)) / (86400000));
   const paceRatio = Math.min(1, Math.max(0, dayOfYear / 365));
   const paceLeft = (paceRatio * 100).toFixed(1);
@@ -591,7 +578,7 @@ function rankedList(title, dataMap, data25Map, isAttorney){
     const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
     const yoy = has25 && r.revenue25 > 0 ? ((r.revenue - r.revenue25)/r.revenue25*100).toFixed(1) : null;
     const yoyTag = yoy !== null ?
-      `<span class="d ${yoy>=0?'up':'down'}" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
+      `<span class="d" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
     return `<div class="r">
       <span class="lbl">${r.label}<span class="files">· ${r.files}</span></span>
       <span class="v">${usd0(r.revenue)}</span>
@@ -607,7 +594,6 @@ function rankedList(title, dataMap, data25Map, isAttorney){
 }
 
 function recentBigSection(){
-  // Recent big entries = top 10 new-matter fees this year
   const recent = ROWS
     .filter(r => classify(r) === "New-Matter" && num(r["Fee Billed"]) > 0)
     .sort((a,b) => num(b["Fee Billed"]) - num(a["Fee Billed"]))
