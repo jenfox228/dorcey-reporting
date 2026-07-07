@@ -9,6 +9,18 @@
   :root{--navy:#0f1f3a;--gold:#c9a14a;--parchment:#f6f1e4;--line:#e3dcc9;--muted:#7d7666;--ok:#2f7d57;--down:#b04a3a}
   *{box-sizing:border-box}
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:#1b1b1b}
+
+  /* Top nav bar for jumping between admin / dashboard / pulse */
+  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;padding:0;
+    border-bottom:1px solid rgba(201,161,74,.25)}
+  .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
+    color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent;
+    transition:background .15s,color .15s,border-color .15s}
+  .topnav a:hover{background:#132849;color:#e7d3a1}
+  .topnav a.active{color:#c9a14a;border-bottom-color:#c9a14a;background:#132849}
+  .topnav a .ico{display:block;font-size:1.05rem;margin-bottom:2px}
+
   header{background:var(--navy);color:var(--parchment);padding:24px;border-bottom:3px solid var(--gold)}
   header h1{font-family:"Playfair Display",serif;margin:.2rem 0;font-size:1.5rem}
   header .eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:#e7d3a1}
@@ -81,6 +93,11 @@
 </style>
 </head>
 <body>
+  <nav class="topnav">
+    <a href="/admin" class="active"><span class="ico">⚙️</span>Admin</a>
+    <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
+    <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+  </nav>
   <header>
     <div class="eyebrow">Dorcey Law Firm</div>
     <h1>Weekly Reporting — Admin</h1>
@@ -152,20 +169,11 @@
     </table>
   </div>
 <script>
-let JUST_CREATED_ID = null;   // highlight the row for a user just added
-let JUST_UPDATED_ID = null;   // highlight the row for a user just edited
-let EDITING_ID = null;        // which row is currently in edit mode
-let TEMPLATES_CACHE = [];     // cached templates for the edit form's dropdown
-let USERS_CACHE = [];         // cached users so edit form can prefill quickly
-let ME_ID = null;             // current admin's user id (for self-lockout guardrails)
-
-async function loadMe(){
-  // We infer the current admin's id from the users list — whoever's row also
-  // matches this session. Not strictly required; the server enforces the
-  // guardrails too. But it lets us hide "demote" from the local UI.
-  // For now we don't have a /api/me for admins, so we'll skip this and rely
-  // on the server. (The UI will show the error if you try to lock yourself out.)
-}
+let JUST_CREATED_ID = null;
+let JUST_UPDATED_ID = null;
+let EDITING_ID = null;
+let TEMPLATES_CACHE = [];
+let USERS_CACHE = [];
 
 async function loadUsers(){
   const r = await fetch("/api/admin/users");
@@ -206,12 +214,10 @@ function renderUsers(){
     `;
   }).join("");
 
-  // Wire up template dropdown for the edit form if it exists.
   if(EDITING_ID){
     populateEditTemplateSelect(EDITING_ID);
   }
 
-  // Scroll new/updated rows into view once, then clear the flag.
   if(JUST_CREATED_ID){
     const row = document.querySelector(`tr[data-id="${JUST_CREATED_ID}"]`);
     if(row) row.scrollIntoView({behavior:"smooth", block:"center"});
