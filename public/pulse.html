@@ -13,9 +13,10 @@
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:var(--ink)}
+  a{color:inherit}
 
-  /* Top nav bar for jumping between admin / dashboard / pulse */
-  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;padding:0;
+  /* Top nav */
+  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;
     border-bottom:1px solid rgba(198,160,78,.25)}
   .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
     color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
@@ -34,7 +35,16 @@
   .loading{padding:80px;text-align:center;color:var(--muted)}
   .error{padding:40px;text-align:center;color:var(--down);background:#fff;border-radius:14px;box-shadow:var(--shadow)}
 
-  /* Headline row: total + new-matter side by side */
+  /* Filter pill */
+  .filter-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+  .filter-pill{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--navy);
+    padding:8px 14px;border-radius:22px;font-size:.85rem;font-weight:700;cursor:pointer;
+    box-shadow:var(--shadow)}
+  .filter-pill .x{font-size:1.15rem;line-height:1;font-weight:700}
+  .filter-pill:hover{background:#dcbf7d}
+  .filter-hint{color:var(--muted);font-size:.82rem}
+
+  /* Headline row */
   .headline{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:22px}
   .headline .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;box-shadow:var(--shadow)}
   .headline .stat.hero{background:linear-gradient(150deg,var(--navy),var(--navy-2));color:#fff;border-color:var(--navy)}
@@ -47,7 +57,7 @@
   .headline .stat .d .up{color:var(--up);font-weight:700}
   .headline .stat .d .down{color:var(--down);font-weight:700}
 
-  /* Secondary KPI cards */
+  /* KPI row */
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
   .kpi .k{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -75,10 +85,17 @@
     display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
   .section .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 12px}
 
-  /* Revenue composition strip */
-  .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  /* Toggle chip */
+  .togchip{display:inline-flex;background:var(--parchment);border:1px solid var(--line);border-radius:9px;padding:3px}
+  .togchip button{border:0;background:transparent;padding:6px 12px;border-radius:6px;cursor:pointer;
+    font:600 .75rem "Libre Franklin",sans-serif;color:var(--muted)}
+  .togchip button[aria-selected="true"]{background:var(--navy);color:#fff}
+
+  /* Composition strip */
+  .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
   .comp .seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.72rem;font-weight:700;
-    min-width:24px;padding:0 6px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+    min-width:24px;padding:0 6px;text-shadow:0 1px 2px rgba(0,0,0,.2);transition:opacity .15s}
+  .comp .seg:hover{opacity:.85}
   .comp-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:.78rem}
   .comp-legend .item{display:flex;align-items:center;gap:6px;color:var(--ink)}
   .comp-legend .swatch{width:12px;height:12px;border-radius:3px}
@@ -88,11 +105,11 @@
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
   .cols .col + .col{border-left:1px dashed var(--line);padding-left:22px}
 
-  /* Monthly trend bars */
+  /* Monthly bars */
   .months{display:flex;align-items:flex-end;gap:8px;height:180px;margin-top:14px;padding-bottom:20px}
   .months .m{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
   .months .m .bars{width:100%;display:flex;gap:2px;align-items:flex-end;height:150px}
-  .months .m .bar{flex:1;border-radius:4px 4px 0 0;transition:height .5s ease-out;min-height:2px;position:relative;cursor:default}
+  .months .m .bar{flex:1;border-radius:4px 4px 0 0;transition:height .5s ease-out;min-height:2px}
   .months .m .bar.cur{background:var(--gold)}
   .months .m .bar.prev{background:#c7cfdd}
   .months .m .lbl{font-size:.7rem;color:var(--muted);margin-top:6px;font-weight:600}
@@ -107,8 +124,11 @@
   /* Ranked lists */
   .rank{margin-top:6px}
   .rank .r{display:flex;justify-content:space-between;align-items:center;padding:7px 4px;
-    border-bottom:1px dashed var(--line);font-size:.92rem;gap:10px}
+    border-bottom:1px dashed var(--line);font-size:.92rem;gap:10px;cursor:pointer;
+    border-radius:6px;padding-left:8px;padding-right:8px;transition:background .12s}
   .rank .r:last-child{border-bottom:0}
+  .rank .r:hover{background:var(--parchment)}
+  .rank .r.active{background:var(--gold-soft);border-left:3px solid var(--gold);padding-left:5px}
   .rank .r .lbl{flex:1;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap}
   .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;min-width:50px;white-space:nowrap}
@@ -160,8 +180,8 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// DORCEY REVENUE PULSE — live dashboard
-// Source: /api/revenue-feed (Node relay to the Google Apps Script "2026 Clients" tab).
+// DORCEY REVENUE PULSE — live dashboard (definitive HTML port of the June 11
+// React version). Source: /api/revenue-feed → the "2026 Clients" tab.
 // Everything below is computed in-browser from that feed.
 // ---------------------------------------------------------------------------
 
@@ -170,7 +190,7 @@ const CONFIG = {
   year: 2026,
 };
 
-// Brand palette for the composition strip (revenue by bucket)
+// Segment palette — the buckets money falls into after classify()
 const SEG_COLORS = {
   "New-Matter":         "#c6a04e",
   "APP":                "#3f6184",
@@ -182,9 +202,8 @@ const SEG_ORDER = ["New-Matter","APP","Registered Agent","Title Pass-through","R
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-// Attorney initials -> friendly name. DLF is the firm "house" (unassigned or
-// general firm work), NOT an individual attorney — labeled that way so its
-// numbers don't quietly get credited to Josh.
+// Attorney initials -> friendly name. DLF is the firm "house" (unassigned),
+// NOT an individual attorney.
 const ATTORNEY_NAMES = {
   "DLF": "House (Dorcey Law Firm)",
   "JOD": "Josh Dorcey",
@@ -202,8 +221,12 @@ const ATTORNEY_NAMES = {
 let ROWS = [];
 let ROWS_2025 = [];
 
+// UI state — persisted across renders
+let viewMode = "blended";        // "blended" = all fees, "growth" = new-matter only
+let filter   = null;             // {kind:"attorney"|"matter"|"segment", value:"MAS"} etc.
+
 // ---------------------------------------------------------------------------
-// Helpers
+// Utility helpers
 // ---------------------------------------------------------------------------
 
 function cleanKey(k){
@@ -240,7 +263,7 @@ function usdK(n){
 }
 
 function monthIndex(row){
-  const candidates = [row["_date"], row["Month"], row["Date Scheduled"], row["Pay Date"], row["PAY DATE"]];
+  const candidates = [row["_date"], row["Month"], row["Date Scheduled"]];
   for(const c of candidates){
     if(!c) continue;
     if(typeof c === "string"){
@@ -253,6 +276,9 @@ function monthIndex(row){
   return null;
 }
 
+// Classifier — assigns each row to exactly one revenue bucket.
+// Keyed on Matter + the "Payments" flag in Referral Name, NEVER on spelling
+// (the sheet has a "Registed Agent" typo we handle explicitly).
 function classify(row){
   const matter = String(row["Matter"] || "").trim();
   const client = String(row["Client"] || "").trim().toLowerCase();
@@ -261,7 +287,7 @@ function classify(row){
 
   if(matter === "APP") return "APP";
   if(matter === "DLF Registered Agent" && pooled) return "Registered Agent";
-  if(matter === "DLF Registed Agent" && pooled) return "Registered Agent";
+  if(matter === "DLF Registed Agent"   && pooled) return "Registered Agent";
   if(client.includes("dorcey law firm title services")) return "Title Pass-through";
   if(matter === "Referral Fee") return "Referral Income";
   return "New-Matter";
@@ -270,6 +296,38 @@ function classify(row){
 function attorneyLabel(code){
   const c = String(code||"").trim().toUpperCase();
   return ATTORNEY_NAMES[c] || (c || "Unassigned");
+}
+
+// ---------------------------------------------------------------------------
+// The FILTER — the whole page respects whatever's set
+// ---------------------------------------------------------------------------
+
+// Decide if a given row is included given the active filter.
+function passesFilter(row){
+  if(!filter) return true;
+  const attO = String(row["Originating Attorney"]||"").trim().toUpperCase();
+  const attC = String(row["Closing Attorney"]||"").trim().toUpperCase();
+  const matter = String(row["Matter"]||"").trim();
+  const seg = classify(row);
+  if(filter.kind === "attorney")     return attO === filter.value || attC === filter.value;
+  if(filter.kind === "attorney_orig")return attO === filter.value;
+  if(filter.kind === "attorney_clos")return attC === filter.value;
+  if(filter.kind === "matter")       return matter === filter.value;
+  if(filter.kind === "segment")      return seg === filter.value;
+  return true;
+}
+
+// If we're in "growth" view, also exclude non-new-matter rows.
+function passesViewMode(row){
+  if(viewMode === "growth") return classify(row) === "New-Matter";
+  return true;
+}
+
+function getWorkingRows(){
+  return ROWS.filter(r => passesFilter(r) && passesViewMode(r));
+}
+function getWorkingRows25(){
+  return ROWS_2025.filter(r => passesFilter(r) && passesViewMode(r));
 }
 
 // ---------------------------------------------------------------------------
@@ -292,7 +350,7 @@ async function load(){
         const j25 = await r25.json();
         if(!j25.error) ROWS_2025 = extractRows(j25);
       }
-    }catch(e){ /* ignore */ }
+    }catch(e){ /* best-effort */ }
 
     render();
   }catch(e){
@@ -307,23 +365,49 @@ async function load(){
 // ---------------------------------------------------------------------------
 
 function render(){
-  const stats = computeStats(ROWS);
-  const stats25 = computeStats(ROWS_2025);
+  const rows   = getWorkingRows();
+  const rows25 = getWorkingRows25();
+  const stats   = computeStats(rows);
+  const stats25 = computeStats(rows25);
 
-  document.getElementById("periodLabel").textContent =
-    `${CONFIG.year} · ${stats.files.toLocaleString()} paid entries so far`;
+  const label = filter ? filterLabel() : `${CONFIG.year} · ${ROWS.length.toLocaleString()} paid entries`;
+  document.getElementById("periodLabel").textContent = label;
 
   document.getElementById("content").innerHTML = [
+    filterBar(),
     headlineSection(stats, stats25),
     kpiSection(stats),
     thermoSection(stats),
     refundSpotlight(stats),
-    compositionSection(stats),
+    compositionSection(),
     monthlyTrendSection(stats, stats25),
-    attorneyAndMatterSection(stats, stats25),
-    recentBigSection(),
+    attorneyAndMatterSection(),
+    recentBigSection(rows),
     footerNote(),
   ].join("");
+
+  wireInteractions();
+}
+
+function filterLabel(){
+  if(filter.kind === "attorney" || filter.kind === "attorney_orig" || filter.kind === "attorney_clos"){
+    const suffix = filter.kind === "attorney_orig" ? " (originating)"
+                 : filter.kind === "attorney_clos" ? " (closing)" : "";
+    return `Filtered to ${attorneyLabel(filter.value)}${suffix}`;
+  }
+  if(filter.kind === "matter")  return `Filtered to matter: ${filter.value}`;
+  if(filter.kind === "segment") return `Filtered to segment: ${filter.value}`;
+  return "Filtered";
+}
+
+function filterBar(){
+  if(!filter){
+    return `<div class="filter-bar"><span class="filter-hint">💡 Tip: click any attorney, matter, or segment to filter the whole dashboard.</span></div>`;
+  }
+  return `<div class="filter-bar">
+    <span class="filter-pill" id="clearFilter">${filterLabel()} <span class="x">×</span></span>
+    <span class="filter-hint">Click × to clear the filter.</span>
+  </div>`;
 }
 
 function computeStats(rows){
@@ -331,43 +415,45 @@ function computeStats(rows){
   SEG_ORDER.forEach(k => buckets[k] = {revenue:0, files:0});
 
   const byMonth = new Array(12).fill(0);
-  const byMonthNewMatter = new Array(12).fill(0);
-  const byAttorney = {};
+  const byAttorneyOrig = {};
+  const byAttorneyClos = {};
   const byMatter = {};
 
-  let total = 0, newMatterTotal = 0, files = 0, newMatterFiles = 0;
+  let total = 0, files = 0, newMatterTotal = 0, newMatterFiles = 0;
   const refundList = [];
 
   for(const row of rows){
     const fee = num(row["Fee Billed"]);
-    if(fee === 0 && !row["Fee Billed"]) continue;
+    if(fee === 0 && (row["Fee Billed"] === null || row["Fee Billed"] === undefined || row["Fee Billed"] === "")) continue;
     files++;
     total += fee;
 
-    const bucket = classify(row);
-    buckets[bucket].revenue += fee;
-    buckets[bucket].files++;
+    const seg = classify(row);
+    buckets[seg].revenue += fee;
+    buckets[seg].files++;
 
-    if(bucket === "New-Matter"){
+    if(seg === "New-Matter"){
       newMatterTotal += fee;
       newMatterFiles++;
     }
 
     const mi = monthIndex(row);
-    if(mi !== null){
-      byMonth[mi] += fee;
-      if(bucket === "New-Matter") byMonthNewMatter[mi] += fee;
-    }
+    if(mi !== null) byMonth[mi] += fee;
 
-    const origAtt = String(row["Originating Attorney"] || "").trim();
-    if(origAtt && bucket === "New-Matter"){
-      if(!byAttorney[origAtt]) byAttorney[origAtt] = {revenue:0, files:0};
-      byAttorney[origAtt].revenue += fee;
-      byAttorney[origAtt].files++;
+    const origAtt = String(row["Originating Attorney"] || "").trim().toUpperCase();
+    const closAtt = String(row["Closing Attorney"] || "").trim().toUpperCase();
+    if(origAtt){
+      if(!byAttorneyOrig[origAtt]) byAttorneyOrig[origAtt] = {revenue:0, files:0};
+      byAttorneyOrig[origAtt].revenue += fee;
+      byAttorneyOrig[origAtt].files++;
     }
-
+    if(closAtt){
+      if(!byAttorneyClos[closAtt]) byAttorneyClos[closAtt] = {revenue:0, files:0};
+      byAttorneyClos[closAtt].revenue += fee;
+      byAttorneyClos[closAtt].files++;
+    }
     const matter = String(row["Matter"] || "").trim();
-    if(matter && bucket === "New-Matter"){
+    if(matter){
       if(!byMatter[matter]) byMatter[matter] = {revenue:0, files:0};
       byMatter[matter].revenue += fee;
       byMatter[matter].files++;
@@ -378,24 +464,25 @@ function computeStats(rows){
 
   return {
     total, newMatterTotal, files, newMatterFiles,
-    buckets, byMonth, byMonthNewMatter,
-    byAttorney, byMatter, refundList,
-    rows,
+    buckets, byMonth,
+    byAttorneyOrig, byAttorneyClos, byMatter,
+    refundList,
   };
 }
 
 function headlineSection(s, s25){
   const monthsWithData = s.byMonth.filter(v => v > 0).length;
-  const s25MonthsWithData = s25.byMonth ? s25.byMonth.slice(0, monthsWithData).reduce((a,b)=>a+b,0) : 0;
-  const yoyTotal = s25MonthsWithData > 0 ? ((s.total - s25MonthsWithData) / s25MonthsWithData) * 100 : null;
-  const yoyLabel = yoyTotal === null ? "" :
-    `<span class="${yoyTotal>=0?'up':'down'}">${yoyTotal>=0?'▲':'▼'} ${Math.abs(yoyTotal).toFixed(1)}%</span> vs 2025 same period`;
+  const s25Match = s25.byMonth ? s25.byMonth.slice(0, monthsWithData).reduce((a,b)=>a+b,0) : 0;
+  const yoy = s25Match > 0 ? ((s.total - s25Match) / s25Match) * 100 : null;
+  const yoyLabel = yoy === null ? "" :
+    `<span class="${yoy>=0?'up':'down'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy).toFixed(1)}%</span> vs 2025 same period`;
 
+  const pooled = s.total - s.newMatterTotal;
   const newMatterShare = s.total > 0 ? (s.newMatterTotal / s.total * 100).toFixed(1) : "0";
 
   return `<div class="headline">
     <div class="stat hero">
-      <div class="k">Total revenue ${CONFIG.year} YTD</div>
+      <div class="k">${filter ? 'Filtered revenue' : 'Total revenue'} ${CONFIG.year} YTD</div>
       <div class="v">${usd0(s.total)}</div>
       <div class="d">${yoyLabel || `${s.files.toLocaleString()} paid entries`}</div>
     </div>
@@ -406,7 +493,7 @@ function headlineSection(s, s25){
     </div>
     <div class="stat">
       <div class="k">Pooled / pass-through</div>
-      <div class="v">${usd0(s.total - s.newMatterTotal)}</div>
+      <div class="v">${usd0(pooled)}</div>
       <div class="d">APP + Reg Agent + Title + Referral</div>
     </div>
   </div>`;
@@ -448,6 +535,10 @@ function thermoSection(s){
     ? `You're <b>ahead of pace</b> by ${usdK(total - expectedByNow)}.`
     : `You're <b>behind pace</b> by ${usdK(expectedByNow - total)}.`;
 
+  const noteWhenFiltered = filter
+    ? `<div style="font-size:.75rem;color:var(--muted);margin-top:5px">Goal is firm-wide; filter narrows the "actual" number.</div>`
+    : '';
+
   return `<div class="thermo">
     <div class="row">
       <div class="goal">${usd0(total)} of ${usd0(CONFIG.yearGoal)} annual goal</div>
@@ -458,6 +549,7 @@ function thermoSection(s){
       <div class="pace-marker" style="left:${paceLeft}%"></div>
     </div>
     <div class="pace">${paceCopy} · Through day ${dayOfYear} of ${CONFIG.year} (${(paceRatio*100).toFixed(0)}% of the year).</div>
+    ${noteWhenFiltered}
   </div>`;
 }
 
@@ -469,13 +561,17 @@ function refundSpotlight(s){
   return `<div class="refund">
     <div class="icon">⚠️</div>
     <div class="body">
-      <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))} this year</b>
+      <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))}${filter?' (in filter)':''}</b>
       <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${latest.name || '—'} · ${latestDate}</small>
     </div>
   </div>`;
 }
 
-function compositionSection(s){
+function compositionSection(){
+  // Composition is always calculated from ALL rows (respecting attorney/matter filter),
+  // but IGNORING viewMode — otherwise "growth mode" would show only one segment.
+  const rows = ROWS.filter(passesFilter);
+  const s = computeStats(rows);
   const total = s.total || 1;
   const segs = SEG_ORDER.map(k => ({
     key:k,
@@ -485,8 +581,8 @@ function compositionSection(s){
   })).filter(x => x.rev > 0);
 
   const stripHtml = segs.map(seg => `
-    <div class="seg" style="background:${SEG_COLORS[seg.key]};flex:${seg.pct}"
-         title="${seg.key}: ${usd0(seg.rev)} (${seg.pct.toFixed(1)}%)">
+    <div class="seg" data-seg="${seg.key}" style="background:${SEG_COLORS[seg.key]};flex:${seg.pct}"
+         title="${seg.key}: ${usd0(seg.rev)} (${seg.pct.toFixed(1)}%) — click to filter">
       ${seg.pct >= 6 ? seg.pct.toFixed(0)+'%' : ''}
     </div>
   `).join("");
@@ -499,10 +595,16 @@ function compositionSection(s){
     </div>
   `).join("");
 
+  const toggle = `
+    <div class="togchip" id="viewToggle">
+      <button data-v="blended" aria-selected="${viewMode==='blended'}">Blended (all fees)</button>
+      <button data-v="growth"  aria-selected="${viewMode==='growth'}">Growth (new-matter only)</button>
+    </div>`;
+
   return `<div class="section">
-    <h2>Revenue composition</h2>
-    <p class="sh">How much of the total is genuine new-matter work vs. pooled or pass-through money. The honest growth number is the gold slice.</p>
-    <div class="comp">${stripHtml}</div>
+    <h2>Revenue composition ${toggle}</h2>
+    <p class="sh">Click any segment to filter the dashboard. The gold slice is your honest growth number — everything else is pooled or pass-through money.</p>
+    <div class="comp" id="compStrip">${stripHtml}</div>
     <div class="comp-legend">${legendHtml}</div>
   </div>`;
 }
@@ -517,13 +619,11 @@ function monthlyTrendSection(s, s25){
     const curH = (cur / maxV) * 130;
     const prevH = (prev / maxV) * 130;
     const yoyPct = prev > 0 ? ((cur-prev)/prev*100).toFixed(1) : null;
-    const tipHtml = `
+    return `<div class="m">
       <span class="tip">
         ${name} · ${CONFIG.year}: ${usdK(cur)}${has25 ? ` · 2025: ${usdK(prev)}` : ''}
         ${yoyPct !== null ? ` (${yoyPct>=0?'+':''}${yoyPct}%)` : ''}
-      </span>`;
-    return `<div class="m">
-      ${tipHtml}
+      </span>
       <div class="bars">
         ${has25 ? `<div class="bar prev" style="height:${prevH}px"></div>` : ''}
         <div class="bar cur" style="height:${curH}px"></div>
@@ -543,28 +643,40 @@ function monthlyTrendSection(s, s25){
 
   return `<div class="section">
     <h2>Monthly trend</h2>
-    <p class="sh">Total fees billed by month. Hover any bar for the exact number.</p>
+    <p class="sh">Total fees billed by month. Hover any bar for the exact number and YoY %.</p>
     ${legendHtml}
     <div class="months">${barsHtml}</div>
   </div>`;
 }
 
-function attorneyAndMatterSection(s, s25){
+function attorneyAndMatterSection(){
+  const rows = getWorkingRows();
+  const rows25 = getWorkingRows25();
+  const s = computeStats(rows);
+  const s25 = computeStats(rows25);
+
   return `<div class="section">
     <h2>Where the money's coming from</h2>
-    <p class="sh">New-matter revenue only — pooled APP / Registered Agent / Title / Referral money excluded so you see real client work.</p>
+    <p class="sh">Click any row to filter the whole dashboard to that person or matter type.</p>
     <div class="cols">
-      <div class="col">${rankedList("Originating attorney", s.byAttorney, s25.byAttorney, true)}</div>
-      <div class="col">${rankedList("Matter type", s.byMatter, s25.byMatter, false)}</div>
+      <div class="col">
+        ${rankedList("Originating attorney", s.byAttorneyOrig, s25.byAttorneyOrig, "attorney_orig")}
+      </div>
+      <div class="col">
+        ${rankedList("Closing attorney", s.byAttorneyClos, s25.byAttorneyClos, "attorney_clos")}
+      </div>
+    </div>
+    <div style="margin-top:22px">
+      ${rankedList("Matter type", s.byMatter, s25.byMatter, "matter", true)}
     </div>
   </div>`;
 }
 
-function rankedList(title, dataMap, data25Map, isAttorney){
+function rankedList(title, dataMap, data25Map, kind, isMatter){
   const rows = Object.entries(dataMap)
     .map(([k, v]) => ({
       key:k,
-      label: isAttorney ? attorneyLabel(k) : k,
+      label: isMatter ? k : attorneyLabel(k),
       revenue: v.revenue,
       files: v.files,
       revenue25: (data25Map && data25Map[k]) ? data25Map[k].revenue : 0,
@@ -579,7 +691,11 @@ function rankedList(title, dataMap, data25Map, isAttorney){
     const yoy = has25 && r.revenue25 > 0 ? ((r.revenue - r.revenue25)/r.revenue25*100).toFixed(1) : null;
     const yoyTag = yoy !== null ?
       `<span class="d" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
-    return `<div class="r">
+    const isActive = filter && filter.kind === kind && filter.value === r.key;
+    // For attorney filter kinds, we normalize the value to the UPPERCASE key.
+    // For matter, we keep it as-is.
+    const filterVal = isMatter ? r.key : r.key.toUpperCase();
+    return `<div class="r ${isActive?'active':''}" data-kind="${kind}" data-val="${filterVal}">
       <span class="lbl">${r.label}<span class="files">· ${r.files}</span></span>
       <span class="v">${usd0(r.revenue)}</span>
       <span class="d">${pct}%</span>
@@ -589,13 +705,13 @@ function rankedList(title, dataMap, data25Map, isAttorney){
 
   return `<div>
     <b style="color:var(--navy);font-size:.95rem">${title}</b>
-    <div class="rank">${html || '<div style="color:var(--muted);padding:14px 4px">No entries yet.</div>'}</div>
+    <div class="rank">${html || '<div style="color:var(--muted);padding:14px 4px">No entries.</div>'}</div>
   </div>`;
 }
 
-function recentBigSection(){
-  const recent = ROWS
-    .filter(r => classify(r) === "New-Matter" && num(r["Fee Billed"]) > 0)
+function recentBigSection(rows){
+  const recent = rows
+    .filter(r => num(r["Fee Billed"]) > 0)
     .sort((a,b) => num(b["Fee Billed"]) - num(a["Fee Billed"]))
     .slice(0, 10);
 
@@ -610,9 +726,9 @@ function recentBigSection(){
   }).join("");
 
   return `<div class="section">
-    <h2>Top 10 new-matter entries this year</h2>
-    <p class="sh">The biggest single client fees in ${CONFIG.year}.</p>
-    <div class="strip">${chips || '<div style="color:var(--muted);padding:14px 4px">No entries yet.</div>'}</div>
+    <h2>Top 10 entries ${filter?'(filtered)':`in ${CONFIG.year}`}</h2>
+    <p class="sh">The biggest single fees${filter?' in the current filter':' this year'}.</p>
+    <div class="strip">${chips || '<div style="color:var(--muted);padding:14px 4px">No entries.</div>'}</div>
   </div>`;
 }
 
@@ -621,6 +737,52 @@ function footerNote(){
     Data pulled live from the <b>${CONFIG.year} Clients</b> sheet. Refresh to update.
     &nbsp;·&nbsp; Goal: <b>${usd0(CONFIG.yearGoal)}</b>
   </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Interactions — everything that reacts to a click
+// ---------------------------------------------------------------------------
+
+function wireInteractions(){
+  // Ranked-list rows -> set filter
+  document.querySelectorAll(".rank .r").forEach(el => {
+    el.onclick = () => {
+      const kind = el.getAttribute("data-kind");
+      const val  = el.getAttribute("data-val");
+      // Toggle: clicking the active one clears it
+      if(filter && filter.kind === kind && filter.value === val){
+        filter = null;
+      } else {
+        filter = { kind, value: val };
+      }
+      render();
+    };
+  });
+
+  // Composition strip -> filter by segment
+  document.querySelectorAll("#compStrip .seg").forEach(el => {
+    el.onclick = () => {
+      const seg = el.getAttribute("data-seg");
+      if(filter && filter.kind === "segment" && filter.value === seg){
+        filter = null;
+      } else {
+        filter = { kind:"segment", value:seg };
+      }
+      render();
+    };
+  });
+
+  // View mode toggle (blended / growth)
+  document.querySelectorAll("#viewToggle button").forEach(b => {
+    b.onclick = () => {
+      viewMode = b.getAttribute("data-v");
+      render();
+    };
+  });
+
+  // Clear filter pill
+  const clear = document.getElementById("clearFilter");
+  if(clear) clear.onclick = () => { filter = null; render(); };
 }
 </script>
 </body>
