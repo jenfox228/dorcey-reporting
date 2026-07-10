@@ -236,7 +236,8 @@
 // DORCEY REVENUE PULSE — live dashboard.
 // July 2026 expansion: avg-fee matrix (category × attorney), revenue by
 // office, referral-source dollars, top referrers, new-vs-existing client
-// mix. All sections respect the global click-to-filter.
+// mix. Ranked lists show same-period 2025 dollars ('25 YTD) for fair
+// comparison. All sections respect the global click-to-filter.
 // Source: /api/revenue-feed → the "2026 Clients" tab.
 // ---------------------------------------------------------------------------
 
@@ -410,6 +411,26 @@ function getWorkingRows25(){
   return ROWS_2025.filter(r => passesFilter(r) && passesViewMode(r));
 }
 
+// Same-period trim: keep only 2025 rows from months that 2026 already has
+// data for, so "'25 YTD" comparisons are apples-to-apples. The cutoff comes
+// from the UNFILTERED 2026 data so it stays stable under any filter.
+function ytdCutoffMonth(){
+  let max = -1;
+  for(const r of ROWS){
+    const mi = monthIndex(r);
+    if(mi !== null && mi > max) max = mi;
+  }
+  return max;
+}
+function ytd25(rows25){
+  const cutoff = ytdCutoffMonth();
+  if(cutoff < 0) return rows25;
+  return rows25.filter(r => {
+    const mi = monthIndex(r);
+    return mi !== null && mi <= cutoff;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
@@ -448,7 +469,8 @@ function render(){
   const rows   = getWorkingRows();
   const rows25 = getWorkingRows25();
   const stats   = computeStats(rows);
-  const stats25 = computeStats(rows25);
+  const stats25 = computeStats(rows25);               // full-year 2025 (monthly trend, headline)
+  const stats25Ytd = computeStats(ytd25(rows25));     // same-period 2025 ('25 YTD tags)
 
   const label = filter ? filterLabel() : `${CONFIG.year} · ${ROWS.length.toLocaleString()} paid entries`;
   document.getElementById("periodLabel").textContent = label;
@@ -463,8 +485,8 @@ function render(){
     monthlyTrendSection(stats, stats25),
     attorneyAndMatterSection(),
     avgFeeMatrixSection(),
-    officeSection(stats, stats25),
-    referralSection(stats, stats25),
+    officeSection(stats, stats25Ytd),
+    referralSection(stats, stats25Ytd),
     clientMixSection(),
     recentEntriesSection(rows),
     footerNote(),
@@ -763,7 +785,7 @@ function attorneyAndMatterSection(){
   const rows = getWorkingRows();
   const rows25 = getWorkingRows25();
   const s = computeStats(rows);
-  const s25 = computeStats(rows25);
+  const s25 = computeStats(ytd25(rows25)); // same-period 2025 for fair '25 YTD tags
 
   // APP (bulk) already shows in the Revenue composition strip — leaving it in
   // the attorney lists would double-bill it visually. Real names only here.
@@ -809,10 +831,10 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
 
   const html = rows.map(r => {
     const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
-    // Show last year's dollars, not a percentage — 2026 is a partial year, so
-    // a %-change vs full-year 2025 reads as a sea of red. Josh does the math.
+    // Show last year's SAME-PERIOD dollars, not a percentage — so the
+    // comparison answers "am I ahead of last year's pace?" Josh does the math.
     const prevTag = has25 && r.revenue25 > 0 ?
-      `<span class="d" title="Full-year 2025 total">'25: ${usdK(r.revenue25)}</span>` : '';
+      `<span class="d" title="2025, same months as current ${CONFIG.year} data">'25 YTD: ${usdK(r.revenue25)}</span>` : '';
     const isActive = filter && filter.kind === kind && filter.value === r.key;
     // For attorney filter kinds, we normalize the value to the UPPERCASE key.
     // For raw-key lists (matter, category, refsource), we keep it as-is.
