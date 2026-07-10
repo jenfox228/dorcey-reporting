@@ -153,6 +153,23 @@
   .chip .name{color:var(--ink)}
   .chip .date{color:var(--muted);font-size:.72rem}
 
+  /* Latest entries ledger (searchable, scrollable) */
+  .esearch{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;
+    font:500 .9rem "Libre Franklin",sans-serif;background:var(--parchment);margin:4px 0 10px;outline:none}
+  .esearch:focus{border-color:var(--gold);background:#fff}
+  .elist{max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+  .erow{display:grid;grid-template-columns:92px 1.2fr 1fr 52px 100px;gap:10px;padding:8px 12px;
+    border-bottom:1px dashed var(--line);font-size:.85rem;align-items:center}
+  .erow:last-child{border-bottom:0}
+  .erow:nth-child(even){background:#faf7ef}
+  .erow .edate{color:var(--muted);font-size:.74rem;white-space:nowrap}
+  .erow .ename{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .erow .ematter{color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .erow .eatt{color:var(--muted);font-size:.74rem;font-weight:700}
+  .erow .efee{text-align:right;font-weight:700;color:var(--navy);white-space:nowrap}
+  .erow .efee.neg{color:var(--down)}
+  .ecount{font-size:.75rem;color:var(--muted);margin-top:8px;text-align:right}
+
   /* Refund spotlight */
   .refund{background:linear-gradient(120deg,#fdefe8,#f7d9cc);border:1px solid #e8b8a2;
     color:#7a2f0f;border-radius:14px;padding:16px 20px;margin-bottom:22px;
@@ -206,6 +223,8 @@
     .cols3{grid-template-columns:1fr}
     .cols3 .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
     .grow{grid-template-columns:110px 1fr 48px}
+    .erow{grid-template-columns:78px 1fr 90px}
+    .erow .ematter, .erow .eatt{display:none}
   }
 </style>
 </head>
@@ -469,7 +488,7 @@ function render(){
     referralSection(stats, stats25),
     clientMixSection(),
     gradeSection(),
-    recentBigSection(rows),
+    recentEntriesSection(rows),
     footerNote(),
   ].join("");
 
@@ -1147,26 +1166,37 @@ function gradeSection(){
   </div>`;
 }
 
-function recentBigSection(rows){
-  const recent = rows
-    .filter(r => num(r["Fee Billed"]) > 0)
-    .sort((a,b) => num(b["Fee Billed"]) - num(a["Fee Billed"]))
-    .slice(0, 10);
+function recentEntriesSection(rows){
+  // Newest-first ledger of every entry in the current view, with instant
+  // search — so Josh can look up a client without leaving Pulse.
+  const entries = rows
+    .filter(r => !(r["Fee Billed"] === null || r["Fee Billed"] === undefined || r["Fee Billed"] === ""))
+    .map(r => ({
+      fee: num(r["Fee Billed"]),
+      client: String(r["Client"] || "—").trim() || "—",
+      matter: String(r["Matter"] || "").trim(),
+      att: String(r["Closing Attorney"] || "").trim().toUpperCase(),
+      date: String(r["_date"] || r["Month"] || "").slice(0,10),
+    }))
+    .sort((a,b) => String(b.date).localeCompare(String(a.date)));
 
-  const chips = recent.map(r => {
-    const date = r["_date"] || r["Month"] || "";
-    const dateStr = date ? String(date).slice(0,10) : "";
-    return `<span class="chip">
-      <span class="amt">${usd0(num(r["Fee Billed"]))}</span>
-      <span class="name">${esc(r["Client"] || '—')}</span>
-      <span class="date">${dateStr}</span>
-    </span>`;
+  const rowsHtml = entries.map(e => {
+    const hay = `${e.client} ${e.matter} ${e.att} ${attorneyLabel(e.att)} ${e.date}`.toLowerCase();
+    return `<div class="erow" data-search="${esc(hay)}">
+      <span class="edate">${esc(e.date || '—')}</span>
+      <span class="ename" title="${esc(e.client)}">${esc(e.client)}</span>
+      <span class="ematter" title="${esc(e.matter)}">${esc(e.matter)}</span>
+      <span class="eatt" title="${esc(attorneyLabel(e.att))}">${esc(e.att)}</span>
+      <span class="efee ${e.fee < 0 ? 'neg' : ''}">${usd0(e.fee)}</span>
+    </div>`;
   }).join("");
 
   return `<div class="section">
-    <h2>Top 10 entries ${filter?'(filtered)':`in ${CONFIG.year}`}</h2>
-    <p class="sh">The biggest single fees${filter?' in the current filter':' this year'}.</p>
-    <div class="strip">${chips || '<div style="color:var(--muted);padding:14px 4px">No entries.</div>'}</div>
+    <h2>Latest entries ${filter ? '(filtered)' : `in ${CONFIG.year}`}</h2>
+    <p class="sh">Newest first. Type a client, matter, or attorney to jump straight to them — scroll for more.</p>
+    <input id="entrySearch" class="esearch" type="text" placeholder="Search client, matter, or attorney…" autocomplete="off" />
+    <div class="elist" id="entryList">${rowsHtml || '<div style="color:var(--muted);padding:14px">No entries.</div>'}</div>
+    <div class="ecount" id="entryCount">Showing ${entries.length.toLocaleString()} entries</div>
   </div>`;
 }
 
@@ -1243,6 +1273,27 @@ function wireInteractions(){
   // Clear filter pill
   const clear = document.getElementById("clearFilter");
   if(clear) clear.onclick = () => { filter = null; render(); };
+
+  // Latest-entries search — filters rows in place (no re-render, so the
+  // input keeps focus while typing).
+  const search = document.getElementById("entrySearch");
+  if(search){
+    const rows = document.querySelectorAll("#entryList .erow");
+    const count = document.getElementById("entryCount");
+    const total = rows.length;
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(el => {
+        const hit = !q || (el.getAttribute("data-search") || "").includes(q);
+        el.style.display = hit ? "" : "none";
+        if(hit) shown++;
+      });
+      count.textContent = q
+        ? `Showing ${shown.toLocaleString()} of ${total.toLocaleString()} entries`
+        : `Showing ${total.toLocaleString()} entries`;
+    };
+  }
 }
 </script>
 </body>
