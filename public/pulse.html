@@ -194,18 +194,6 @@
   table.matrix td.allcol, table.matrix th.allcol{border-left:1px solid var(--line);font-weight:700;color:var(--navy)}
   table.matrix tr.totrow td{border-top:2px solid var(--line);font-weight:700;color:var(--navy)}
 
-  /* Grade bars */
-  .grow{display:grid;grid-template-columns:170px 1fr 56px;gap:10px;align-items:center;
-    padding:6px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
-  .grow:last-child{border-bottom:0}
-  .grow .glbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
-  .grow .gpct{text-align:right;font-weight:700;color:var(--navy);font-size:.8rem}
-  .gbar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#f0e8d3}
-  .gbar .gseg{height:100%}
-  .glegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-bottom:10px}
-  .glegend .item{display:flex;align-items:center;gap:6px}
-  .glegend .swatch{width:12px;height:12px;border-radius:3px}
-
   /* Mix header chips */
   .mixchips{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .mixchip{background:#faf7ef;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:.85rem}
@@ -222,7 +210,6 @@
     .cols .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
     .cols3{grid-template-columns:1fr}
     .cols3 .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
-    .grow{grid-template-columns:110px 1fr 48px}
     .erow{grid-template-columns:78px 1fr 90px}
     .erow .ematter, .erow .eatt{display:none}
   }
@@ -249,8 +236,8 @@
 // DORCEY REVENUE PULSE — live dashboard.
 // July 2026 expansion: avg-fee matrix (category × attorney), revenue by
 // office, referral-source dollars, top referrers, new-vs-existing client
-// mix, and grade distribution. All sections respect the global
-// click-to-filter. Source: /api/revenue-feed → the "2026 Clients" tab.
+// mix. All sections respect the global click-to-filter.
+// Source: /api/revenue-feed → the "2026 Clients" tab.
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
@@ -267,10 +254,6 @@ const SEG_COLORS = {
   "Referral Income":    "#b07f5a",
 };
 const SEG_ORDER = ["New-Matter","APP","Registered Agent","Title Pass-through","Referral Income"];
-
-// Grade palette — A is money, D is a problem.
-const GRADE_COLORS = { "A":"#2d6a4f", "B":"#c6a04e", "C":"#d98e32", "D":"#9b2335", "F":"#6b1626" };
-const GRADE_ORDER = ["A","B","C","D","F"];
 
 // Client-mix palette
 const MIX_COLORS = { "New":"#c6a04e", "Existing":"#3f6184", "Other":"#c7cfdd" };
@@ -362,12 +345,6 @@ function catOf(row){ return String(row["Category"] || "").trim() || "Uncategoriz
 function branchOf(row){ return String(row["Branch"] || "").trim() || "Unassigned"; }
 function refSourceOf(row){ return String(row["Referral Source"] || "").trim() || "Unknown"; }
 function refNameOf(row){ return String(row["Referral Name"] || "").trim(); }
-function gradeOf(row){
-  const g = String(row["Grade"] || "").trim().toUpperCase();
-  if(!g) return null;
-  const c = g[0];
-  return GRADE_ORDER.includes(c) ? c : null;
-}
 function clientTypeBucket(row){
   const s = String(row["Client Type"] || "").trim().toLowerCase();
   if(!s) return "Other";
@@ -489,7 +466,6 @@ function render(){
     officeSection(stats, stats25),
     referralSection(stats, stats25),
     clientMixSection(),
-    gradeSection(),
     recentEntriesSection(rows),
     footerNote(),
   ].join("");
@@ -833,18 +809,19 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
 
   const html = rows.map(r => {
     const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
-    const yoy = has25 && r.revenue25 > 0 ? ((r.revenue - r.revenue25)/r.revenue25*100).toFixed(1) : null;
-    const yoyTag = yoy !== null ?
-      `<span class="d" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
+    // Show last year's dollars, not a percentage — 2026 is a partial year, so
+    // a %-change vs full-year 2025 reads as a sea of red. Josh does the math.
+    const prevTag = has25 && r.revenue25 > 0 ?
+      `<span class="d" title="Full-year 2025 total">'25: ${usdK(r.revenue25)}</span>` : '';
     const isActive = filter && filter.kind === kind && filter.value === r.key;
     // For attorney filter kinds, we normalize the value to the UPPERCASE key.
-    // For raw-key lists (matter, category, branch, refsource), we keep it as-is.
+    // For raw-key lists (matter, category, refsource), we keep it as-is.
     const filterVal = isRawKey ? r.key : r.key.toUpperCase();
     return `<div class="r ${isActive?'active':''}" data-kind="${kind}" data-val="${esc(filterVal)}">
       <span class="lbl">${esc(r.label)}<span class="files">· ${r.files}</span></span>
       <span class="v">${usd0(r.revenue)}</span>
       <span class="d">${pct}%</span>
-      ${yoyTag}
+      ${prevTag}
     </div>`;
   }).join("");
 
@@ -1093,77 +1070,6 @@ function clientMixSection(){
     <p class="sh">Is growth coming from new business, or from mining the base? Gold is new-client revenue; navy is existing. Hover any month for the split.</p>
     <div class="mixchips">${chips}</div>
     <div class="months" style="height:190px">${barsHtml}</div>
-  </div>`;
-}
-
-// ---------------------------------------------------------------------------
-// NEW · Grade distribution — by closing attorney and by referral source
-// ---------------------------------------------------------------------------
-
-function gradeSection(){
-  const rows = getWorkingRows().filter(r => num(r["Fee Billed"]) > 0);
-  const graded = rows.filter(r => gradeOf(r));
-
-  if(!graded.length){
-    return `<div class="section">
-      <h2>Client grade distribution</h2>
-      <p class="sh">No graded entries in this view — check that the Grade column is populated on the sheet.</p>
-    </div>`;
-  }
-
-  function dist(fnLabel, minFiles, limit){
-    const m = {};
-    for(const r of graded){
-      const k = fnLabel(r);
-      const g = gradeOf(r);
-      (m[k] ??= {total:0}); (m[k][g] ??= 0);
-      m[k][g]++; m[k].total++;
-    }
-    return Object.entries(m)
-      .map(([k,v]) => ({key:k, ...v}))
-      .filter(x => x.total >= minFiles)
-      .sort((a,b)=>b.total-a.total)
-      .slice(0, limit);
-  }
-
-  function bars(items){
-    return items.map(it => {
-      const segs = GRADE_ORDER.map(g => {
-        const n = it[g] || 0;
-        if(!n) return "";
-        return `<div class="gseg" style="width:${(n/it.total*100)}%;background:${GRADE_COLORS[g]}"
-          title="${g}: ${n} of ${it.total} (${(n/it.total*100).toFixed(0)}%)"></div>`;
-      }).join("");
-      const pctA = ((it["A"]||0)/it.total*100).toFixed(0);
-      return `<div class="grow">
-        <span class="glbl" title="${esc(it.key)}">${esc(it.key)}<span class="files" style="font-size:.7rem;color:#999"> · ${it.total}</span></span>
-        <div class="gbar">${segs}</div>
-        <span class="gpct">${pctA}% A</span>
-      </div>`;
-    }).join("");
-  }
-
-  const byAtt = dist(r => attorneyLabel(r["Closing Attorney"]), 3, 12);
-  const bySrc = dist(r => refSourceOf(r), 3, 10);
-
-  const legend = `<div class="glegend">${GRADE_ORDER.map(g =>
-    `<div class="item"><span class="swatch" style="background:${GRADE_COLORS[g]}"></span>${g}</div>`).join("")}
-    <div class="item" style="margin-left:auto">${graded.length} graded entries</div></div>`;
-
-  return `<div class="section">
-    <h2>Client grade distribution</h2>
-    <p class="sh">Do certain attorneys or referral sources attract A-clients? 100% stacked by grade; slices with fewer than 3 graded files are hidden. Hover a bar segment for counts.</p>
-    ${legend}
-    <div class="cols">
-      <div class="col">
-        <b style="color:var(--navy);font-size:.95rem">By closing attorney</b>
-        ${bars(byAtt) || '<div style="color:var(--muted);padding:14px 4px">Not enough graded files.</div>'}
-      </div>
-      <div class="col">
-        <b style="color:var(--navy);font-size:.95rem">By referral source</b>
-        ${bars(bySrc) || '<div style="color:var(--muted);padding:14px 4px">Not enough graded files.</div>'}
-      </div>
-    </div>
   </div>`;
 }
 
