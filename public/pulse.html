@@ -247,9 +247,9 @@
 <script>
 // ---------------------------------------------------------------------------
 // DORCEY REVENUE PULSE — live dashboard.
-// July 2026 expansion: avg-fee matrix (category × attorney), refund
-// diagnostics, referral-source dollars, top referrers, new-vs-existing
-// client mix, and grade distribution. All sections respect the global
+// July 2026 expansion: avg-fee matrix (category × attorney), revenue by
+// office, referral-source dollars, top referrers, new-vs-existing client
+// mix, and grade distribution. All sections respect the global
 // click-to-filter. Source: /api/revenue-feed → the "2026 Clients" tab.
 // ---------------------------------------------------------------------------
 
@@ -298,7 +298,7 @@ let ROWS_2025 = [];
 
 // UI state — persisted across renders
 let viewMode = "blended";        // "blended" = all fees, "growth" = new-matter only
-let filter   = null;             // {kind:"attorney"|"matter"|"segment"|"category"|"refsource", value:"..."}
+let filter   = null;             // {kind:"attorney"|"matter"|"segment"|"category"|"branch"|"refsource", value:"..."}
 let matrixYear = CONFIG.year;    // avg-fee matrix year toggle
 let matrixRole = "clos";         // "clos" | "orig" — which attorney column the matrix uses
 
@@ -359,6 +359,7 @@ function monthIndex(row){
 
 // Column readers — one place to define how we interpret the sheet's columns.
 function catOf(row){ return String(row["Category"] || "").trim() || "Uncategorized"; }
+function branchOf(row){ return String(row["Branch"] || "").trim() || "Unassigned"; }
 function refSourceOf(row){ return String(row["Referral Source"] || "").trim() || "Unknown"; }
 function refNameOf(row){ return String(row["Referral Name"] || "").trim(); }
 function gradeOf(row){
@@ -414,6 +415,7 @@ function passesFilter(row){
   if(filter.kind === "matter")       return matter === filter.value;
   if(filter.kind === "segment")      return seg === filter.value;
   if(filter.kind === "category")     return catOf(row) === filter.value;
+  if(filter.kind === "branch")       return branchOf(row) === filter.value;
   if(filter.kind === "refsource")    return refSourceOf(row) === filter.value;
   return true;
 }
@@ -484,7 +486,7 @@ function render(){
     monthlyTrendSection(stats, stats25),
     attorneyAndMatterSection(),
     avgFeeMatrixSection(),
-    refundDiagnosticsSection(),
+    officeSection(stats, stats25),
     referralSection(stats, stats25),
     clientMixSection(),
     gradeSection(),
@@ -504,13 +506,14 @@ function filterLabel(){
   if(filter.kind === "matter")    return `Filtered to matter: ${filter.value}`;
   if(filter.kind === "segment")   return `Filtered to segment: ${filter.value}`;
   if(filter.kind === "category")  return `Filtered to category: ${filter.value}`;
+  if(filter.kind === "branch")    return `Filtered to office: ${filter.value}`;
   if(filter.kind === "refsource") return `Filtered to referral source: ${filter.value}`;
   return "Filtered";
 }
 
 function filterBar(){
   if(!filter){
-    return `<div class="filter-bar"><span class="filter-hint">💡 Tip: click any attorney, matter, category, segment, or referral source to filter the whole dashboard.</span></div>`;
+    return `<div class="filter-bar"><span class="filter-hint">💡 Tip: click any attorney, matter, category, office, segment, or referral source to filter the whole dashboard.</span></div>`;
   }
   return `<div class="filter-bar">
     <span class="filter-pill" id="clearFilter">${esc(filterLabel())} <span class="x">×</span></span>
@@ -527,6 +530,7 @@ function computeStats(rows){
   const byAttorneyClos = {};
   const byMatter = {};
   const byCategory = {};
+  const byBranch = {};
   const byRefSource = {};
 
   let total = 0, files = 0, newMatterTotal = 0, newMatterFiles = 0;
@@ -574,6 +578,11 @@ function computeStats(rows){
     byCategory[cat].revenue += fee;
     byCategory[cat].files++;
 
+    const br = branchOf(row);
+    if(!byBranch[br]) byBranch[br] = {revenue:0, files:0};
+    byBranch[br].revenue += fee;
+    byBranch[br].files++;
+
     const rs = refSourceOf(row);
     if(!byRefSource[rs]) byRefSource[rs] = {revenue:0, files:0};
     byRefSource[rs].revenue += fee;
@@ -590,7 +599,7 @@ function computeStats(rows){
   return {
     total, newMatterTotal, files, newMatterFiles,
     buckets, byMonth,
-    byAttorneyOrig, byAttorneyClos, byMatter, byCategory, byRefSource,
+    byAttorneyOrig, byAttorneyClos, byMatter, byCategory, byBranch, byRefSource,
     refundList,
   };
 }
@@ -687,7 +696,7 @@ function refundSpotlight(s){
     <div class="icon">⚠️</div>
     <div class="body">
       <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))}${filter?' (in filter)':''}</b>
-      <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${esc(latest.name || '—')} · ${latestDate} · Full breakdown in the Refund Diagnostics section below.</small>
+      <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${esc(latest.name || '—')} · ${latestDate}</small>
     </div>
   </div>`;
 }
@@ -780,15 +789,19 @@ function attorneyAndMatterSection(){
   const s = computeStats(rows);
   const s25 = computeStats(rows25);
 
+  // APP (bulk) already shows in the Revenue composition strip — leaving it in
+  // the attorney lists would double-bill it visually. Real names only here.
+  function noApp(map){ const out = {...map}; delete out["APP"]; return out; }
+
   return `<div class="section">
     <h2>Where the money's coming from</h2>
     <p class="sh">Click any row to filter the whole dashboard to that person, matter type, or category.</p>
     <div class="cols">
       <div class="col">
-        ${rankedList("Originating attorney", s.byAttorneyOrig, s25.byAttorneyOrig, "attorney_orig")}
+        ${rankedList("Originating attorney", noApp(s.byAttorneyOrig), noApp(s25.byAttorneyOrig), "attorney_orig")}
       </div>
       <div class="col">
-        ${rankedList("Closing attorney", s.byAttorneyClos, s25.byAttorneyClos, "attorney_clos")}
+        ${rankedList("Closing attorney", noApp(s.byAttorneyClos), noApp(s25.byAttorneyClos), "attorney_clos")}
       </div>
     </div>
     <div class="cols" style="margin-top:22px">
@@ -825,7 +838,7 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
       `<span class="d" style="color:${yoy>=0?'var(--up)':'var(--down)'}">${yoy>=0?'▲':'▼'} ${Math.abs(yoy)}%</span>` : '';
     const isActive = filter && filter.kind === kind && filter.value === r.key;
     // For attorney filter kinds, we normalize the value to the UPPERCASE key.
-    // For raw-key lists (matter, category, refsource), we keep it as-is.
+    // For raw-key lists (matter, category, branch, refsource), we keep it as-is.
     const filterVal = isRawKey ? r.key : r.key.toUpperCase();
     return `<div class="r ${isActive?'active':''}" data-kind="${kind}" data-val="${esc(filterVal)}">
       <span class="lbl">${esc(r.label)}<span class="files">· ${r.files}</span></span>
@@ -932,61 +945,49 @@ function avgFeeMatrixSection(){
 }
 
 // ---------------------------------------------------------------------------
-// NEW · Refund diagnostics — dollars and rate by attorney / category / source
+// NEW · Revenue by office — total dollars by branch location
 // ---------------------------------------------------------------------------
 
-function refundDiagnosticsSection(){
-  const rows = getWorkingRows();
-  const refunds = rows.filter(r => num(r["Fee Billed"]) < 0);
-  if(!refunds.length){
+const BRANCH_PALETTE = ["#c6a04e","#3f6184","#6e8aa6","#9aae8e","#b07f5a","#8a6b9e","#5c8a8a"];
+
+function officeSection(s, s25){
+  const branches = Object.entries(s.byBranch)
+    .map(([k,v]) => ({key:k, revenue:v.revenue, files:v.files}))
+    .sort((a,b)=>b.revenue-a.revenue);
+
+  if(!branches.length){
     return `<div class="section">
-      <h2>Refund diagnostics</h2>
-      <p class="sh">No refunds in the current view. 🎉</p>
+      <h2>Revenue by office</h2>
+      <p class="sh">No Branch data in this view — check that the Branch column is populated on the sheet.</p>
     </div>`;
   }
 
-  // Slice totals (for rates) and refund aggregates, by three dimensions.
-  function slice(fnLabel){
-    const tot = {}; const ref = {};
-    for(const r of rows){
-      const k = fnLabel(r);
-      (tot[k] ??= 0); tot[k]++;
-      const fee = num(r["Fee Billed"]);
-      if(fee < 0){
-        (ref[k] ??= {dollars:0, count:0});
-        ref[k].dollars += Math.abs(fee); ref[k].count++;
-      }
-    }
-    return Object.entries(ref)
-      .map(([k,v]) => ({key:k, dollars:v.dollars, count:v.count, rate:(v.count/tot[k])*100}))
-      .sort((a,b)=>b.dollars-a.dollars)
-      .slice(0, 6);
-  }
+  const total = branches.reduce((a,b)=>a+b.revenue,0) || 1;
+  const colorOf = {};
+  branches.forEach((b,i) => colorOf[b.key] = BRANCH_PALETTE[i % BRANCH_PALETTE.length]);
 
-  const byAtt = slice(r => attorneyLabel(r["Closing Attorney"]));
-  const byCat = slice(r => catOf(r));
-  const bySrc = slice(r => refSourceOf(r));
+  const stripHtml = branches.filter(b => b.revenue > 0).map(b => {
+    const pct = (b.revenue/total)*100;
+    return `<div class="seg" data-branch="${esc(b.key)}" style="background:${colorOf[b.key]};flex:${pct}"
+      title="${esc(b.key)}: ${usd0(b.revenue)} (${pct.toFixed(1)}%) — click to filter">
+      ${pct >= 8 ? pct.toFixed(0)+'%' : ''}
+    </div>`;
+  }).join("");
 
-  function mini(title, items){
-    const html = items.map(i => `
-      <div class="r static">
-        <span class="lbl">${esc(i.key)}<span class="files">· ${i.count}×</span></span>
-        <span class="v" style="color:var(--down)">-${usd0(i.dollars)}</span>
-        <span class="d">${i.rate.toFixed(1)}% of files</span>
-      </div>`).join("");
-    return `<div class="col"><b style="color:var(--navy);font-size:.95rem">${title}</b>
-      <div class="rank">${html}</div></div>`;
-  }
-
-  const totalDollars = refunds.reduce((a,r)=>a+Math.abs(num(r["Fee Billed"])),0);
+  const legendHtml = branches.map(b => `
+    <div class="item">
+      <span class="swatch" style="background:${colorOf[b.key]}"></span>
+      <b>${esc(b.key)}</b>
+      <span class="amt">${usd0(b.revenue)} · ${((b.revenue/total)*100).toFixed(1)}%</span>
+    </div>`).join("");
 
   return `<div class="section">
-    <h2>Refund diagnostics</h2>
-    <p class="sh">${refunds.length} refund${refunds.length>1?'s':''} · ${usd0(totalDollars)} total${filter?' (in current filter)':''}. Sliced by who closed it, what kind of work it was, and where the client came from. Rate = refunds as a share of that slice's entries.</p>
-    <div class="cols3">
-      ${mini("By closing attorney", byAtt)}
-      ${mini("By category", byCat)}
-      ${mini("By referral source", bySrc)}
+    <h2>Revenue by office</h2>
+    <p class="sh">Total dollars by branch. Click any office — in the strip or the list — to filter the whole dashboard to that location.</p>
+    <div class="comp" id="branchStrip">${stripHtml}</div>
+    <div class="comp-legend">${legendHtml}</div>
+    <div style="margin-top:16px">
+      ${rankedList("By office", s.byBranch, s25.byBranch, "branch", true)}
     </div>
   </div>`;
 }
@@ -1257,6 +1258,19 @@ function wireInteractions(){
         filter = null;
       } else {
         filter = { kind:"segment", value:seg };
+      }
+      render();
+    };
+  });
+
+  // Branch strip -> filter by office
+  document.querySelectorAll("#branchStrip .seg").forEach(el => {
+    el.onclick = () => {
+      const br = el.getAttribute("data-branch");
+      if(filter && filter.kind === "branch" && filter.value === br){
+        filter = null;
+      } else {
+        filter = { kind:"branch", value:br };
       }
       render();
     };
