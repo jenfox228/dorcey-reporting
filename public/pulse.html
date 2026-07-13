@@ -129,19 +129,21 @@
     border-radius:4px 4px 0 0;overflow:hidden}
   .months .m .sbar .sseg{width:100%}
 
-  /* Ranked lists */
+  /* Ranked lists — fixed grid columns so $, %, and '25 always line up,
+     even when a row has no prior-year data. */
   .rank{margin-top:6px}
-  .rank .r{display:flex;justify-content:space-between;align-items:center;padding:7px 4px;
-    border-bottom:1px dashed var(--line);font-size:.92rem;gap:10px;cursor:pointer;
-    border-radius:6px;padding-left:8px;padding-right:8px;transition:background .12s}
+  .rank .r{display:grid;grid-template-columns:minmax(0,1fr) 108px 48px 112px;
+    gap:10px;align-items:center;padding:7px 8px;
+    border-bottom:1px dashed var(--line);font-size:.92rem;cursor:pointer;
+    border-radius:6px;transition:background .12s}
   .rank .r:last-child{border-bottom:0}
   .rank .r:hover{background:var(--parchment)}
   .rank .r.static{cursor:default}
   .rank .r.static:hover{background:transparent}
   .rank .r.active{background:var(--gold-soft);border-left:3px solid var(--gold);padding-left:5px}
-  .rank .r .lbl{flex:1;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap}
-  .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;min-width:50px;white-space:nowrap}
+  .rank .r .lbl{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap;text-align:right}
+  .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap}
   .rank .r .files{font-size:.7rem;color:#999;margin-left:6px}
   .rank .more{font-size:.75rem;color:var(--muted);padding:8px;text-align:center}
 
@@ -212,6 +214,8 @@
     .cols3 .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
     .erow{grid-template-columns:78px 1fr 90px}
     .erow .ematter, .erow .eatt{display:none}
+    .rank .r{grid-template-columns:minmax(0,1fr) 95px 44px}
+    .rank .r .prev25{display:none}
   }
 </style>
 </head>
@@ -237,8 +241,10 @@
 // July 2026 expansion: avg-fee matrix (category × attorney), revenue by
 // office, referral-source dollars, top referrers, new-vs-existing client
 // mix. Ranked lists show same-period 2025 dollars ('25 YTD) for fair
-// comparison. All sections respect the global click-to-filter.
-// Source: /api/revenue-feed → the "2026 Clients" tab.
+// comparison, with fixed grid columns for alignment. ADM (Admin Onboarding)
+// sinks to the bottom of attorney lists; DAD's 2025 comparison is suppressed
+// (closing-attribution methodology changed in 2026). All sections respect
+// the global click-to-filter. Source: /api/revenue-feed → "2026 Clients" tab.
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
@@ -262,7 +268,7 @@ const MIX_COLORS = { "New":"#c6a04e", "Existing":"#3f6184", "Other":"#c7cfdd" };
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // Attorney initials -> friendly name. DLF is the firm "house" (unassigned),
-// NOT an individual attorney.
+// NOT an individual attorney. ADM = Admin Onboarding (rollup, not a person).
 const ATTORNEY_NAMES = {
   "DLF": "House (Dorcey Law Firm)",
   "JOD": "Josh Dorcey",
@@ -273,6 +279,7 @@ const ATTORNEY_NAMES = {
   "BWB": "Brad Butcher",
   "BHB": "Brian Bronsther",
   "DAC": "David Cahoone",
+  "ADM": "Admin Onboarding",
   "APP": "APP (bulk)"
 };
 
@@ -789,17 +796,21 @@ function attorneyAndMatterSection(){
 
   // APP (bulk) already shows in the Revenue composition strip — leaving it in
   // the attorney lists would double-bill it visually. Real names only here.
-  function noApp(map){ const out = {...map}; delete out["APP"]; return out; }
+  // DAD (Doug Dodson) is dropped from the 2025 comparison maps only: the firm
+  // changed closing-attorney attribution in 2026 (Doug now gets credit solely
+  // for his own closings), so his 2025 numbers aren't comparable and would
+  // falsely read as a collapse.
+  function drop(map, keys){ const out = {...map}; keys.forEach(k => delete out[k]); return out; }
 
   return `<div class="section">
     <h2>Where the money's coming from</h2>
     <p class="sh">Click any row to filter the whole dashboard to that person, matter type, or category.</p>
     <div class="cols">
       <div class="col">
-        ${rankedList("Originating attorney", noApp(s.byAttorneyOrig), noApp(s25.byAttorneyOrig), "attorney_orig")}
+        ${rankedList("Originating attorney", drop(s.byAttorneyOrig, ["APP"]), drop(s25.byAttorneyOrig, ["APP","DAD"]), "attorney_orig", false, undefined, ["ADM"])}
       </div>
       <div class="col">
-        ${rankedList("Closing attorney", noApp(s.byAttorneyClos), noApp(s25.byAttorneyClos), "attorney_clos")}
+        ${rankedList("Closing attorney", drop(s.byAttorneyClos, ["APP"]), drop(s25.byAttorneyClos, ["APP","DAD"]), "attorney_clos", false, undefined, ["ADM"])}
       </div>
     </div>
     <div class="cols" style="margin-top:22px">
@@ -813,7 +824,7 @@ function attorneyAndMatterSection(){
   </div>`;
 }
 
-function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
+function rankedList(title, dataMap, data25Map, kind, isRawKey, limit, sinkKeys){
   let rows = Object.entries(dataMap)
     .map(([k, v]) => ({
       key:k,
@@ -824,6 +835,17 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
     }))
     .sort((a,b) => b.revenue - a.revenue);
 
+  // Sink non-person rollup rows (e.g. ADM = Admin Onboarding) to the bottom
+  // so they don't break up the actual attorney rankings. Order within each
+  // group stays revenue-descending.
+  if(sinkKeys && sinkKeys.length){
+    const sunk = new Set(sinkKeys.map(k => String(k).toUpperCase()));
+    rows = [
+      ...rows.filter(r => !sunk.has(String(r.key).toUpperCase())),
+      ...rows.filter(r =>  sunk.has(String(r.key).toUpperCase())),
+    ];
+  }
+
   const total = rows.reduce((a,r)=>a+r.revenue,0);
   const has25 = rows.some(r => r.revenue25 > 0);
   const hiddenCount = limit && rows.length > limit ? rows.length - limit : 0;
@@ -833,8 +855,10 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
     const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
     // Show last year's SAME-PERIOD dollars, not a percentage — so the
     // comparison answers "am I ahead of last year's pace?" Josh does the math.
+    // The span always renders (empty if no data) so grid columns stay aligned.
     const prevTag = has25 && r.revenue25 > 0 ?
-      `<span class="d" title="2025, same months as current ${CONFIG.year} data">'25 YTD: ${usdK(r.revenue25)}</span>` : '';
+      `<span class="d prev25" title="2025, same months as current ${CONFIG.year} data">'25 YTD: ${usdK(r.revenue25)}</span>` :
+      `<span class="d prev25"></span>`;
     const isActive = filter && filter.kind === kind && filter.value === r.key;
     // For attorney filter kinds, we normalize the value to the UPPERCASE key.
     // For raw-key lists (matter, category, refsource), we keep it as-is.
