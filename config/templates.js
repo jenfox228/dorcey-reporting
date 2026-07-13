@@ -21,6 +21,10 @@ export const TEMPLATES = {
   // Josh, Mike, Erica, Kara, Joe. Calendar-heavy Monday, practice-area Friday.
   // Call/meeting fields intentionally KEPT — the firm wants attorney calls
   // tracked. RECONSTRUCTED.
+  // July 2026: Revenue removed from Friday (case managers submit these and
+  // don't have revenue data — Pulse covers revenue from the source sheet).
+  // APP + Review appointments added to Monday to track maintenance-work
+  // calendar load vs. rainmaking time.
   attorney_ep: {
     label: "Estate Planning Attorney",
     family: "A",
@@ -32,6 +36,8 @@ export const TEMPLATES = {
       n("hdd_exe", "HDD + Execution (HDD Exe)"),
       n("cfx", "Changes/Funding/Execution (CFX)"),
       n("exe", "Executions (EXE)"),
+      n("app_appts", "APP Appointments"),
+      n("review_appts", "Review Appointments"),
       n("seminars", "Seminars / speaking"),
       n("coaching", "Coaching sessions"),
       n("breakfast_lunch", "Breakfast / lunch meetings"),
@@ -52,18 +58,20 @@ export const TEMPLATES = {
       n("advanced", "Advanced / Charitable Planning"),
       n("dapt", "DAPT"),
       n("new_engaged", "New clients engaged"),
-      n("revenue", "Revenue closed ($)"),
     ],
   },
 
   // Real Estate Attorney — Brad Butcher. VERIFIED. Attorney area, so the
-  // phone-calls field is kept.
+  // phone-calls field is kept. July 2026: APP + Review appointments added
+  // to Monday (same rainmaking-time tracking as the EP attorneys).
   attorney_realestate: {
     label: "Real Estate Attorney",
     family: "A",
     monday: [
       n("re_closings_scheduled", "Real Estate closings scheduled this week"),
       n("re_new_client_appts", "New Real Estate client appts"),
+      n("app_appts", "APP Appointments"),
+      n("review_appts", "Review Appointments"),
     ],
     friday: [
       n("re_intake_calls", "New Real Estate intake calls"),
