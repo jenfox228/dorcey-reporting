@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dorcey · APP Pulse</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0f1d33; --navy-2:#1b2f4d; --gold:#c6a04e; --gold-soft:#e3cd97;
+    --cream:#f7f3ea; --parchment:#f6f1e4; --ink:#2a2a2a; --muted:#7d7666;
+    --line:#e7e0d2; --up:#2d6a4f; --down:#9b2335; --shadow:0 16px 38px -22px rgba(15,29,51,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:var(--ink)}
+  a{color:inherit}
+
+  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;
+    border-bottom:1px solid rgba(198,160,78,.25)}
+  .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
+    color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent;
+    transition:background .15s,color .15s,border-color .15s}
+  .topnav a:hover{background:#132849;color:#e3cd97}
+  .topnav a.active{color:var(--gold);border-bottom-color:var(--gold);background:#132849}
+  .topnav a .ico{display:block;font-size:1.05rem;margin-bottom:2px}
+
+  header.masthead{background:linear-gradient(155deg,var(--navy),var(--navy-2));color:var(--cream);
+    padding:24px 28px;border-bottom:3px solid var(--gold)}
+  .eyebrow{font-size:.7rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-soft);font-weight:600}
+  .masthead h1{font-family:"Playfair Display",serif;font-weight:700;margin:.15rem 0 .1rem;font-size:1.7rem}
+  .masthead .sub{color:#c7cfdd;font-size:.88rem}
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 20px 60px}
+  .loading{padding:80px;text-align:center;color:var(--muted)}
+  .error{padding:40px;text-align:center;color:var(--down);background:#fff;border-radius:14px;box-shadow:var(--shadow)}
+
+  .filter-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+  .filter-pill{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--navy);
+    padding:8px 14px;border-radius:22px;font-size:.85rem;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+  .filter-pill .x{font-size:1.15rem;line-height:1;font-weight:700}
+  .filter-pill:hover{background:#dcbf7d}
+  .filter-hint{color:var(--muted);font-size:.82rem}
+
+  .headline{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:22px}
+  .headline .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;box-shadow:var(--shadow)}
+  .headline .stat.hero{background:linear-gradient(150deg,var(--navy),var(--navy-2));color:#fff;border-color:var(--navy)}
+  .headline .stat.hero .k{color:var(--gold-soft)}
+  .headline .stat.hero .v{color:#fff}
+  .headline .stat.hero .d{color:#c7cfdd}
+  .headline .stat .k{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .headline .stat .v{font-family:"Playfair Display",serif;font-size:1.9rem;color:var(--navy);line-height:1.05;margin-top:5px}
+  .headline .stat .d{font-size:.82rem;color:var(--muted);margin-top:4px}
+  .headline .stat .d .up{color:var(--up);font-weight:700}
+  .headline .stat .d .down{color:var(--down);font-weight:700}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+  .kpi .k{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .kpi .v{font-family:"Playfair Display",serif;font-size:1.3rem;color:var(--navy);line-height:1.1;margin-top:3px}
+  .kpi .d{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+  .thermo{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;
+    box-shadow:var(--shadow);margin-bottom:22px}
+  .thermo .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+  .thermo .goal{font-weight:700;color:var(--navy);font-size:1rem}
+  .thermo .pct{font-family:"Playfair Display",serif;font-size:1.4rem;color:var(--navy)}
+  .thermo .bar{height:18px;background:#f0e8d3;border-radius:10px;overflow:hidden;position:relative}
+  .thermo .fill{height:100%;background:linear-gradient(90deg,var(--gold),#dcbf7d);transition:width .6s ease-out}
+  .thermo .fill.over{background:linear-gradient(90deg,var(--up),#4a9d70)}
+  .thermo .pace{margin-top:8px;font-size:.85rem;color:var(--muted)}
+  .thermo .pace b{color:var(--navy)}
+
+  .section{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    padding:18px 22px;margin-bottom:22px}
+  .section h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 4px;font-size:1.15rem;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .section .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 12px}
+
+  .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  .comp.clicky{cursor:pointer}
+  .comp .seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.72rem;font-weight:700;
+    min-width:24px;padding:0 6px;text-shadow:0 1px 2px rgba(0,0,0,.2);transition:opacity .15s}
+  .comp.clicky .seg:hover{opacity:.85}
+  .comp-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:.78rem}
+  .comp-legend .item{display:flex;align-items:center;gap:6px;color:var(--ink)}
+  .comp-legend .swatch{width:12px;height:12px;border-radius:3px}
+  .comp-legend .amt{color:var(--muted);margin-left:4px}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .cols .col + .col{border-left:1px dashed var(--line);padding-left:22px}
+  .cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px}
+  .cols3 .col + .col{border-left:1px dashed var(--line);padding-left:22px}
+
+  .months{display:flex;align-items:flex-end;gap:8px;height:180px;margin-top:14px;padding-bottom:20px}
+  .months .m{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
+  .months .m .bars{width:100%;display:flex;gap:2px;align-items:flex-end;height:150px}
+  .months .m .bar{flex:1;border-radius:4px 4px 0 0;transition:height .5s ease-out;min-height:2px}
+  .months .m .bar.cur{background:var(--gold)}
+  .months .m .bar.prev{background:#c7cfdd}
+  .months .m .bar.done{background:var(--up)}
+  .months .m .bar.pend{background:#c6a04e}
+  .months .m .lbl{font-size:.7rem;color:var(--muted);margin-top:6px;font-weight:600}
+  .months .m .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:.72rem;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
+  .months .m:hover .tip{opacity:1}
+  .months-legend{display:flex;gap:14px;font-size:.75rem;color:var(--muted);margin-top:-8px;justify-content:flex-end;flex-wrap:wrap}
+  .months-legend .item{display:flex;align-items:center;gap:6px}
+  .months-legend .swatch{width:14px;height:12px;border-radius:2px}
+  .months .m .sbar{width:70%;max-width:34px;display:flex;flex-direction:column-reverse;
+    border-radius:4px 4px 0 0;overflow:hidden}
+  .months .m .sbar .sseg{width:100%}
+
+  .rank{margin-top:6px}
+  .rank .r{display:grid;grid-template-columns:minmax(0,1fr) 108px 48px;
+    gap:10px;align-items:center;padding:7px 8px;
+    border-bottom:1px dashed var(--line);font-size:.92rem;cursor:pointer;
+    border-radius:6px;transition:background .12s}
+  .rank .r:last-child{border-bottom:0}
+  .rank .r:hover{background:var(--parchment)}
+  .rank .r.static{cursor:default}
+  .rank .r.static:hover{background:transparent}
+  .rank .r.active{background:var(--gold-soft);border-left:3px solid var(--gold);padding-left:5px}
+  .rank .r .lbl{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap;text-align:right}
+  .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap}
+  .rank .r .files{font-size:.7rem;color:#999;margin-left:6px}
+  .rank .more{font-size:.75rem;color:var(--muted);padding:8px;text-align:center}
+
+  .mixchips{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .mixchip{background:#faf7ef;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:.85rem}
+  .mixchip .amt{font-weight:700;color:var(--navy);display:block;font-size:1rem}
+  .mixchip small{color:var(--muted)}
+
+  .alertbox{background:linear-gradient(120deg,#fdefe8,#f7d9cc);border:1px solid #e8b8a2;
+    color:#7a2f0f;border-radius:14px;padding:16px 20px;margin-bottom:22px;
+    display:flex;align-items:center;gap:14px;box-shadow:var(--shadow)}
+  .alertbox .icon{font-size:1.6rem}
+  .alertbox .body{flex:1}
+  .alertbox .body b{display:block;font-size:1rem;color:#7a2f0f}
+  .alertbox .body small{color:#8a4020}
+
+  .esearch{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;
+    font:500 .9rem "Libre Franklin",sans-serif;background:var(--parchment);margin:4px 0 10px;outline:none}
+  .esearch:focus{border-color:var(--gold);background:#fff}
+  .elist{max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+  .erow{display:grid;grid-template-columns:1.3fr 1fr 52px 92px 92px 120px;gap:10px;padding:8px 12px;
+    border-bottom:1px dashed var(--line);font-size:.85rem;align-items:center}
+  .erow:last-child{border-bottom:0}
+  .erow:nth-child(even){background:#faf7ef}
+  .erow .ename{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .erow .ecity{color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .erow .eatt{color:var(--muted);font-size:.74rem;font-weight:700}
+  .erow .emo{color:var(--muted);font-size:.74rem;white-space:nowrap}
+  .erow .estat{font-size:.7rem;font-weight:700;text-align:right;white-space:nowrap}
+  .erow .estat.done{color:var(--up)}
+  .erow .estat.due{color:#a4680f}
+  .erow .estat.new{color:#3f6184}
+  .erow .estat.over{color:var(--down)}
+  .ecount{font-size:.75rem;color:var(--muted);margin-top:8px;text-align:right}
+
+  .risklist{border:1px solid var(--line);border-radius:10px;max-height:320px;overflow-y:auto}
+  .riskrow{display:grid;grid-template-columns:1.2fr 52px 90px minmax(0,1.6fr);gap:10px;padding:8px 12px;
+    border-bottom:1px dashed var(--line);font-size:.83rem;align-items:center}
+  .riskrow:last-child{border-bottom:0}
+  .riskrow:nth-child(even){background:#faf7ef}
+  .riskrow .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .riskrow .att{color:var(--muted);font-size:.74rem;font-weight:700}
+  .riskrow .amt{font-weight:700;color:var(--navy);text-align:right;white-space:nowrap}
+  .riskrow .why{color:var(--muted);font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .footer-note{text-align:center;font-size:.75rem;color:var(--muted);margin-top:24px}
+  .footer-note b{color:var(--navy)}
+
+  @media(max-width:900px){
+    .headline{grid-template-columns:1fr}
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .cols{grid-template-columns:1fr}
+    .cols .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
+    .cols3{grid-template-columns:1fr}
+    .cols3 .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
+    .erow{grid-template-columns:1fr 52px 120px}
+    .erow .ecity,.erow .emo{display:none}
+    .riskrow{grid-template-columns:1fr 52px 90px}
+    .riskrow .why{display:none}
+  }
+</style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/admin"><span class="ico">⚙️</span>Admin</a>
+    <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
+    <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+    <a href="/app" class="active"><span class="ico">🧭</span>APP</a>
+  </nav>
+  <header class="masthead">
+    <div class="eyebrow">Dorcey Law Firm · Auto Pilot Program</div>
+    <h1>APP Pulse</h1>
+    <div class="sub" id="periodLabel">Loading membership…</div>
+  </header>
+
+  <div class="wrap">
+    <div id="content"><div class="loading">Fetching the roster…</div></div>
+  </div>
+
+<script>
+// ---------------------------------------------------------------------------
+// DORCEY APP PULSE — Auto Pilot Program dashboard.
+// Feeds from /api/app-feed → Apps Script bound to the APP Master Check List
+// sheet, which packages Master, 2026 Renewal Payments, and the NEW Clients
+// tabs into one JSON payload. Audit status is DERIVED from "Last Funding
+// Audit" + "APP EA Signed" (not the hand-flagged count columns, whose
+// headers are live formulas and change values). Month names are normalized
+// against known sheet typos (Janaury, Aprill, Ocotber, august…).
+// Global click-to-filter: attorney, county, audit status.
+// ---------------------------------------------------------------------------
+
+const CONFIG = { year: 2026 };
+
+const MONTHS = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Audit-status buckets and palette
+const AUDIT_ORDER = ["Audited 2026","Due — last audit 2025","Overdue — 2024 or older","New — first audit pending"];
+const AUDIT_COLORS = {
+  "Audited 2026":            "#2d6a4f",
+  "Due — last audit 2025":   "#c6a04e",
+  "Overdue — 2024 or older": "#9b2335",
+  "New — first audit pending":"#3f6184",
+};
+const AUDIT_SHORT = {
+  "Audited 2026": "done",
+  "Due — last audit 2025": "due",
+  "Overdue — 2024 or older": "over",
+  "New — first audit pending": "new",
+};
+
+// Renewal-status palette
+const RENEW_ORDER = ["Paid","Outstanding","Cancel requested","Waived / Charity"];
+const RENEW_COLORS = {
+  "Paid":"#2d6a4f", "Outstanding":"#c6a04e",
+  "Cancel requested":"#9b2335", "Waived / Charity":"#6e8aa6",
+};
+
+// Attorney codes — same house map as Pulse. NEW Clients tabs sometimes use
+// first names ("Josh", "Mike"), so normalize both directions.
+const ATTORNEY_NAMES = {
+  "JOD":"Josh Dorcey","MAS":"Mike Scott","EDJ":"Erica Johnson","KAS":"Kara Sajdak",
+  "DAD":"Doug Dodson","BWB":"Brad Butcher","BHB":"Brian Bronsther","DAC":"David Cahoone",
+};
+const FIRSTNAME_TO_CODE = {
+  "josh":"JOD","mike":"MAS","erica":"EDJ","kara":"KAS",
+  "doug":"DAD","brad":"BWB","brian":"BHB","david":"DAC",
+};
+
+// Client-side state
+let DATA = null;               // full feed payload
+let filter = null;             // {kind:"attorney"|"county"|"audit", value:"..."}
+
+// ---------------------------------------------------------------------------
+// Pure helpers (no DOM) — everything above load() is unit-testable in node.
+// ---------------------------------------------------------------------------
+
+function num(v){
+  if(v === null || v === undefined || v === "") return 0;
+  if(typeof v === "number") return isFinite(v) ? v : 0;
+  const n = parseFloat(String(v).replace(/[$,\s]/g,""));
+  return isFinite(n) ? n : 0;
+}
+function usd0(n){ return "$" + Math.round(n).toLocaleString("en-US"); }
+function usdK(n){
+  const a = Math.abs(n);
+  if(a >= 1000000) return (n<0?"-":"") + "$" + (a/1000000).toFixed(2) + "M";
+  if(a >= 1000)    return (n<0?"-":"") + "$" + Math.round(a/1000) + "K";
+  return usd0(n);
+}
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function clean(s){ return String(s ?? "").replace(/\s+/g," ").trim(); }
+
+// Month normalizer — survives the sheet's typos. Strategy: exact match,
+// then 3-letter prefix, then anagram (catches transpositions like Ocotber).
+function normMonth(s){
+  const t = clean(s).toLowerCase();
+  if(!t) return null;
+  for(const m of MONTHS) if(m.toLowerCase() === t) return m;
+  for(const m of MONTHS) if(t.slice(0,3) === m.toLowerCase().slice(0,3)) return m;
+  const sig = t.replace(/[^a-z]/g,"").split("").sort().join("");
+  for(const m of MONTHS){
+    if(m.toLowerCase().split("").sort().join("") === sig) return m;
+  }
+  return null;
+}
+function monthIdx(name){ return MONTHS.indexOf(name); }
+
+function attyCode(s){
+  const t = clean(s);
+  if(!t) return "";
+  const up = t.toUpperCase();
+  if(ATTORNEY_NAMES[up]) return up;
+  const byFirst = FIRSTNAME_TO_CODE[t.toLowerCase()];
+  if(byFirst) return byFirst;
+  return up; // unknown codes (JLO, JCS…) pass through as-is
+}
+function attorneyLabel(code){
+  const c = clean(code).toUpperCase();
+  return ATTORNEY_NAMES[c] || (c || "Unassigned");
+}
+
+function countyOf(row){ return clean(row.county).toUpperCase() || "UNKNOWN"; }
+
+// Derive audit status from Last Funding Audit + EA Signed date.
+function auditStatus(row){
+  const lfa = clean(row.last_funding_audit);
+  if(/2026/.test(lfa)) return "Audited 2026";
+  if(/2025/.test(lfa)) return "Due — last audit 2025";
+  if(lfa && !/^none$/i.test(lfa)) return "Overdue — 2024 or older"; // old dates / 2024 / oddities
+  // Blank or "none": brand-new member vs. long-timer who's never been audited
+  const ea = clean(row.ea_signed);
+  const y = parseInt(ea.slice(0,4), 10);
+  if(y && y >= CONFIG.year - 1) return "New — first audit pending";
+  return "Overdue — 2024 or older";
+}
+
+// Classify a renewal-payments row. Order matters: a waived row's notes can
+// mention invoices; a cancel request must not already be paid.
+function renewalStatus(r){
+  if(num(r.pmt_2026) > 0) return "Paid";
+  const hay = (clean(r.payment_method) + " " + clean(r.notes)).toLowerCase();
+  if(/waiv|charit|no charge/.test(hay)) return "Waived / Charity";
+  if(/cancel/.test(hay)) return "Cancel requested";
+  return "Outstanding";
+}
+
+function nameKey(ln, fn){ return clean(ln).toLowerCase() + "|" + clean(fn).toLowerCase(); }
+
+// Global filter
+function masterPasses(row){
+  if(!filter) return true;
+  if(filter.kind === "attorney") return attyCode(row.attorney) === filter.value;
+  if(filter.kind === "county")   return countyOf(row) === filter.value;
+  if(filter.kind === "audit")    return auditStatus(row) === filter.value;
+  return true;
+}
+function renewalPasses(r){
+  if(!filter) return true;
+  if(filter.kind === "attorney") return attyCode(r.attorney) === filter.value;
+  return true; // county/audit filters don't narrow renewal rows (no such columns)
+}
+function newClientPasses(n){
+  if(!filter) return true;
+  if(filter.kind === "attorney") return attyCode(n.attorney) === filter.value;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Aggregation — one pass over each dataset, returns everything render needs.
+// ---------------------------------------------------------------------------
+
+function computeAll(data){
+  const master   = (data.master || []).filter(masterPasses);
+  const renewals = (data.renewals || []).filter(renewalPasses);
+  const nc = data.new_clients || {};
+  const new26 = (nc.y2026 || []).filter(newClientPasses);
+  const new25 = (nc.y2025 || []).filter(newClientPasses);
+  const new24 = (nc.y2024 || []).filter(newClientPasses);
+
+  // --- Master rollups ---
+  const audit = {}; AUDIT_ORDER.forEach(k => audit[k] = 0);
+  const byAtty = {}, byCounty = {}, renewMo = new Array(12).fill(0);
+  const auditMo = Array.from({length:12}, () => ({done:0, pending:0}));
+  const legal = {}, ccauth = {"On file":0,"Expired":0,"Declined":0,"None on record":0};
+  let elderLaw = 0;
+  const masterByName = {}, masterByLast = {};
+
+  for(const row of master){
+    const st = auditStatus(row);
+    audit[st] = (audit[st]||0) + 1;
+
+    const a = attyCode(row.attorney);
+    (byAtty[a] ??= {members:0}); byAtty[a].members++;
+
+    const co = countyOf(row);
+    (byCounty[co] ??= 0); byCounty[co]++;
+
+    const rm = normMonth(row.renewal_month);
+    if(rm) renewMo[monthIdx(rm)]++;
+
+    const am = normMonth(row.audit_month);
+    if(am){
+      const slot = auditMo[monthIdx(am)];
+      if(st === "Audited 2026") slot.done++; else slot.pending++;
+    }
+
+    const ld = clean(row.legal_directives) || "Blank";
+    legal[ld] = (legal[ld]||0) + 1;
+
+    const cc = clean(row.cc_auth).toUpperCase();
+    if(/^YES/.test(cc)) ccauth["On file"]++;
+    else if(/EXPIR/.test(cc)) ccauth["Expired"]++;
+    else if(/DECLIN/.test(cc)) ccauth["Declined"]++;
+    else ccauth["None on record"]++;
+
+    if(/YES/i.test(clean(row.elder_law))) elderLaw++;
+
+    masterByName[nameKey(row.last_name, row.first_name)] = row;
+    masterByLast[clean(row.last_name).toLowerCase()] = row;
+  }
+
+  // --- Renewal rollups ---
+  const renew = {}; RENEW_ORDER.forEach(k => renew[k] = {count:0, expected:0, collected:0});
+  const renewByAtty = {};
+  const riskRows = [];
+  const nowMo = new Date().getMonth();
+
+  for(const r of renewals){
+    const st = renewalStatus(r);
+    const fee = num(r.app_fee), pmt = num(r.pmt_2026);
+    renew[st].count++; renew[st].expected += fee; renew[st].collected += pmt;
+
+    const a = attyCode(r.attorney);
+    (renewByAtty[a] ??= {collected:0, expected:0, count:0});
+    renewByAtty[a].collected += pmt; renewByAtty[a].expected += fee; renewByAtty[a].count++;
+
+    if(st === "Cancel requested"){
+      riskRows.push({ name: clean(r.last_name)+", "+clean(r.first_name), atty:a, fee,
+        why: "Cancel requested — " + (clean(r.payment_method) || clean(r.notes)).slice(0,90) });
+    } else if(st === "Outstanding"){
+      // Join back to Master for the renewal month; exact name, then last name.
+      const m = masterByName[nameKey(r.last_name, r.first_name)] ||
+                masterByLast[clean(r.last_name).toLowerCase()];
+      const rm = m ? normMonth(m.renewal_month) : null;
+      if(rm !== null && monthIdx(rm) < nowMo){
+        riskRows.push({ name: clean(r.last_name)+", "+clean(r.first_name), atty:a, fee,
+          why: `Unpaid — ${rm} renewal has passed` });
+      }
+    }
+  }
+  riskRows.sort((a,b)=>b.fee-a.fee);
+
+  const expectedTotal  = RENEW_ORDER.reduce((s,k)=>s+renew[k].expected,0);
+  const collectedTotal = RENEW_ORDER.reduce((s,k)=>s+renew[k].collected,0);
+  const collectible    = expectedTotal - renew["Waived / Charity"].expected - renew["Cancel requested"].expected;
+
+  // --- New-client rollups ---
+  function ncStats(arr){
+    let count = 0, fees = 0;
+    const byAtt = {};
+    for(const n of arr){
+      const fee = num(n.fee);
+      count++; fees += fee;
+      const a = attyCode(n.attorney);
+      (byAtt[a] ??= {count:0, fees:0}); byAtt[a].count++; byAtt[a].fees += fee;
+    }
+    return {count, fees, byAtt};
+  }
+  // Monthly enrollment: bucket by actual join-date month, keyed to its year.
+  function monthly(arr, wantYear){
+    const byMo = new Array(12).fill(0), byMoFee = new Array(12).fill(0);
+    for(const n of arr){
+      const d = clean(n.date_joined);
+      const y = parseInt(d.slice(0,4),10), mo = parseInt(d.slice(5,7),10)-1;
+      if(y === wantYear && mo >= 0 && mo < 12){ byMo[mo]++; byMoFee[mo] += num(n.fee); }
+    }
+    return {byMo, byMoFee};
+  }
+
+  return {
+    masterCount: master.length,
+    audit, byAtty, byCounty, renewMo, auditMo,
+    legal, ccauth, elderLaw,
+    renew, renewByAtty, riskRows,
+    expectedTotal, collectedTotal, collectible,
+    n26: ncStats(new26), n25: ncStats(new25), n24: ncStats(new24),
+    m26: monthly(new26, 2026), m25: monthly(new25, 2025),
+    attrition: data.attrition || {deceased:0, cancelled:0},
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Boot + render (DOM from here down)
+// ---------------------------------------------------------------------------
+
+async function load(){
+  try{
+    const r = await fetch("/api/app-feed");
+    if(!r.ok) throw new Error("feed returned " + r.status);
+    const j = await r.json();
+    if(j.error) throw new Error(j.error);
+    DATA = j;
+    render();
+  }catch(e){
+    document.getElementById("content").innerHTML =
+      `<div class="error">Couldn't reach the APP feed. (${e.message})</div>`;
+    console.error("app pulse load error:", e);
+  }
+}
+
+function filterLabel(){
+  if(filter.kind === "attorney") return `Filtered to ${attorneyLabel(filter.value)}`;
+  if(filter.kind === "county")   return `Filtered to ${filter.value} County`;
+  if(filter.kind === "audit")    return `Filtered to: ${filter.value}`;
+  return "Filtered";
+}
+
+function render(){
+  const s = computeAll(DATA);
+
+  document.getElementById("periodLabel").textContent = filter
+    ? filterLabel()
+    : `${CONFIG.year} · ${s.masterCount.toLocaleString()} active members`;
+
+  document.getElementById("content").innerHTML = [
+    filterBar(),
+    headlineSection(s),
+    kpiSection(s),
+    renewalThermo(s),
+    riskSection(s),
+    auditSection(s),
+    workloadSection(s),
+    enrollmentSection(s),
+    attorneySection(s),
+    complianceAndGeo(s),
+    memberLedger(),
+    footerNote(s),
+  ].join("");
+
+  wireInteractions();
+}
+
+function filterBar(){
+  if(!filter){
+    return `<div class="filter-bar"><span class="filter-hint">💡 Tip: click any attorney, county, or audit-status segment to filter the whole dashboard.</span></div>`;
+  }
+  return `<div class="filter-bar">
+    <span class="filter-pill" id="clearFilter">${esc(filterLabel())} <span class="x">×</span></span>
+    <span class="filter-hint">Click × to clear the filter.</span>
+  </div>`;
+}
+
+function headlineSection(s){
+  const rate = s.collectible > 0 ? (s.collectedTotal / s.collectible * 100) : 0;
+  return `<div class="headline">
+    <div class="stat hero">
+      <div class="k">${filter ? 'Filtered members' : 'Active APP members'}</div>
+      <div class="v">${s.masterCount.toLocaleString()}</div>
+      <div class="d">${s.audit["Audited 2026"].toLocaleString()} audited for ${CONFIG.year} · ${s.elderLaw} Elder Law</div>
+    </div>
+    <div class="stat">
+      <div class="k">${CONFIG.year} renewals collected</div>
+      <div class="v">${usd0(s.collectedTotal)}</div>
+      <div class="d"><span class="${rate>=70?'up':'down'}">${rate.toFixed(1)}%</span> of ${usdK(s.collectible)} collectible</div>
+    </div>
+    <div class="stat">
+      <div class="k">New enrollments (${CONFIG.year} tab)</div>
+      <div class="v">${usd0(s.n26.fees)}</div>
+      <div class="d">${s.n26.count} members · avg ${usd0(s.n26.count ? s.n26.fees/s.n26.count : 0)}</div>
+    </div>
+  </div>`;
+}
+
+function kpiSection(s){
+  const paid = s.renew["Paid"];
+  const avgRenewal = paid.count ? paid.collected / paid.count : 0;
+  const outstanding = s.renew["Outstanding"];
+  return `<div class="kpis">
+    <div class="kpi"><div class="k">Avg renewal (paid)</div>
+      <div class="v">${usd0(avgRenewal)}</div>
+      <div class="d">${paid.count.toLocaleString()} paid renewals</div></div>
+    <div class="kpi"><div class="k">Outstanding renewals</div>
+      <div class="v">${usdK(outstanding.expected)}</div>
+      <div class="d">${outstanding.count.toLocaleString()} invoices open</div></div>
+    <div class="kpi"><div class="k">Waived / charity</div>
+      <div class="v">${usdK(s.renew["Waived / Charity"].expected)}</div>
+      <div class="d">${s.renew["Waived / Charity"].count} memberships</div></div>
+    <div class="kpi"><div class="k">Attrition on record</div>
+      <div class="v">${(s.attrition.deceased + s.attrition.cancelled).toLocaleString()}</div>
+      <div class="d">${s.attrition.deceased} deceased · ${s.attrition.cancelled} cancelled (all-time)</div></div>
+  </div>`;
+}
+
+function renewalThermo(s){
+  const pct = s.collectible > 0 ? s.collectedTotal / s.collectible : 0;
+  const segs = RENEW_ORDER.map(k => ({
+    key:k, exp:s.renew[k].expected, count:s.renew[k].count,
+  })).filter(x => x.exp > 0);
+  const totExp = segs.reduce((a,x)=>a+x.exp,0) || 1;
+
+  const strip = segs.map(x => `
+    <div class="seg" style="background:${RENEW_COLORS[x.key]};flex:${x.exp/totExp*100}"
+      title="${x.key}: ${usd0(x.exp)} across ${x.count} memberships">
+      ${x.exp/totExp >= .07 ? (x.exp/totExp*100).toFixed(0)+'%' : ''}
+    </div>`).join("");
+  const legend = segs.map(x => `
+    <div class="item"><span class="swatch" style="background:${RENEW_COLORS[x.key]}"></span>
+      <b>${x.key}</b><span class="amt">${usd0(x.exp)} · ${x.count} members</span></div>`).join("");
+
+  return `<div class="thermo">
+    <div class="row">
+      <div class="goal">${usd0(s.collectedTotal)} of ${usd0(s.collectible)} collectible ${CONFIG.year} renewals</div>
+      <div class="pct">${(pct*100).toFixed(1)}%</div>
+    </div>
+    <div class="bar"><div class="fill ${pct>1?'over':''}" style="width:${Math.min(100,pct*100)}%"></div></div>
+    <div class="pace">Collectible = invoiced fees minus waived/charity and cancel requests. Full invoiced total: <b>${usd0(s.expectedTotal)}</b>.</div>
+    <div style="margin-top:14px">
+      <div class="comp">${strip}</div>
+      <div class="comp-legend">${legend}</div>
+    </div>
+  </div>`;
+}
+
+function riskSection(s){
+  if(!s.riskRows.length) return "";
+  const dollars = s.riskRows.reduce((a,r)=>a+r.fee,0);
+  const rows = s.riskRows.slice(0,40).map(r => `
+    <div class="riskrow">
+      <span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>
+      <span class="att">${esc(r.atty)}</span>
+      <span class="amt">${usd0(r.fee)}</span>
+      <span class="why" title="${esc(r.why)}">${esc(r.why)}</span>
+    </div>`).join("");
+  const more = s.riskRows.length > 40 ? `<div class="rank"><div class="more">+ ${s.riskRows.length-40} more</div></div>` : "";
+  return `<div class="section">
+    <h2>⚠️ Follow-up list — ${s.riskRows.length} memberships · ${usd0(dollars)} at stake</h2>
+    <p class="sh">Cancel requests plus unpaid renewals whose renewal month has already passed. Sorted by dollars. This is the call sheet.</p>
+    <div class="risklist">${rows}</div>${more}
+  </div>`;
+}
+
+function auditSection(s){
+  const total = AUDIT_ORDER.reduce((a,k)=>a+s.audit[k],0) || 1;
+  const done = s.audit["Audited 2026"];
+  const dueTotal = total - done;
+
+  const strip = AUDIT_ORDER.filter(k=>s.audit[k]>0).map(k => {
+    const pct = s.audit[k]/total*100;
+    return `<div class="seg" data-audit="${esc(k)}" style="background:${AUDIT_COLORS[k]};flex:${pct}"
+      title="${k}: ${s.audit[k]} members (${pct.toFixed(1)}%) — click to filter">
+      ${pct >= 7 ? pct.toFixed(0)+'%' : ''}</div>`;
+  }).join("");
+  const legend = AUDIT_ORDER.filter(k=>s.audit[k]>0).map(k => `
+    <div class="item"><span class="swatch" style="background:${AUDIT_COLORS[k]}"></span>
+      <b>${k}</b><span class="amt">${s.audit[k]} · ${(s.audit[k]/total*100).toFixed(1)}%</span></div>`).join("");
+
+  return `<div class="section">
+    <h2>Funding-audit progress <span style="font:600 .85rem 'Libre Franklin';color:var(--muted)">${done} of ${total} done · ${dueTotal} to go</span></h2>
+    <p class="sh">Derived from "Last Funding Audit" on the Master tab. Click any segment to filter the whole dashboard to those members.</p>
+    <div class="comp clicky" id="auditStrip">${strip}</div>
+    <div class="comp-legend">${legend}</div>
+  </div>`;
+}
+
+function workloadSection(s){
+  const maxA = Math.max(1, ...s.auditMo.map(o=>o.done+o.pending));
+  const auditBars = MONTH_ABBR.map((ab,i) => {
+    const o = s.auditMo[i];
+    const tot = o.done + o.pending;
+    const totalH = (tot/maxA)*145;
+    const doneH = tot>0 ? (o.done/tot)*totalH : 0;
+    const pendH = totalH - doneH;
+    return `<div class="m">
+      <span class="tip">${MONTHS[i]} · ${tot} audits (${o.done} done, ${o.pending} pending)</span>
+      <div class="sbar" style="height:${Math.max(2,totalH)}px">
+        <div class="sseg" style="height:${doneH}px;background:${AUDIT_COLORS["Audited 2026"]}"></div>
+        <div class="sseg" style="height:${pendH}px;background:${AUDIT_COLORS["Due — last audit 2025"]}"></div>
+      </div>
+      <div class="lbl">${ab}</div>
+    </div>`;
+  }).join("");
+
+  const maxR = Math.max(1, ...s.renewMo);
+  const renewBars = MONTH_ABBR.map((ab,i) => {
+    const v = s.renewMo[i];
+    return `<div class="m">
+      <span class="tip">${MONTHS[i]} · ${v} renewals</span>
+      <div class="bars"><div class="bar cur" style="height:${(v/maxR)*130}px"></div></div>
+      <div class="lbl">${ab}</div>
+    </div>`;
+  }).join("");
+  const janShare = s.masterCount ? (s.renewMo[0]/s.masterCount*100).toFixed(0) : 0;
+
+  return `<div class="section">
+    <h2>Monthly workload</h2>
+    <p class="sh">Left: funding audits by scheduled month (green = done for ${CONFIG.year}, gold = pending). Right: renewal invoices by month — ${janShare}% of the book renews in January, so brace the billing team accordingly.</p>
+    <div class="cols">
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">Audits by month</b>
+        <div class="months-legend">
+          <div class="item"><span class="swatch" style="background:${AUDIT_COLORS["Audited 2026"]}"></span>Done</div>
+          <div class="item"><span class="swatch" style="background:${AUDIT_COLORS["Due — last audit 2025"]}"></span>Pending</div>
+        </div>
+        <div class="months" style="height:190px">${auditBars}</div>
+      </div>
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">Renewals by month</b>
+        <div class="months">${renewBars}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function enrollmentSection(s){
+  const maxV = Math.max(1, ...s.m26.byMo, ...s.m25.byMo);
+  const bars = MONTH_ABBR.map((ab,i) => {
+    const cur = s.m26.byMo[i], prev = s.m25.byMo[i];
+    return `<div class="m">
+      <span class="tip">${MONTHS[i]} · ${CONFIG.year}: ${cur} (${usdK(s.m26.byMoFee[i])}) · 2025: ${prev} (${usdK(s.m25.byMoFee[i])})</span>
+      <div class="bars">
+        <div class="bar prev" style="height:${(prev/maxV)*130}px"></div>
+        <div class="bar cur" style="height:${(cur/maxV)*130}px"></div>
+      </div>
+      <div class="lbl">${ab}</div>
+    </div>`;
+  }).join("");
+
+  const chips = [
+    {y:"2024", c:s.n24.count, f:s.n24.fees},
+    {y:"2025", c:s.n25.count, f:s.n25.fees},
+    {y:CONFIG.year, c:s.n26.count, f:s.n26.fees},
+  ].map(x => `<div class="mixchip"><span class="amt">${x.c} members · ${usd0(x.f)}</span><small>${x.y} tab</small></div>`).join("");
+
+  return `<div class="section">
+    <h2>Enrollment engine</h2>
+    <p class="sh">New APP sign-ups by join date. Gold is ${CONFIG.year}, grey is 2025. Yearly chips use each tab's full roster.</p>
+    <div class="mixchips">${chips}</div>
+    <div class="months-legend">
+      <div class="item"><span class="swatch" style="background:#c7cfdd"></span>2025</div>
+      <div class="item"><span class="swatch" style="background:var(--gold)"></span>${CONFIG.year}</div>
+    </div>
+    <div class="months">${bars}</div>
+  </div>`;
+}
+
+function attorneySection(s){
+  const memberRows = rankRows(
+    Object.entries(s.byAtty).map(([k,v]) => ({key:k, label:attorneyLabel(k), v:v.members, d:""}))
+      .sort((a,b)=>b.v-a.v),
+    "attorney", x => x.v.toLocaleString()
+  );
+  const renewRows = rankRows(
+    Object.entries(s.renewByAtty).map(([k,v]) => ({
+      key:k, label:attorneyLabel(k), v:v.collected,
+      d: v.expected ? (v.collected/v.expected*100).toFixed(0)+"%" : "",
+      files: v.count,
+    })).sort((a,b)=>b.v-a.v),
+    "attorney", x => usd0(x.v)
+  );
+  const newRows = rankRows(
+    Object.entries(s.n26.byAtt).map(([k,v]) => ({key:k, label:attorneyLabel(k), v:v.fees, d:"", files:v.count}))
+      .sort((a,b)=>b.v-a.v),
+    "attorney", x => usd0(x.v)
+  );
+
+  return `<div class="section">
+    <h2>By attorney</h2>
+    <p class="sh">Click any row to filter the whole dashboard. Renewal % shows collected against that attorney's invoiced book.</p>
+    <div class="cols3">
+      <div class="col"><b style="color:var(--navy);font-size:.95rem">Members on the book</b><div class="rank">${memberRows}</div></div>
+      <div class="col"><b style="color:var(--navy);font-size:.95rem">${CONFIG.year} renewal $ collected</b><div class="rank">${renewRows}</div></div>
+      <div class="col"><b style="color:var(--navy);font-size:.95rem">${CONFIG.year} new-enrollment $</b><div class="rank">${newRows}</div></div>
+    </div>
+  </div>`;
+}
+
+function rankRows(items, kind, fmt){
+  if(!items.length) return '<div style="color:var(--muted);padding:14px 4px">No entries.</div>';
+  return items.map(r => {
+    const isActive = filter && filter.kind === kind && filter.value === r.key;
+    return `<div class="r ${isActive?'active':''}" data-kind="${kind}" data-val="${esc(r.key)}">
+      <span class="lbl">${esc(r.label)}${r.files ? `<span class="files">· ${r.files}</span>` : ''}</span>
+      <span class="v">${fmt(r)}</span>
+      <span class="d">${esc(r.d || '')}</span>
+    </div>`;
+  }).join("");
+}
+
+function complianceAndGeo(s){
+  const legalRows = Object.entries(s.legal).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
+    <div class="r static"><span class="lbl">${esc(k)}</span><span class="v">${v.toLocaleString()}</span>
+    <span class="d">${(v/Math.max(1,s.masterCount)*100).toFixed(1)}%</span></div>`).join("");
+
+  const ccRows = Object.entries(s.ccauth).filter(([,v])=>v>0).map(([k,v]) => `
+    <div class="r static"><span class="lbl">${esc(k)}</span><span class="v">${v.toLocaleString()}</span>
+    <span class="d">${(v/Math.max(1,s.masterCount)*100).toFixed(1)}%</span></div>`).join("");
+
+  const countyRows = rankRows(
+    Object.entries(s.byCounty).map(([k,v]) => ({key:k, label:k, v, d:(v/Math.max(1,s.masterCount)*100).toFixed(1)+"%"}))
+      .sort((a,b)=>b.v-a.v).slice(0,10),
+    "county", x => x.v.toLocaleString()
+  );
+
+  return `<div class="section">
+    <h2>Compliance &amp; geography</h2>
+    <p class="sh">Legal directives and card-on-file status across the book. Counties are clickable.</p>
+    <div class="cols3">
+      <div class="col"><b style="color:var(--navy);font-size:.95rem">Legal directives</b><div class="rank">${legalRows}</div></div>
+      <div class="col"><b style="color:var(--navy);font-size:.95rem">CC authorization</b><div class="rank">${ccRows}</div></div>
+      <div class="col"><b style="color:var(--navy);font-size:.95rem">Top counties</b><div class="rank">${countyRows}</div></div>
+    </div>
+  </div>`;
+}
+
+function memberLedger(){
+  const rows = (DATA.master || []).filter(masterPasses)
+    .slice()
+    .sort((a,b)=>clean(a.last_name).localeCompare(clean(b.last_name)))
+    .map(m => {
+      const st = auditStatus(m);
+      const short = AUDIT_SHORT[st];
+      const name = clean(m.last_name) + ", " + clean(m.first_name);
+      const city = clean(m.city) + (clean(m.state) ? ", " + clean(m.state) : "");
+      const att = attyCode(m.attorney);
+      const rm = normMonth(m.renewal_month) || "—";
+      const am = normMonth(m.audit_month) || "—";
+      const hay = `${name} ${city} ${att} ${attorneyLabel(att)} ${rm} ${am} ${st} ${clean(m.email1)}`.toLowerCase();
+      return `<div class="erow" data-search="${esc(hay)}">
+        <span class="ename" title="${esc(name)}">${esc(name)}</span>
+        <span class="ecity" title="${esc(city)}">${esc(city)}</span>
+        <span class="eatt">${esc(att)}</span>
+        <span class="emo">↻ ${esc(rm.slice(0,3))} · 🔍 ${esc(am.slice(0,3))}</span>
+        <span class="emo">${esc(clean(m.ea_signed).slice(0,10) || '—')}</span>
+        <span class="estat ${short}">${esc(st === "Audited 2026" ? "Audited ✓" : st === "Due — last audit 2025" ? "Due" : st === "New — first audit pending" ? "New" : "Overdue")}</span>
+      </div>`;
+    });
+
+  return `<div class="section">
+    <h2>Member roster ${filter ? '(filtered)' : ''}</h2>
+    <p class="sh">Alphabetical. Search by name, city, attorney, month, email, or audit status. ↻ renewal month · 🔍 audit month · date = EA signed.</p>
+    <input id="memberSearch" class="esearch" type="text" placeholder="Search members…" autocomplete="off" />
+    <div class="elist" id="memberList">${rows.join("") || '<div style="color:var(--muted);padding:14px">No members.</div>'}</div>
+    <div class="ecount" id="memberCount">Showing ${rows.length.toLocaleString()} members</div>
+  </div>`;
+}
+
+function footerNote(s){
+  return `<div class="footer-note">
+    Data pulled live from the <b>APP Master Check List</b> sheet · Master, ${CONFIG.year} Renewal Payments, and NEW Clients tabs. Refresh to update.
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Interactions
+// ---------------------------------------------------------------------------
+
+function wireInteractions(){
+  document.querySelectorAll(".rank .r").forEach(el => {
+    el.onclick = () => {
+      const kind = el.getAttribute("data-kind");
+      const val  = el.getAttribute("data-val");
+      if(!kind || !val) return;
+      filter = (filter && filter.kind === kind && filter.value === val) ? null : {kind, value:val};
+      render();
+    };
+  });
+
+  document.querySelectorAll("#auditStrip .seg").forEach(el => {
+    el.onclick = () => {
+      const v = el.getAttribute("data-audit");
+      filter = (filter && filter.kind === "audit" && filter.value === v) ? null : {kind:"audit", value:v};
+      render();
+    };
+  });
+
+  const clear = document.getElementById("clearFilter");
+  if(clear) clear.onclick = () => { filter = null; render(); };
+
+  const search = document.getElementById("memberSearch");
+  if(search){
+    const rows = document.querySelectorAll("#memberList .erow");
+    const count = document.getElementById("memberCount");
+    const total = rows.length;
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(el => {
+        const hit = !q || (el.getAttribute("data-search") || "").includes(q);
+        el.style.display = hit ? "" : "none";
+        if(hit) shown++;
+      });
+      count.textContent = q
+        ? `Showing ${shown.toLocaleString()} of ${total.toLocaleString()} members`
+        : `Showing ${total.toLocaleString()} members`;
+    };
+  }
+}
+
+if (typeof document !== "undefined" && typeof fetch !== "undefined" && document.getElementById("content")) load();
+</script>
+</body>
+</html>
