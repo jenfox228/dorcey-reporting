@@ -574,6 +574,24 @@ app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
   }
 });
 
+// ---- APP Pulse feed (Jen & Josh only) ---------------------------------------
+
+app.get("/api/app-feed", requireUser, requireAdmin, async (req, res) => {
+  try {
+    const url = process.env.APP_FEED_URL;
+    if (!url) return res.status(500).json({ error: "feed_not_configured" });
+    const bust = url.includes("?") ? "&" : "?";
+    const r = await fetch(`${url}${bust}_=${Date.now()}`, { redirect: "follow" });
+    if (!r.ok) return res.status(502).json({ error: "feed_unreachable" });
+    const data = await r.json();
+    res.set("Cache-Control", "no-store");
+    res.json(data);
+  } catch (e) {
+    console.error("app feed error", e);
+    res.status(502).json({ error: "feed_error" });
+  }
+});
+
 // ---- Page routes ----------------------------------------------------------
 
 app.get("/report", (req, res) => {
@@ -604,6 +622,23 @@ app.get("/pulse/:token", async (req, res) => {
     res.sendFile(path.join(__dirname, "public", "pulse.html"));
   } catch (e) {
     console.error("pulse login error", e);
+    res.status(500).send(loginError());
+  }
+});
+
+app.get("/app", (req, res) => {
+  if (!req.user?.is_admin) return res.status(403).send(loginError());
+  res.sendFile(path.join(__dirname, "public", "app.html"));
+});
+
+app.get("/app/:token", async (req, res) => {
+  try {
+    const user = await consumeMagicToken(req.params.token);
+    if (!user || !user.is_admin) return res.status(401).send(loginError());
+    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
+    res.sendFile(path.join(__dirname, "public", "app.html"));
+  } catch (e) {
+    console.error("app login error", e);
     res.status(500).send(loginError());
   }
 });
