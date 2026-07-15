@@ -97,8 +97,6 @@
   .months .m .bar{flex:1;border-radius:4px 4px 0 0;transition:height .5s ease-out;min-height:2px}
   .months .m .bar.cur{background:var(--gold)}
   .months .m .bar.prev{background:#c7cfdd}
-  .months .m .bar.done{background:var(--up)}
-  .months .m .bar.pend{background:#c6a04e}
   .months .m .lbl{font-size:.7rem;color:var(--muted);margin-top:6px;font-weight:600}
   .months .m .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
     background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:.72rem;white-space:nowrap;
@@ -132,14 +130,6 @@
   .mixchip .amt{font-weight:700;color:var(--navy);display:block;font-size:1rem}
   .mixchip small{color:var(--muted)}
 
-  .alertbox{background:linear-gradient(120deg,#fdefe8,#f7d9cc);border:1px solid #e8b8a2;
-    color:#7a2f0f;border-radius:14px;padding:16px 20px;margin-bottom:22px;
-    display:flex;align-items:center;gap:14px;box-shadow:var(--shadow)}
-  .alertbox .icon{font-size:1.6rem}
-  .alertbox .body{flex:1}
-  .alertbox .body b{display:block;font-size:1rem;color:#7a2f0f}
-  .alertbox .body small{color:#8a4020}
-
   .esearch{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;
     font:500 .9rem "Libre Franklin",sans-serif;background:var(--parchment);margin:4px 0 10px;outline:none}
   .esearch:focus{border-color:var(--gold);background:#fff}
@@ -168,6 +158,11 @@
   .riskrow .att{color:var(--muted);font-size:.74rem;font-weight:700}
   .riskrow .amt{font-weight:700;color:var(--navy);text-align:right;white-space:nowrap}
   .riskrow .why{color:var(--muted);font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .riskrow .why .ov{color:var(--down);font-weight:700}
+  .riskrow .why .du{color:#a4680f;font-weight:700}
+
+  .feedwarn{background:#fdf6e3;border:1px solid #e0cf9a;border-radius:10px;color:#7a5b0f;
+    font-size:.8rem;padding:10px 14px;margin-bottom:14px}
 
   .footer-note{text-align:center;font-size:.75rem;color:var(--muted);margin-top:24px}
   .footer-note b{color:var(--navy)}
@@ -205,14 +200,20 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// DORCEY APP PULSE — Auto Pilot Program dashboard.
-// Feeds from /api/app-feed → Apps Script bound to the APP Master Check List
-// sheet, which packages Master, 2026 Renewal Payments, and the NEW Clients
-// tabs into one JSON payload. Audit status is DERIVED from "Last Funding
-// Audit" + "APP EA Signed" (not the hand-flagged count columns, whose
-// headers are live formulas and change values). Month names are normalized
-// against known sheet typos (Janaury, Aprill, Ocotber, august…).
-// Global click-to-filter: attorney, county, audit status.
+// DORCEY APP PULSE — Auto Pilot Program dashboard, v2.
+// TWO live feeds:
+//   /api/app-feed         → APP Master Check List sheet (roster, audits,
+//                           compliance, geography, enrollments)
+//   /api/app-invoice-feed → APP Invoicing Spreadsheet (ALL renewal money):
+//                           Legacy APP Clients + 2025 Clients Renewals +
+//                           2026 Client Renewals, unified on the Status
+//                           column (Paid/Upcoming/Due/Overdue/Cancelled).
+// Legacy rows have no Attorney column, so attorney is resolved by name-join
+// back to the Master roster (exact first+last, then last-name fallback;
+// ~97% hit rate — misses show as Unassigned).
+// Audit status is DERIVED from "Last Funding Audit" + "APP EA Signed".
+// Month names are normalized against known sheet typos (Janaury, Aprill,
+// Ocotber, august…). Global click-to-filter: attorney, county, audit status.
 // ---------------------------------------------------------------------------
 
 const CONFIG = { year: 2026 };
@@ -236,11 +237,11 @@ const AUDIT_SHORT = {
   "New — first audit pending": "new",
 };
 
-// Renewal-status palette
-const RENEW_ORDER = ["Paid","Outstanding","Cancel requested","Waived / Charity"];
+// Renewal statuses — straight from the invoicing sheet's Status column.
+const RENEW_ORDER = ["Paid","Upcoming","Due","Overdue","Cancelled","Waived / Charity"];
 const RENEW_COLORS = {
-  "Paid":"#2d6a4f", "Outstanding":"#c6a04e",
-  "Cancel requested":"#9b2335", "Waived / Charity":"#6e8aa6",
+  "Paid":"#2d6a4f", "Upcoming":"#6e8aa6", "Due":"#c6a04e",
+  "Overdue":"#9b2335", "Cancelled":"#b07f5a", "Waived / Charity":"#8a6b9e",
 };
 
 // Attorney codes — same house map as Pulse. NEW Clients tabs sometimes use
@@ -255,7 +256,9 @@ const FIRSTNAME_TO_CODE = {
 };
 
 // Client-side state
-let DATA = null;               // full feed payload
+let DATA = null;               // master feed payload
+let INV  = null;               // invoicing feed payload
+let INV_ERROR = null;          // if the invoicing feed fails, degrade gracefully
 let filter = null;             // {kind:"attorney"|"county"|"audit", value:"..."}
 
 // ---------------------------------------------------------------------------
@@ -310,6 +313,7 @@ function attorneyLabel(code){
 }
 
 function countyOf(row){ return clean(row.county).toUpperCase() || "UNKNOWN"; }
+function nameKey(ln, fn){ return clean(ln).toLowerCase() + "|" + clean(fn).toLowerCase(); }
 
 // Derive audit status from Last Funding Audit + EA Signed date.
 function auditStatus(row){
@@ -324,17 +328,47 @@ function auditStatus(row){
   return "Overdue — 2024 or older";
 }
 
-// Classify a renewal-payments row. Order matters: a waived row's notes can
-// mention invoices; a cancel request must not already be paid.
-function renewalStatus(r){
-  if(num(r.pmt_2026) > 0) return "Paid";
-  const hay = (clean(r.payment_method) + " " + clean(r.notes)).toLowerCase();
-  if(/waiv|charit|no charge/.test(hay)) return "Waived / Charity";
-  if(/cancel/.test(hay)) return "Cancel requested";
-  return "Outstanding";
+// Classify an invoicing row. The Paid flag column wins (on the Legacy tab
+// it's the 2026-cycle payment marker while Status has been reset for the
+// next cycle); otherwise the Status column is authoritative.
+function invStatus(r){
+  if(num(r.paid_flag) === 1) return "Paid";
+  const s = clean(r.status).toLowerCase();
+  if(s.startsWith("paid")) return "Paid";
+  if(s.startsWith("up"))   return "Upcoming";
+  if(s.startsWith("due"))  return "Due";
+  if(s.startsWith("over")) return "Overdue";
+  if(s.startsWith("can"))  return "Cancelled";
+  if(/waiv|charit|no charge/.test(s)) return "Waived / Charity";
+  return "Upcoming"; // blank status, not paid → assume not yet in cycle
 }
 
-function nameKey(ln, fn){ return clean(ln).toLowerCase() + "|" + clean(fn).toLowerCase(); }
+// Merge the three invoicing tabs into one row set, tagging cohort and
+// resolving attorney (Legacy tab has no Attorney column → join to Master).
+function mergeInvoiceRows(inv, masterRows){
+  if(!inv) return [];
+  const byName = {}, byLast = {};
+  for(const m of (masterRows || [])){
+    const a = attyCode(m.attorney);
+    byName[nameKey(m.last_name, m.first_name)] = a;
+    byLast[clean(m.last_name).toLowerCase()] = a;
+  }
+  const out = [];
+  const push = (rows, cohort) => {
+    for(const r of (rows || [])){
+      let a = attyCode(r.attorney);
+      if(!a){
+        a = byName[nameKey(r.last_name, r.first_name)] ||
+            byLast[clean(r.last_name).toLowerCase()] || "";
+      }
+      out.push({...r, _cohort: cohort, _atty: a || "UNASSIGNED", _status: invStatus(r)});
+    }
+  };
+  push(inv.legacy, "Legacy");
+  push(inv.r2025,  "2025 cohort");
+  push(inv.r2026,  "2026 cohort");
+  return out;
+}
 
 // Global filter
 function masterPasses(row){
@@ -344,10 +378,10 @@ function masterPasses(row){
   if(filter.kind === "audit")    return auditStatus(row) === filter.value;
   return true;
 }
-function renewalPasses(r){
+function invPasses(r){
   if(!filter) return true;
-  if(filter.kind === "attorney") return attyCode(r.attorney) === filter.value;
-  return true; // county/audit filters don't narrow renewal rows (no such columns)
+  if(filter.kind === "attorney") return r._atty === filter.value;
+  return true; // county/audit filters don't narrow invoicing rows (no such columns)
 }
 function newClientPasses(n){
   if(!filter) return true;
@@ -359,9 +393,10 @@ function newClientPasses(n){
 // Aggregation — one pass over each dataset, returns everything render needs.
 // ---------------------------------------------------------------------------
 
-function computeAll(data){
-  const master   = (data.master || []).filter(masterPasses);
-  const renewals = (data.renewals || []).filter(renewalPasses);
+function computeAll(data, inv){
+  const master = (data.master || []).filter(masterPasses);
+  const invAll = mergeInvoiceRows(inv, data.master); // join against FULL roster
+  const invRows = invAll.filter(invPasses);
   const nc = data.new_clients || {};
   const new26 = (nc.y2026 || []).filter(newClientPasses);
   const new25 = (nc.y2025 || []).filter(newClientPasses);
@@ -369,11 +404,10 @@ function computeAll(data){
 
   // --- Master rollups ---
   const audit = {}; AUDIT_ORDER.forEach(k => audit[k] = 0);
-  const byAtty = {}, byCounty = {}, renewMo = new Array(12).fill(0);
+  const byAtty = {}, byCounty = {};
   const auditMo = Array.from({length:12}, () => ({done:0, pending:0}));
   const legal = {}, ccauth = {"On file":0,"Expired":0,"Declined":0,"None on record":0};
   let elderLaw = 0;
-  const masterByName = {}, masterByLast = {};
 
   for(const row of master){
     const st = auditStatus(row);
@@ -384,9 +418,6 @@ function computeAll(data){
 
     const co = countyOf(row);
     (byCounty[co] ??= 0); byCounty[co]++;
-
-    const rm = normMonth(row.renewal_month);
-    if(rm) renewMo[monthIdx(rm)]++;
 
     const am = normMonth(row.audit_month);
     if(am){
@@ -404,45 +435,50 @@ function computeAll(data){
     else ccauth["None on record"]++;
 
     if(/YES/i.test(clean(row.elder_law))) elderLaw++;
-
-    masterByName[nameKey(row.last_name, row.first_name)] = row;
-    masterByLast[clean(row.last_name).toLowerCase()] = row;
   }
 
-  // --- Renewal rollups ---
-  const renew = {}; RENEW_ORDER.forEach(k => renew[k] = {count:0, expected:0, collected:0});
+  // --- Invoicing rollups (the money) ---
+  const renew = {}; RENEW_ORDER.forEach(k => renew[k] = {count:0, amount:0});
   const renewByAtty = {};
+  const cohorts = {};
+  const renewMoStatus = Array.from({length:12}, () => {
+    const o = {}; RENEW_ORDER.forEach(k => o[k] = 0); return o;
+  });
   const riskRows = [];
-  const nowMo = new Date().getMonth();
 
-  for(const r of renewals){
-    const st = renewalStatus(r);
-    const fee = num(r.app_fee), pmt = num(r.pmt_2026);
-    renew[st].count++; renew[st].expected += fee; renew[st].collected += pmt;
+  for(const r of invRows){
+    const st = r._status;
+    const amt = num(r.amount);
+    renew[st].count++; renew[st].amount += amt;
 
-    const a = attyCode(r.attorney);
-    (renewByAtty[a] ??= {collected:0, expected:0, count:0});
-    renewByAtty[a].collected += pmt; renewByAtty[a].expected += fee; renewByAtty[a].count++;
+    (renewByAtty[r._atty] ??= {collected:0, expected:0, count:0});
+    renewByAtty[r._atty].count++;
+    if(st !== "Cancelled" && st !== "Waived / Charity") renewByAtty[r._atty].expected += amt;
+    if(st === "Paid") renewByAtty[r._atty].collected += amt;
 
-    if(st === "Cancel requested"){
-      riskRows.push({ name: clean(r.last_name)+", "+clean(r.first_name), atty:a, fee,
-        why: "Cancel requested — " + (clean(r.payment_method) || clean(r.notes)).slice(0,90) });
-    } else if(st === "Outstanding"){
-      // Join back to Master for the renewal month; exact name, then last name.
-      const m = masterByName[nameKey(r.last_name, r.first_name)] ||
-                masterByLast[clean(r.last_name).toLowerCase()];
-      const rm = m ? normMonth(m.renewal_month) : null;
-      if(rm !== null && monthIdx(rm) < nowMo){
-        riskRows.push({ name: clean(r.last_name)+", "+clean(r.first_name), atty:a, fee,
-          why: `Unpaid — ${rm} renewal has passed` });
-      }
+    (cohorts[r._cohort] ??= {count:0, amount:0, paid:0});
+    cohorts[r._cohort].count++; cohorts[r._cohort].amount += amt;
+    if(st === "Paid") cohorts[r._cohort].paid += amt;
+
+    const rm = normMonth(r.renewal_month);
+    if(rm) renewMoStatus[monthIdx(rm)][st] += 1;
+
+    if(st === "Due" || st === "Overdue"){
+      riskRows.push({
+        name: clean(r.last_name) + ", " + clean(r.first_name),
+        atty: r._atty, fee: amt, status: st,
+        why: `${rm || "?"} renewal · ${r._cohort}` +
+             (clean(r.invoice_sent).toLowerCase() === "yes" ? " · invoice sent" : " · no invoice yet") +
+             (clean(r.notes) ? " · " + clean(r.notes).slice(0,60) : ""),
+      });
     }
   }
-  riskRows.sort((a,b)=>b.fee-a.fee);
+  riskRows.sort((a,b) => (a.status === b.status ? b.fee - a.fee : (a.status === "Overdue" ? -1 : 1)));
 
-  const expectedTotal  = RENEW_ORDER.reduce((s,k)=>s+renew[k].expected,0);
-  const collectedTotal = RENEW_ORDER.reduce((s,k)=>s+renew[k].collected,0);
-  const collectible    = expectedTotal - renew["Waived / Charity"].expected - renew["Cancel requested"].expected;
+  const bookTotal       = RENEW_ORDER.reduce((s,k)=>s+renew[k].amount,0);
+  const collectedTotal  = renew["Paid"].amount;
+  const collectible     = bookTotal - renew["Cancelled"].amount - renew["Waived / Charity"].amount;
+  const churnAmount     = renew["Cancelled"].amount;
 
   // --- New-client rollups ---
   function ncStats(arr){
@@ -456,7 +492,6 @@ function computeAll(data){
     }
     return {count, fees, byAtt};
   }
-  // Monthly enrollment: bucket by actual join-date month, keyed to its year.
   function monthly(arr, wantYear){
     const byMo = new Array(12).fill(0), byMoFee = new Array(12).fill(0);
     for(const n of arr){
@@ -469,10 +504,11 @@ function computeAll(data){
 
   return {
     masterCount: master.length,
-    audit, byAtty, byCounty, renewMo, auditMo,
+    audit, byAtty, byCounty, auditMo,
     legal, ccauth, elderLaw,
-    renew, renewByAtty, riskRows,
-    expectedTotal, collectedTotal, collectible,
+    renew, renewByAtty, cohorts, renewMoStatus, riskRows,
+    bookTotal, collectedTotal, collectible, churnAmount,
+    invCount: invRows.length,
     n26: ncStats(new26), n25: ncStats(new25), n24: ncStats(new24),
     m26: monthly(new26, 2026), m25: monthly(new25, 2025),
     attrition: data.attrition || {deceased:0, cancelled:0},
@@ -485,11 +521,23 @@ function computeAll(data){
 
 async function load(){
   try{
-    const r = await fetch("/api/app-feed");
-    if(!r.ok) throw new Error("feed returned " + r.status);
-    const j = await r.json();
-    if(j.error) throw new Error(j.error);
-    DATA = j;
+    const [rMaster, rInv] = await Promise.all([
+      fetch("/api/app-feed"),
+      fetch("/api/app-invoice-feed"),
+    ]);
+    if(!rMaster.ok) throw new Error("master feed returned " + rMaster.status);
+    const jMaster = await rMaster.json();
+    if(jMaster.error) throw new Error(jMaster.error);
+    DATA = jMaster;
+
+    if(rInv.ok){
+      const jInv = await rInv.json();
+      if(jInv.error){ INV = null; INV_ERROR = jInv.error; }
+      else { INV = jInv; INV_ERROR = null; }
+    } else {
+      INV = null; INV_ERROR = "invoice feed returned " + rInv.status;
+    }
+
     render();
   }catch(e){
     document.getElementById("content").innerHTML =
@@ -506,7 +554,7 @@ function filterLabel(){
 }
 
 function render(){
-  const s = computeAll(DATA);
+  const s = computeAll(DATA, INV);
 
   document.getElementById("periodLabel").textContent = filter
     ? filterLabel()
@@ -514,6 +562,7 @@ function render(){
 
   document.getElementById("content").innerHTML = [
     filterBar(),
+    invWarning(),
     headlineSection(s),
     kpiSection(s),
     renewalThermo(s),
@@ -540,6 +589,11 @@ function filterBar(){
   </div>`;
 }
 
+function invWarning(){
+  if(!INV_ERROR) return "";
+  return `<div class="feedwarn">⚠️ The invoicing feed didn't answer (${esc(INV_ERROR)}), so the renewal-money sections are empty. Roster, audits, and enrollments below are still live. Check <b>APP_INVOICE_FEED_URL</b> on Render.</div>`;
+}
+
 function headlineSection(s){
   const rate = s.collectible > 0 ? (s.collectedTotal / s.collectible * 100) : 0;
   return `<div class="headline">
@@ -563,18 +617,19 @@ function headlineSection(s){
 
 function kpiSection(s){
   const paid = s.renew["Paid"];
-  const avgRenewal = paid.count ? paid.collected / paid.count : 0;
-  const outstanding = s.renew["Outstanding"];
+  const avgRenewal = paid.count ? paid.amount / paid.count : 0;
+  const openAmt   = s.renew["Due"].amount + s.renew["Overdue"].amount;
+  const openCount = s.renew["Due"].count + s.renew["Overdue"].count;
   return `<div class="kpis">
     <div class="kpi"><div class="k">Avg renewal (paid)</div>
       <div class="v">${usd0(avgRenewal)}</div>
       <div class="d">${paid.count.toLocaleString()} paid renewals</div></div>
-    <div class="kpi"><div class="k">Outstanding renewals</div>
-      <div class="v">${usdK(outstanding.expected)}</div>
-      <div class="d">${outstanding.count.toLocaleString()} invoices open</div></div>
-    <div class="kpi"><div class="k">Waived / charity</div>
-      <div class="v">${usdK(s.renew["Waived / Charity"].expected)}</div>
-      <div class="d">${s.renew["Waived / Charity"].count} memberships</div></div>
+    <div class="kpi"><div class="k">Due + overdue</div>
+      <div class="v">${usdK(openAmt)}</div>
+      <div class="d">${openCount.toLocaleString()} invoices need attention</div></div>
+    <div class="kpi"><div class="k">Cancelled (churn)</div>
+      <div class="v">${usdK(s.churnAmount)}</div>
+      <div class="d">${s.renew["Cancelled"].count} memberships this cycle</div></div>
     <div class="kpi"><div class="k">Attrition on record</div>
       <div class="v">${(s.attrition.deceased + s.attrition.cancelled).toLocaleString()}</div>
       <div class="d">${s.attrition.deceased} deceased · ${s.attrition.cancelled} cancelled (all-time)</div></div>
@@ -582,20 +637,27 @@ function kpiSection(s){
 }
 
 function renewalThermo(s){
+  if(INV_ERROR) return "";
   const pct = s.collectible > 0 ? s.collectedTotal / s.collectible : 0;
   const segs = RENEW_ORDER.map(k => ({
-    key:k, exp:s.renew[k].expected, count:s.renew[k].count,
-  })).filter(x => x.exp > 0);
-  const totExp = segs.reduce((a,x)=>a+x.exp,0) || 1;
+    key:k, amt:s.renew[k].amount, count:s.renew[k].count,
+  })).filter(x => x.amt > 0);
+  const tot = segs.reduce((a,x)=>a+x.amt,0) || 1;
 
   const strip = segs.map(x => `
-    <div class="seg" style="background:${RENEW_COLORS[x.key]};flex:${x.exp/totExp*100}"
-      title="${x.key}: ${usd0(x.exp)} across ${x.count} memberships">
-      ${x.exp/totExp >= .07 ? (x.exp/totExp*100).toFixed(0)+'%' : ''}
+    <div class="seg" style="background:${RENEW_COLORS[x.key]};flex:${x.amt/tot*100}"
+      title="${x.key}: ${usd0(x.amt)} across ${x.count} memberships">
+      ${x.amt/tot >= .07 ? (x.amt/tot*100).toFixed(0)+'%' : ''}
     </div>`).join("");
   const legend = segs.map(x => `
     <div class="item"><span class="swatch" style="background:${RENEW_COLORS[x.key]}"></span>
-      <b>${x.key}</b><span class="amt">${usd0(x.exp)} · ${x.count} members</span></div>`).join("");
+      <b>${x.key}</b><span class="amt">${usd0(x.amt)} · ${x.count} members</span></div>`).join("");
+
+  const chips = ["Legacy","2025 cohort","2026 cohort"].filter(c => s.cohorts[c]).map(c => {
+    const o = s.cohorts[c];
+    return `<div class="mixchip"><span class="amt">${usd0(o.paid)} of ${usd0(o.amount)}</span>
+      <small>${c} · ${o.count} members</small></div>`;
+  }).join("");
 
   return `<div class="thermo">
     <div class="row">
@@ -603,8 +665,9 @@ function renewalThermo(s){
       <div class="pct">${(pct*100).toFixed(1)}%</div>
     </div>
     <div class="bar"><div class="fill ${pct>1?'over':''}" style="width:${Math.min(100,pct*100)}%"></div></div>
-    <div class="pace">Collectible = invoiced fees minus waived/charity and cancel requests. Full invoiced total: <b>${usd0(s.expectedTotal)}</b>.</div>
-    <div style="margin-top:14px">
+    <div class="pace">Collectible = the renewal book minus cancellations and waivers. Full book: <b>${usd0(s.bookTotal)}</b> across ${s.invCount.toLocaleString()} memberships (Legacy + 2025 + 2026 cohorts).</div>
+    <div class="mixchips" style="margin-top:14px">${chips}</div>
+    <div style="margin-top:6px">
       <div class="comp">${strip}</div>
       <div class="comp-legend">${legend}</div>
     </div>
@@ -612,19 +675,20 @@ function renewalThermo(s){
 }
 
 function riskSection(s){
-  if(!s.riskRows.length) return "";
+  if(INV_ERROR || !s.riskRows.length) return "";
   const dollars = s.riskRows.reduce((a,r)=>a+r.fee,0);
+  const nOver = s.riskRows.filter(r=>r.status==="Overdue").length;
   const rows = s.riskRows.slice(0,40).map(r => `
     <div class="riskrow">
       <span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>
       <span class="att">${esc(r.atty)}</span>
       <span class="amt">${usd0(r.fee)}</span>
-      <span class="why" title="${esc(r.why)}">${esc(r.why)}</span>
+      <span class="why" title="${esc(r.why)}"><span class="${r.status==='Overdue'?'ov':'du'}">${esc(r.status)}</span> · ${esc(r.why)}</span>
     </div>`).join("");
   const more = s.riskRows.length > 40 ? `<div class="rank"><div class="more">+ ${s.riskRows.length-40} more</div></div>` : "";
   return `<div class="section">
     <h2>⚠️ Follow-up list — ${s.riskRows.length} memberships · ${usd0(dollars)} at stake</h2>
-    <p class="sh">Cancel requests plus unpaid renewals whose renewal month has already passed. Sorted by dollars. This is the call sheet.</p>
+    <p class="sh">Everything the invoicing sheet marks Due or Overdue (${nOver} overdue first, then by dollars). This is the call sheet.</p>
     <div class="risklist">${rows}</div>${more}
   </div>`;
 }
@@ -670,20 +734,34 @@ function workloadSection(s){
     </div>`;
   }).join("");
 
-  const maxR = Math.max(1, ...s.renewMo);
+  // Renewals by month — stacked by invoicing status.
+  const moTotals = s.renewMoStatus.map(o => RENEW_ORDER.reduce((a,k)=>a+o[k],0));
+  const maxR = Math.max(1, ...moTotals);
   const renewBars = MONTH_ABBR.map((ab,i) => {
-    const v = s.renewMo[i];
+    const o = s.renewMoStatus[i];
+    const tot = moTotals[i];
+    const totalH = (tot/maxR)*145;
+    const segs = RENEW_ORDER.filter(k=>o[k]>0).map(k => {
+      const h = tot>0 ? (o[k]/tot)*totalH : 0;
+      return `<div class="sseg" style="height:${h}px;background:${RENEW_COLORS[k]}"></div>`;
+    }).join("");
+    const tipBits = RENEW_ORDER.filter(k=>o[k]>0).map(k=>`${k}: ${o[k]}`).join(" · ");
     return `<div class="m">
-      <span class="tip">${MONTHS[i]} · ${v} renewals</span>
-      <div class="bars"><div class="bar cur" style="height:${(v/maxR)*130}px"></div></div>
+      <span class="tip">${MONTHS[i]} · ${tot} renewals${tipBits ? " · "+tipBits : ""}</span>
+      <div class="sbar" style="height:${Math.max(2,totalH)}px">${segs}</div>
       <div class="lbl">${ab}</div>
     </div>`;
   }).join("");
-  const janShare = s.masterCount ? (s.renewMo[0]/s.masterCount*100).toFixed(0) : 0;
+  const janTot = moTotals[0];
+  const allTot = moTotals.reduce((a,b)=>a+b,0);
+  const janShare = allTot ? (janTot/allTot*100).toFixed(0) : 0;
+
+  const renewLegend = RENEW_ORDER.filter(k => s.renew[k] && s.renew[k].count > 0).map(k =>
+    `<div class="item"><span class="swatch" style="background:${RENEW_COLORS[k]}"></span>${k}</div>`).join("");
 
   return `<div class="section">
     <h2>Monthly workload</h2>
-    <p class="sh">Left: funding audits by scheduled month (green = done for ${CONFIG.year}, gold = pending). Right: renewal invoices by month — ${janShare}% of the book renews in January, so brace the billing team accordingly.</p>
+    <p class="sh">Left: funding audits by scheduled month (green = done for ${CONFIG.year}, gold = pending). Right: renewal invoices by month, colored by payment status — ${janShare}% of the book renews in January, so brace the billing team accordingly.</p>
     <div class="cols">
       <div class="col">
         <b style="color:var(--navy);font-size:.95rem">Audits by month</b>
@@ -694,8 +772,9 @@ function workloadSection(s){
         <div class="months" style="height:190px">${auditBars}</div>
       </div>
       <div class="col">
-        <b style="color:var(--navy);font-size:.95rem">Renewals by month</b>
-        <div class="months">${renewBars}</div>
+        <b style="color:var(--navy);font-size:.95rem">Renewals by month · status</b>
+        <div class="months-legend">${renewLegend}</div>
+        <div class="months" style="height:190px">${renewBars}</div>
       </div>
     </div>
   </div>`;
@@ -723,7 +802,7 @@ function enrollmentSection(s){
 
   return `<div class="section">
     <h2>Enrollment engine</h2>
-    <p class="sh">New APP sign-ups by join date. Gold is ${CONFIG.year}, grey is 2025. Yearly chips use each tab's full roster.</p>
+    <p class="sh">New APP sign-ups by join date, from the Master sheet's NEW Clients tabs. Gold is ${CONFIG.year}, grey is 2025. Yearly chips use each tab's full roster.</p>
     <div class="mixchips">${chips}</div>
     <div class="months-legend">
       <div class="item"><span class="swatch" style="background:#c7cfdd"></span>2025</div>
@@ -755,7 +834,7 @@ function attorneySection(s){
 
   return `<div class="section">
     <h2>By attorney</h2>
-    <p class="sh">Click any row to filter the whole dashboard. Renewal % shows collected against that attorney's invoiced book.</p>
+    <p class="sh">Click any row to filter the whole dashboard. Renewal % shows collected against that attorney's collectible book (Legacy members are matched to their attorney via the Master roster).</p>
     <div class="cols3">
       <div class="col"><b style="color:var(--navy);font-size:.95rem">Members on the book</b><div class="rank">${memberRows}</div></div>
       <div class="col"><b style="color:var(--navy);font-size:.95rem">${CONFIG.year} renewal $ collected</b><div class="rank">${renewRows}</div></div>
@@ -836,7 +915,8 @@ function memberLedger(){
 
 function footerNote(s){
   return `<div class="footer-note">
-    Data pulled live from the <b>APP Master Check List</b> sheet · Master, ${CONFIG.year} Renewal Payments, and NEW Clients tabs. Refresh to update.
+    Roster, audits &amp; enrollments from the <b>APP Master Check List</b> sheet ·
+    Renewal money from the <b>APP Invoicing Spreadsheet</b> (Legacy + 2025 + 2026 cohort tabs). Refresh to update.
   </div>`;
 }
 
