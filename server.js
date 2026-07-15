@@ -607,7 +607,7 @@ app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
   }
 });
 
-// ---- APP Pulse feed (admins + app_access users) -----------------------------
+// ---- APP Pulse feeds (admins + app_access users) ----------------------------
 
 app.get("/api/app-feed", requireUser, async (req, res) => {
   try {
@@ -623,6 +623,25 @@ app.get("/api/app-feed", requireUser, async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error("app feed error", e);
+    res.status(502).json({ error: "feed_error" });
+  }
+});
+
+// Renewal money — served by the Apps Script on the APP Invoicing Spreadsheet.
+app.get("/api/app-invoice-feed", requireUser, async (req, res) => {
+  try {
+    if (!(await hasAppAccess(req.user)))
+      return res.status(403).json({ error: "forbidden" });
+    const url = process.env.APP_INVOICE_FEED_URL;
+    if (!url) return res.status(500).json({ error: "feed_not_configured" });
+    const bust = url.includes("?") ? "&" : "?";
+    const r = await fetch(`${url}${bust}_=${Date.now()}`, { redirect: "follow" });
+    if (!r.ok) return res.status(502).json({ error: "feed_unreachable" });
+    const data = await r.json();
+    res.set("Cache-Control", "no-store");
+    res.json(data);
+  } catch (e) {
+    console.error("app invoice feed error", e);
     res.status(502).json({ error: "feed_error" });
   }
 });
