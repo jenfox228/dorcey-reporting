@@ -93,6 +93,21 @@ function fieldDetail(templateKey, period, data) {
   }));
 }
 
+// ---- APP-access helper ------------------------------------------------------
+// Admins can see everything. Non-admins can see /app only if their
+// app_access flag is set. Checked against the DB directly so it works
+// no matter which columns attachUser() loads onto req.user.
+
+async function hasAppAccess(user) {
+  if (!user) return false;
+  if (user.is_admin) return true;
+  const { rows } = await pool.query(
+    `SELECT app_access FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [user.id]
+  );
+  return !!rows[0]?.app_access;
+}
+
 // ---- Health ---------------------------------------------------------------
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -291,7 +306,7 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
 
 app.get("/api/admin/users", requireUser, requireAdmin, async (_req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, person, role, template_key, location, is_admin, active
+    `SELECT id, name, email, person, role, template_key, location, is_admin, active, app_access
        FROM rpt_users ORDER BY is_admin DESC, name ASC`
   );
   res.json({ users: rows });
@@ -391,6 +406,9 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
     }
     push("is_admin", b.is_admin);
   }
+  if (typeof b.app_access === "boolean") {
+    push("app_access", b.app_access);
+  }
   if (typeof b.active === "boolean") {
     // Prevent self-deactivation.
     if (id === req.user.id && !b.active) {
@@ -406,7 +424,7 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
     const { rows } = await pool.query(
       `UPDATE rpt_users SET ${sets.join(", ")}
         WHERE id = $${vals.length}
-        RETURNING id, name, email, person, template_key, location, is_admin, active`,
+        RETURNING id, name, email, person, template_key, location, is_admin, active, app_access`,
       vals
     );
     if (!rows[0]) return res.status(404).json({ error: "no_user" });
@@ -439,6 +457,21 @@ app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
   if (!rows[0].is_admin) return res.status(400).json({ error: "not_admin" });
   const token = await createMagicToken(user_id);
   res.json({ url: `${appUrl(req)}/dash/${token}` });
+});
+
+// Generate a sign-in link straight to APP Pulse. Works for admins and for
+// users whose app_access flag is set.
+app.post("/api/admin/applink", requireUser, requireAdmin, async (req, res) => {
+  const { user_id } = req.body || {};
+  const { rows } = await pool.query(
+    `SELECT id, is_admin, app_access FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [user_id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: "no_user" });
+  if (!rows[0].is_admin && !rows[0].app_access)
+    return res.status(400).json({ error: "no_app_access" });
+  const token = await createMagicToken(user_id);
+  res.json({ url: `${appUrl(req)}/app/${token}` });
 });
 
 app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
@@ -574,10 +607,12 @@ app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
   }
 });
 
-// ---- APP Pulse feed (Jen & Josh only) ---------------------------------------
+// ---- APP Pulse feed (admins + app_access users) -----------------------------
 
-app.get("/api/app-feed", requireUser, requireAdmin, async (req, res) => {
+app.get("/api/app-feed", requireUser, async (req, res) => {
   try {
+    if (!(await hasAppAccess(req.user)))
+      return res.status(403).json({ error: "forbidden" });
     const url = process.env.APP_FEED_URL;
     if (!url) return res.status(500).json({ error: "feed_not_configured" });
     const bust = url.includes("?") ? "&" : "?";
@@ -626,15 +661,16 @@ app.get("/pulse/:token", async (req, res) => {
   }
 });
 
-app.get("/app", (req, res) => {
-  if (!req.user?.is_admin) return res.status(403).send(loginError());
+app.get("/app", async (req, res) => {
+  if (!(await hasAppAccess(req.user))) return res.status(403).send(loginError());
   res.sendFile(path.join(__dirname, "public", "app.html"));
 });
 
 app.get("/app/:token", async (req, res) => {
   try {
     const user = await consumeMagicToken(req.params.token);
-    if (!user || !user.is_admin) return res.status(401).send(loginError());
+    if (!user || !(await hasAppAccess(user)))
+      return res.status(401).send(loginError());
     res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
     res.sendFile(path.join(__dirname, "public", "app.html"));
   } catch (e) {
@@ -669,6 +705,11 @@ function loginError() {
 
 const PORT = process.env.PORT || 3000;
 initSchema()
+  .then(() =>
+    pool.query(
+      `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS app_access BOOLEAN NOT NULL DEFAULT FALSE`
+    )
+  )
   .then(() => app.listen(PORT, () => console.log(`Reporting app on :${PORT}`)))
   .catch((e) => {
     console.error("Failed to init schema", e);
