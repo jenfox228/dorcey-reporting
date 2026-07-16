@@ -10,7 +10,7 @@
   *{box-sizing:border-box}
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:#1b1b1b}
 
-  /* Top nav bar for jumping between admin / dashboard / pulse */
+  /* Top nav bar for jumping between admin / dashboard / pulse / app */
   .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;padding:0;
     border-bottom:1px solid rgba(201,161,74,.25)}
   .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
@@ -71,6 +71,7 @@
   .name{font-weight:600;color:var(--navy)}
   .tpl{color:var(--muted);font-size:.8rem}
   .badge{font-size:.68rem;background:var(--gold);color:var(--navy);padding:2px 7px;border-radius:6px;font-weight:700}
+  .badge.app{background:#3f6184;color:#fff}
   .newpill{font-size:.68rem;background:#e7f3ec;color:var(--ok);padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px}
   .inactive-pill{font-size:.68rem;background:#e0e0e0;color:#555;padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px}
   button.link{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:9px;
@@ -78,6 +79,8 @@
   button.link:hover{background:var(--navy);color:#fff}
   button.link.edit{border-color:var(--gold);color:#8a6b1e}
   button.link.edit:hover{background:var(--gold);color:var(--navy)}
+  button.link.app{border-color:#3f6184;color:#3f6184}
+  button.link.app:hover{background:#3f6184;color:#fff}
   .copied{color:var(--ok);font-weight:700;font-size:.82rem}
   .urlcell{font-size:.74rem;color:var(--muted);word-break:break-all;max-width:280px;margin-top:6px}
   .just-created{background:#fbf9ea}
@@ -97,6 +100,7 @@
     <a href="/admin" class="active"><span class="ico">⚙️</span>Admin</a>
     <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
     <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+    <a href="/app"><span class="ico">🧭</span>APP</a>
   </nav>
   <header>
     <div class="eyebrow">Dorcey Law Firm</div>
@@ -153,6 +157,10 @@
           <input id="u_admin" type="checkbox" />
           <label for="u_admin">Grant admin access (dashboard + admin panel)</label>
         </div>
+        <div class="fld check">
+          <input id="u_appaccess" type="checkbox" />
+          <label for="u_appaccess">Grant APP Pulse access (APP dashboard only — not Pulse/Dashboard/Admin)</label>
+        </div>
         <div class="actions">
           <button class="btn-primary" id="createBtn">Create user</button>
           <button class="btn-secondary" id="clearBtn">Clear form</button>
@@ -192,10 +200,14 @@ function renderUsers(){
     ].filter(Boolean).join(" ");
     const badges = [
       u.is_admin ? '<span class="badge">admin</span>' : '',
+      (u.app_access && !u.is_admin) ? '<span class="badge app">APP</span>' : '',
       u.id===JUST_CREATED_ID ? '<span class="newpill">new</span>' : '',
       u.id===JUST_UPDATED_ID ? '<span class="newpill" style="background:#dbe9f7;color:#274a8a">updated</span>' : '',
       !u.active ? '<span class="inactive-pill">inactive</span>' : '',
     ].join(" ");
+    // APP link button shows for admins (they can see /app too) and for anyone
+    // explicitly granted app_access.
+    const canApp = u.active && (u.is_admin || u.app_access);
     return `
       <tr data-id="${u.id}" class="${rowClass}">
         <td><span class="name">${u.name}</span> ${badges}<br>
@@ -205,6 +217,7 @@ function renderUsers(){
           <div class="actions-cell">
             <button class="link" onclick="gen(${u.id},this)" ${!u.active?'disabled title="Reactivate to generate links"':''}>Generate link</button>
             ${u.is_admin && u.active?`<button class="link" onclick="genDash(${u.id},this)">Dashboard link</button>`:''}
+            ${canApp?`<button class="link app" onclick="genApp(${u.id},this)">APP link</button>`:''}
             <button class="link edit" onclick="startEdit(${u.id})">✏️ Edit</button>
           </div>
           <div class="urlcell"></div>
@@ -272,6 +285,10 @@ function renderEditRow(u){
           <label for="e_admin_${u.id}">Admin access (dashboard + admin panel)</label>
         </div>
         <div class="fld check">
+          <input id="e_appaccess_${u.id}" type="checkbox" ${u.app_access?'checked':''} />
+          <label for="e_appaccess_${u.id}">APP Pulse access (APP dashboard only)</label>
+        </div>
+        <div class="fld check">
           <input id="e_active_${u.id}" type="checkbox" ${u.active?'checked':''} />
           <label for="e_active_${u.id}">Active (uncheck to deactivate — preserves historical data)</label>
         </div>
@@ -334,6 +351,7 @@ async function saveEdit(id){
     template_key: document.getElementById(`e_template_${id}`).value,
     location: document.getElementById(`e_location_${id}`).value,
     is_admin: document.getElementById(`e_admin_${id}`).checked,
+    app_access: document.getElementById(`e_appaccess_${id}`).checked,
     active: document.getElementById(`e_active_${id}`).checked,
   };
   if(payload.name.length < 2){ st.textContent="Name is required."; st.className="status err"; return; }
@@ -408,6 +426,7 @@ function clearForm(){
   ["u_name","u_email","u_person","u_location"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("u_template").value="";
   document.getElementById("u_admin").checked = false;
+  document.getElementById("u_appaccess").checked = false;
   const st = document.getElementById("createStatus");
   st.textContent = ""; st.className = "status";
 }
@@ -418,6 +437,7 @@ document.getElementById("createBtn").onclick = async ()=>{
   const st = document.getElementById("createStatus");
   st.textContent = ""; st.className = "status";
 
+  const appAccess = document.getElementById("u_appaccess").checked;
   const payload = {
     name: document.getElementById("u_name").value.trim(),
     email: document.getElementById("u_email").value.trim(),
@@ -455,12 +475,23 @@ document.getElementById("createBtn").onclick = async ()=>{
       return;
     }
     const {user} = await r.json();
+    // create-user doesn't accept app_access directly, so if it was checked we
+    // immediately follow up with an update to set the flag.
+    if(appAccess){
+      try{
+        await fetch("/api/admin/update-user", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({id:user.id, app_access:true}),
+        });
+      }catch(e){ /* non-fatal; flag can be set via Edit */ }
+    }
     JUST_CREATED_ID = user.id;
     st.textContent = `✓ Created "${user.name}". Scroll down to generate their link.`;
     st.className = "status ok";
     ["u_name","u_email","u_person","u_location"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("u_template").value="";
     document.getElementById("u_admin").checked = false;
+    document.getElementById("u_appaccess").checked = false;
     await loadUsers();
     st.textContent = `✓ Created "${user.name}". Generate their link below.`;
     st.className = "status ok";
@@ -482,6 +513,22 @@ async function genDash(id, btn){
   btn.textContent="Copy dashboard link";
   btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
     btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy dashboard link",1500); };
+}
+async function genApp(id, btn){
+  btn.textContent="…";
+  const r = await fetch("/api/admin/applink",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({user_id:id})});
+  if(!r.ok){
+    const err = await r.json().catch(()=>({}));
+    btn.textContent = err.error==="no_app_access" ? "No APP access" : "Error";
+    return;
+  }
+  const {url} = await r.json();
+  const cell = btn.closest("td").querySelector(".urlcell");
+  cell.textContent = url;
+  btn.textContent="Copy APP link";
+  btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
+    btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy APP link",1500); };
 }
 async function gen(id, btn){
   btn.textContent="…";
