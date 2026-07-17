@@ -260,6 +260,9 @@ function classify(row){
 function attColOf(row){
   return String(row[role==="orig"?"Originating Attorney":"Closing Attorney"]||"").trim().toUpperCase();
 }
+// Office/branch the work was done out of. Matches Pulse's reader: reads the
+// "Branch" column, defaults to "Unassigned" when blank.
+function branchOf(row){ return String(row["Branch"]||"").trim() || "Unassigned"; }
 
 // Same-period trim: only keep 2025 months that 2026 already has data for.
 function ytdCutoffMonth(){
@@ -273,7 +276,8 @@ function ytdCutoffMonth(){
 function statBlock(rows, code, loMo, hiMo){
   let total=0, files=0, newTotal=0, newFiles=0;
   const byMonth=new Array(12).fill(0);
-  const cats={}; // cat -> {rev,files,new}
+  const cats={}; // cat -> {rev,files}
+  const branches={}; // branch -> {rev,files}
   for(const r of rows){
     if(attColOf(r)!==code) continue;
     const mi=monthIndex(r);
@@ -285,8 +289,10 @@ function statBlock(rows, code, loMo, hiMo){
     if(seg==="New-Matter"){ newTotal+=fee; newFiles++; }
     const c=catOf(r);
     (cats[c] ??= {rev:0,files:0}); cats[c].rev+=fee; cats[c].files++;
+    const b=branchOf(r);
+    (branches[b] ??= {rev:0,files:0}); branches[b].rev+=fee; branches[b].files++;
   }
-  return {total,files,newTotal,newFiles,byMonth,cats,
+  return {total,files,newTotal,newFiles,byMonth,cats,branches,
     avgFile: files?total/files:0, avgNew: newFiles?newTotal/newFiles:0};
 }
 
@@ -473,6 +479,9 @@ function individualView(code){
     <div class="sec-label">Work by type · ${CONFIG.year} year-to-date</div>
     ${categoryTable(cur, prev)}
 
+    <div class="sec-label">Work by office · ${CONFIG.year} year-to-date</div>
+    ${branchTable(cur, prev)}
+
     <div class="sec-label">The files behind these numbers</div>
     <p class="subtle" style="margin-bottom:8px">Every file crediting you this year, newest first. If a number looks off, this is the receipt — search a client or matter type to check whether something landed here or was missed.</p>
     ${clientLedger(code, 0, hi)}
@@ -607,6 +616,38 @@ function categoryTable(cur, prev){
   </table>`;
 }
 
+// Office/branch breakdown — for attorneys who split time across locations.
+function branchTable(cur, prev){
+  const branches=Object.keys(cur.branches).sort((a,b)=>cur.branches[b].rev-cur.branches[a].rev);
+  if(!branches.length) return `<p class="subtle">No office data in this period.</p>`;
+  // If everything's in one office, a table is overkill — say it in a line.
+  if(branches.length===1){
+    const b=branches[0], cc=cur.branches[b];
+    return `<p class="subtle">All ${cc.files} file${cc.files>1?'s':''} (${usd0(cc.rev)}) came out of <b>${esc(b)}</b>.</p>`;
+  }
+  const rows=branches.map(b=>{
+    const cc=cur.branches[b], pc=(prev.branches&&prev.branches[b])||{rev:0,files:0};
+    const cls = pc.rev>0 ? (cc.rev>pc.rev?"up":cc.rev<pc.rev?"down":"flat") : (cc.rev>0?"up":"flat");
+    const prevCell = pc.rev>0 ? usd0(pc.rev) : '<span class="flat">—</span>';
+    return `<tr>
+      <td class="cat-name">${esc(b)}</td>
+      <td>${cc.files}</td>
+      <td class="${cls}">${usd0(cc.rev)}</td>
+      <td>${usd0(cc.files?cc.rev/cc.files:0)}</td>
+      <td>${prevCell}</td>
+    </tr>`;
+  }).join("");
+  const tot=branches.reduce((s,b)=>s+cur.branches[b].rev,0);
+  const totF=branches.reduce((s,b)=>s+cur.branches[b].files,0);
+  const totPrev=branches.reduce((s,b)=>s+(((prev.branches||{})[b]||{rev:0}).rev),0);
+  return `<table class="cat">
+    <thead><tr><th>Office</th><th>Files</th><th>${CONFIG.year} revenue</th><th>Avg fee</th><th>${CONFIG.year-1} revenue</th></tr></thead>
+    <tbody>${rows}
+      <tr class="totrow"><td>All offices</td><td>${totF}</td><td>${usd0(tot)}</td><td>${usd0(totF?tot/totF:0)}</td><td>${totPrev>0?usd0(totPrev):''}</td></tr>
+    </tbody>
+  </table>`;
+}
+
 // ---- LEADERBOARD ----------------------------------------------------------
 function leaderboardView(){
   const cut=ytdCutoffMonth();
@@ -638,6 +679,21 @@ function leaderboardView(){
   const tF=rows.reduce((s,r)=>s+r.ytd.files,0);
   const totCls = tYtdp>0 ? (tYtd>tYtdp?"up":tYtd<tYtdp?"down":"flat") : "flat";
 
+  // Firm-wide office rollup: merge every attorney's branch stats.
+  function mergeBranches(list, pick){
+    const out={};
+    for(const r of list){
+      const src=pick(r).branches||{};
+      for(const b in src){ (out[b] ??= {rev:0,files:0}); out[b].rev+=src[b].rev; out[b].files+=src[b].files; }
+    }
+    return out;
+  }
+  const firmCur={branches:mergeBranches(rows,r=>r.ytd)};
+  const firmPrev={branches:mergeBranches(rows,r=>r.ytdp)};
+  const officeBlock = Object.keys(firmCur.branches).length
+    ? `<div class="sec-label">Revenue by office · firm-wide</div>${branchTable(firmCur, firmPrev)}`
+    : "";
+
   return `<div class="report leaderboard">
     ${reportHead("Leadership Summary — All Attorneys")}
     <div class="sec-label">${CONFIG.year} year-to-date · January through ${monthLabel} · ranked by revenue</div>
@@ -653,6 +709,7 @@ function leaderboardView(){
         </tr>
       </tbody>
     </table>
+    ${officeBlock}
     <p class="subtle" style="margin-top:12px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
     Green means ahead of last year, red means behind — the ${CONFIG.year-1} column shows the same months for comparison.
     Pick an individual from the dropdown for their full scorecard, monthly trend, and file list.</p>
