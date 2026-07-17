@@ -108,6 +108,30 @@ async function hasAppAccess(user) {
   return !!rows[0]?.app_access;
 }
 
+// ---- Reports-access helpers -------------------------------------------------
+// Admins see everyone. A report_access user sees the reports tab; if they have
+// an attorney_code they are PINNED to that attorney (server-filtered).
+
+async function hasReportAccess(user) {
+  if (!user) return false;
+  if (user.is_admin) return true;
+  const { rows } = await pool.query(
+    `SELECT report_access FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [user.id]
+  );
+  return !!rows[0]?.report_access;
+}
+
+// Attorney code (JOD, MAS, …) a report user is pinned to. Admins → null.
+async function attorneyCodeFor(user) {
+  if (!user || user.is_admin) return null;
+  const { rows } = await pool.query(
+    `SELECT attorney_code FROM rpt_users WHERE id = $1`,
+    [user.id]
+  );
+  return (rows[0]?.attorney_code || "").trim().toUpperCase() || null;
+}
+
 // ---- Health ---------------------------------------------------------------
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -306,7 +330,7 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
 
 app.get("/api/admin/users", requireUser, requireAdmin, async (_req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, person, role, template_key, location, is_admin, active, app_access
+    `SELECT id, name, email, person, role, template_key, location, is_admin, active, app_access, report_access, attorney_code
        FROM rpt_users ORDER BY is_admin DESC, name ASC`
   );
   res.json({ users: rows });
@@ -409,6 +433,13 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
   if (typeof b.app_access === "boolean") {
     push("app_access", b.app_access);
   }
+  if (typeof b.report_access === "boolean") {
+    push("report_access", b.report_access);
+  }
+  if (typeof b.attorney_code === "string") {
+    const v = b.attorney_code.trim().toUpperCase();
+    push("attorney_code", v.length ? v : null);
+  }
   if (typeof b.active === "boolean") {
     // Prevent self-deactivation.
     if (id === req.user.id && !b.active) {
@@ -424,7 +455,7 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
     const { rows } = await pool.query(
       `UPDATE rpt_users SET ${sets.join(", ")}
         WHERE id = $${vals.length}
-        RETURNING id, name, email, person, template_key, location, is_admin, active, app_access`,
+        RETURNING id, name, email, person, template_key, location, is_admin, active, app_access, report_access, attorney_code`,
       vals
     );
     if (!rows[0]) return res.status(404).json({ error: "no_user" });
@@ -472,6 +503,25 @@ app.post("/api/admin/applink", requireUser, requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "no_app_access" });
   const token = await createMagicToken(user_id);
   res.json({ url: `${appUrl(req)}/app/${token}` });
+});
+
+// Sign-in link to the Reports tab. Admins or report_access users. A non-admin
+// must have an attorney_code assigned (otherwise the link would show nothing
+// or, misconfigured, everything).
+app.post("/api/admin/reportlink", requireUser, requireAdmin, async (req, res) => {
+  const { user_id } = req.body || {};
+  const { rows } = await pool.query(
+    `SELECT id, is_admin, report_access, attorney_code
+       FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [user_id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: "no_user" });
+  if (!rows[0].is_admin && !rows[0].report_access)
+    return res.status(400).json({ error: "no_report_access" });
+  if (!rows[0].is_admin && !rows[0].attorney_code)
+    return res.status(400).json({ error: "no_attorney_code" });
+  const token = await createMagicToken(user_id);
+  res.json({ url: `${appUrl(req)}/reports/${token}` });
 });
 
 app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
@@ -607,6 +657,61 @@ app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
   }
 });
 
+// ---- Reports feed (security boundary) --------------------------------------
+// Wraps the revenue feed and enforces per-attorney isolation SERVER-SIDE.
+// Admins/report_access users reach it; a pinned attorney receives ONLY their
+// own rows plus {pinned:"CODE"} — their browser never holds anyone else's
+// data, so no URL/console trick can leak it.
+
+async function sendFilteredReports(res, user, data) {
+  const code = await attorneyCodeFor(user); // null for admins
+  res.set("Cache-Control", "no-store");
+  if (!code) return res.json({ ...data, pinned: null });
+
+  const key = (s) => String(s || "").trim().toUpperCase();
+  const rows = Array.isArray(data.entries) ? data.entries
+             : Array.isArray(data.rows) ? data.rows : [];
+  const mine = rows.filter((row) => {
+    const o = key(row["Originating Attorney"] ?? row["Originating Attorney "]);
+    const c = key(row["Closing Attorney"] ?? row["Closing Attorney "]);
+    return o === code || c === code;
+  });
+  const out = Array.isArray(data.entries) ? { entries: mine } : { rows: mine };
+  res.json({ ...out, pinned: code });
+}
+
+app.get("/api/reports-feed", requireUser, async (req, res) => {
+  try {
+    if (!(await hasReportAccess(req.user)))
+      return res.status(403).json({ error: "forbidden" });
+
+    const url = process.env.REVENUE_FEED_URL;
+    if (!url) return res.status(500).json({ error: "feed_not_configured" });
+    const bust = url.includes("?") ? "&" : "?";
+
+    if (req.query.tab === "2025") {
+      for (const name of TAB_2025_CANDIDATES) {
+        const r = await fetch(
+          `${url}${bust}tab=${encodeURIComponent(name)}&_=${Date.now()}`,
+          { redirect: "follow" }
+        );
+        if (!r.ok) continue;
+        const d = await r.json();
+        if (d && !d.error) return sendFilteredReports(res, req.user, d);
+      }
+      return res.status(502).json({ error: "tab_2025_not_found" });
+    }
+
+    const r = await fetch(`${url}${bust}_=${Date.now()}`, { redirect: "follow" });
+    if (!r.ok) return res.status(502).json({ error: "feed_unreachable" });
+    const data = await r.json();
+    return sendFilteredReports(res, req.user, data);
+  } catch (e) {
+    console.error("reports feed error", e);
+    res.status(502).json({ error: "feed_error" });
+  }
+});
+
 // ---- APP Pulse feeds (admins + app_access users) ----------------------------
 
 app.get("/api/app-feed", requireUser, async (req, res) => {
@@ -698,6 +803,24 @@ app.get("/app/:token", async (req, res) => {
   }
 });
 
+app.get("/reports", async (req, res) => {
+  if (!(await hasReportAccess(req.user))) return res.status(403).send(loginError());
+  res.sendFile(path.join(__dirname, "public", "reports.html"));
+});
+
+app.get("/reports/:token", async (req, res) => {
+  try {
+    const user = await consumeMagicToken(req.params.token);
+    if (!user || !(await hasReportAccess(user)))
+      return res.status(401).send(loginError());
+    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
+    res.sendFile(path.join(__dirname, "public", "reports.html"));
+  } catch (e) {
+    console.error("reports login error", e);
+    res.status(500).send(loginError());
+  }
+});
+
 app.get("/dash/:token", async (req, res) => {
   try {
     const user = await consumeMagicToken(req.params.token);
@@ -727,6 +850,16 @@ initSchema()
   .then(() =>
     pool.query(
       `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS app_access BOOLEAN NOT NULL DEFAULT FALSE`
+    )
+  )
+  .then(() =>
+    pool.query(
+      `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS report_access BOOLEAN NOT NULL DEFAULT FALSE`
+    )
+  )
+  .then(() =>
+    pool.query(
+      `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS attorney_code TEXT`
     )
   )
   .then(() => app.listen(PORT, () => console.log(`Reporting app on :${PORT}`)))
