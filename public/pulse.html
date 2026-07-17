@@ -812,7 +812,7 @@ function attorneyAndMatterSection(){
         ${rankedList("Originating attorney", drop(s.byAttorneyOrig, ["APP"]), drop(s25.byAttorneyOrig, ["APP","DAD"]), "attorney_orig", false, undefined, ["ADM"])}
       </div>
       <div class="col">
-        ${rankedList("Closing attorney", drop(s.byAttorneyClos, ["APP"]), drop(s25.byAttorneyClos, ["APP","DAD"]), "attorney_clos", false, undefined, ["ADM"])}
+        ${rankedList("Closing attorney", drop(s.byAttorneyClos, ["APP","DLF"]), drop(s25.byAttorneyClos, ["APP","DAD","DLF"]), "attorney_clos", false, undefined, ["ADM"])}
       </div>
     </div>
     <div class="cols" style="margin-top:22px">
