@@ -67,12 +67,22 @@
   .stat{background:var(--parchment);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
   .stat.hero{background:linear-gradient(150deg,var(--navy),var(--navy-2));border-color:var(--navy)}
   .stat.hero .k{color:var(--gold-soft)} .stat.hero .v{color:#fff} .stat.hero .d{color:#c7cfdd}
+  .stat.hero .v.up,.stat.hero .v.down,.stat.hero .v.flat{color:#fff}
+  .stat.hero .d .vs{color:var(--gold-soft)}
   .stat .k{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
   .stat .v{font-family:"Playfair Display",serif;font-size:1.45rem;color:var(--navy);line-height:1.1;margin-top:4px}
   .stat .d{font-size:.74rem;color:var(--muted);margin-top:3px}
   .stat .d .up{color:var(--up);font-weight:700}
   .stat .d .down{color:var(--down);font-weight:700}
   .stat .d .flat{color:var(--muted);font-weight:700}
+  .stat .v.up{color:var(--up)}
+  .stat .v.down{color:var(--down)}
+  .stat .v.flat{color:var(--navy)}
+  .stat .d .vs{color:var(--muted)}
+  .bigmoney{font-weight:700}
+  .bigmoney.up{color:var(--up)}
+  .bigmoney.down{color:var(--down)}
+  .bigmoney.flat{color:var(--navy)}
 
   /* Monthly / quarterly bars */
   .bars{display:flex;align-items:flex-end;gap:10px;height:170px;margin-top:8px;padding-bottom:20px}
@@ -110,7 +120,7 @@
     font:500 .88rem "Libre Franklin";background:var(--parchment);margin:0 0 8px;outline:none}
   .lsearch:focus{border-color:var(--gold);background:#fff}
   .ledger{border:1px solid var(--line);border-radius:10px;max-height:360px;overflow-y:auto}
-  .lrow{display:grid;grid-template-columns:92px 1.4fr 1fr 54px 96px;gap:10px;padding:7px 12px;
+  .lrow{display:grid;grid-template-columns:92px 1.5fr 1.1fr 96px;gap:10px;padding:7px 12px;
     border-bottom:1px dashed var(--line);font-size:.83rem;align-items:center}
   .lrow:last-child{border-bottom:0}
   .lrow:nth-child(even):not(.lhead){background:#faf7ef}
@@ -118,14 +128,13 @@
     text-transform:uppercase;color:var(--muted);font-weight:700;z-index:1}
   .lrow .ld{color:var(--muted);font-size:.76rem;white-space:nowrap}
   .lrow .lc{font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .lrow .lm{color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .lrow .lo{color:var(--muted);font-size:.74rem;font-weight:700}
+  .lrow .lm{color:var(--muted);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lrow .lf{text-align:right;font-weight:700;color:var(--navy);white-space:nowrap}
   .lrow .lf.neg{color:var(--down)}
   .lcount{text-align:right;margin-top:7px}
   @media(max-width:820px){
     .lrow{grid-template-columns:80px 1fr 90px}
-    .lrow .lm,.lrow .lo{display:none}
+    .lrow .lm{display:none}
   }
 
   @media(max-width:820px){
@@ -289,6 +298,25 @@ function yoyTag(cur, prev){
   return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
 }
 
+// Money comparison the way Jen wants it: color the CURRENT dollar figure
+// (green if up vs last year, red if down) and show last year's actual dollars
+// beside it — no percentages to decode. `curStr` lets callers pass a
+// pre-formatted value (e.g. usd0 vs usdK).
+function moneyVs(cur, prev, curStr){
+  const shown = curStr !== undefined ? curStr : usd0(cur);
+  let cls = "flat";
+  if(prev > 0){
+    if(cur > prev * 1.0005) cls = "up";
+    else if(cur < prev * 0.9995) cls = "down";
+  } else if(cur > 0){
+    cls = "up"; // brand-new dollars where there were none last year
+  }
+  const prevNote = prev > 0
+    ? `<span class="vs">vs ${usdK(prev)} in ${CONFIG.year-1}</span>`
+    : `<span class="vs">no ${CONFIG.year-1} in this period</span>`;
+  return { cls, html: `<span class="bigmoney ${cls}">${shown}</span> ${prevNote}` };
+}
+
 // ---- boot -----------------------------------------------------------------
 load();
 
@@ -331,8 +359,10 @@ function attorneysPresent(){
 }
 
 function render(){
+  const cut = ytdCutoffMonth();
+  const monthLabel = MONTH_NAMES[cut<0?11:cut];
   document.getElementById("periodLabel").textContent =
-    `${CONFIG.year} · H1 through June + full YTD · ${role==="orig"?"Originating":"Closing"} attorney`;
+    `${CONFIG.year} year-to-date · through ${monthLabel} · ${role==="orig"?"Originating":"Closing"} attorney`;
 
   document.getElementById("controls").innerHTML = controlsBar();
 
@@ -370,93 +400,93 @@ function controlsBar(){
 
 // ---- INDIVIDUAL -----------------------------------------------------------
 function individualView(code){
-  const cut=ytdCutoffMonth();
-  const h1cur=statBlock(ROWS,code,0,5);
-  const h1prev=statBlock(ROWS_2025,code,0,5);
-  const ytdCur=statBlock(ROWS,code,0,11);
-  const ytdPrev=statBlock(ROWS_2025,code,0, cut<0?11:cut); // trim prior year to same span
+  const cut = ytdCutoffMonth();          // last month with 2026 data (0-based)
+  const hi  = cut < 0 ? 11 : cut;
+  const monthLabel = MONTH_NAMES[hi];
 
-  const q1cur=statBlock(ROWS,code,0,2), q2cur=statBlock(ROWS,code,3,5);
-  const q1prev=statBlock(ROWS_2025,code,0,2), q2prev=statBlock(ROWS_2025,code,3,5);
+  // Year-to-date current vs. same span last year (fair comparison).
+  const cur  = statBlock(ROWS, code, 0, hi);
+  const prev = statBlock(ROWS_2025, code, 0, hi);
+
+  // Quarters (only show quarters that have started).
+  const q1cur=statBlock(ROWS,code,0,2),  q1prev=statBlock(ROWS_2025,code,0,2);
+  const q2cur=statBlock(ROWS,code,3,5),  q2prev=statBlock(ROWS_2025,code,3,5);
+  const q3cur=statBlock(ROWS,code,6,8),  q3prev=statBlock(ROWS_2025,code,6,8);
+  const q4cur=statBlock(ROWS,code,9,11), q4prev=statBlock(ROWS_2025,code,9,11);
+  const quarters=[
+    {lab:"Q1 (Jan–Mar)", c:q1cur, p:q1prev, started:hi>=0},
+    {lab:"Q2 (Apr–Jun)", c:q2cur, p:q2prev, started:hi>=3},
+    {lab:"Q3 (Jul–Sep)", c:q3cur, p:q3prev, started:hi>=6},
+    {lab:"Q4 (Oct–Dec)", c:q4cur, p:q4prev, started:hi>=9},
+  ].filter(q=>q.started);
+
+  const rev = moneyVs(cur.total, prev.total);
+  const avg = moneyVs(cur.avgFile, prev.avgFile);
+  const filesCls = cur.files > prev.files ? "up" : cur.files < prev.files ? "down" : "flat";
 
   return `<div class="report">
     ${reportHead(attorneyLabel(code))}
 
-    <div class="sec-label">First half (Jan–Jun ${CONFIG.year}) vs. ${CONFIG.year-1}</div>
+    <div class="sec-label">Year-to-date · January through ${monthLabel} ${CONFIG.year}</div>
     <div class="statgrid">
       <div class="stat hero">
-        <div class="k">H1 revenue</div>
-        <div class="v">${usd0(h1cur.total)}</div>
-        <div class="d">${yoyTag(h1cur.total,h1prev.total)} vs ${usdK(h1prev.total)} in ${CONFIG.year-1}</div>
+        <div class="k">Revenue</div>
+        <div class="v ${rev.cls}">${usd0(cur.total)}</div>
+        <div class="d"><span class="vs">vs ${usdK(prev.total)} in ${CONFIG.year-1}${prev.total>0?` · ${cur.total>=prev.total?'up':'down'} ${usdK(Math.abs(cur.total-prev.total))}`:''}</span></div>
       </div>
       <div class="stat">
-        <div class="k">H1 files closed</div>
-        <div class="v">${h1cur.files}</div>
-        <div class="d">${yoyTag(h1cur.files,h1prev.files)} vs ${h1prev.files}</div>
+        <div class="k">Files closed</div>
+        <div class="v ${filesCls}">${cur.files}</div>
+        <div class="d"><span class="vs">vs ${prev.files} in ${CONFIG.year-1}</span></div>
       </div>
       <div class="stat">
-        <div class="k">Avg fee / file</div>
-        <div class="v">${usd0(h1cur.avgFile)}</div>
-        <div class="d">${yoyTag(h1cur.avgFile,h1prev.avgFile)} vs ${usd0(h1prev.avgFile)}</div>
+        <div class="k">Average fee per file</div>
+        <div class="v">${usd0(cur.avgFile)}</div>
+        <div class="d">${avg.html}</div>
       </div>
       <div class="stat">
-        <div class="k">Avg new-matter fee</div>
-        <div class="v">${usd0(h1cur.avgNew)}</div>
-        <div class="d">${h1cur.newFiles} new matters</div>
+        <div class="k">New-matter work</div>
+        <div class="v">${usd0(cur.avgNew)}</div>
+        <div class="d"><span class="vs">avg fee · ${cur.newFiles} new matters</span></div>
       </div>
     </div>
 
-    <div class="sec-label">By quarter</div>
+    <div class="sec-label">By quarter · ${CONFIG.year} revenue vs ${CONFIG.year-1}</div>
     <div class="statgrid">
-      ${quarterStat("Q1 "+CONFIG.year, q1cur.total, q1prev.total)}
-      ${quarterStat("Q2 "+CONFIG.year, q2cur.total, q2prev.total)}
-      ${quarterStat("Q1 avg / file", q1cur.avgFile, q1prev.avgFile, true)}
-      ${quarterStat("Q2 avg / file", q2cur.avgFile, q2prev.avgFile, true)}
+      ${quarters.map(q=>{
+        const m=moneyVs(q.c.total, q.p.total);
+        return `<div class="stat">
+          <div class="k">${esc(q.lab)}</div>
+          <div class="v ${m.cls}">${usd0(q.c.total)}</div>
+          <div class="d"><span class="vs">vs ${usdK(q.p.total)} in ${CONFIG.year-1}</span></div>
+        </div>`;
+      }).join("")}
     </div>
 
-    <div class="sec-label">Monthly — ${CONFIG.year} vs ${CONFIG.year-1}</div>
+    <div class="sec-label">Monthly revenue · ${CONFIG.year} vs ${CONFIG.year-1}</div>
     <div class="barlegend">
       <div class="item"><span class="sw" style="background:#c7cfdd"></span>${CONFIG.year-1}</div>
       <div class="item"><span class="sw" style="background:var(--gold)"></span>${CONFIG.year}</div>
     </div>
-    ${monthlyBars(ytdCur.byMonth, statBlock(ROWS_2025,code,0,11).byMonth)}
+    ${monthlyBars(cur.byMonth, statBlock(ROWS_2025,code,0,11).byMonth)}
 
-    <div class="sec-label">Full year-to-date (Jan–${MONTH_NAMES[cut<0?11:cut]}) vs. same period ${CONFIG.year-1}</div>
-    <div class="statgrid three">
-      <div class="stat">
-        <div class="k">YTD revenue</div>
-        <div class="v">${usd0(ytdCur.total)}</div>
-        <div class="d">${yoyTag(ytdCur.total,ytdPrev.total)} vs ${usdK(ytdPrev.total)}</div>
-      </div>
-      <div class="stat">
-        <div class="k">YTD files</div>
-        <div class="v">${ytdCur.files}</div>
-        <div class="d">${yoyTag(ytdCur.files,ytdPrev.files)} vs ${ytdPrev.files}</div>
-      </div>
-      <div class="stat">
-        <div class="k">YTD avg / file</div>
-        <div class="v">${usd0(ytdCur.avgFile)}</div>
-        <div class="d">${yoyTag(ytdCur.avgFile,ytdPrev.avgFile)} vs ${usd0(ytdPrev.avgFile)}</div>
-      </div>
-    </div>
+    <div class="sec-label">Work by type · ${CONFIG.year} year-to-date</div>
+    ${categoryTable(cur, prev)}
 
-    <div class="sec-label">File-type mix — H1 ${CONFIG.year}</div>
-    ${categoryTable(h1cur, h1prev)}
-
-    <div class="sec-label">The files behind these numbers — H1 ${CONFIG.year}</div>
-    <p class="subtle" style="margin-bottom:8px">Every file crediting you in the first half, newest first. If a number looks off, this is the receipt — search a name to check whether a matter landed here or was missed.</p>
-    ${clientLedger(code, 0, 5)}
+    <div class="sec-label">The files behind these numbers</div>
+    <p class="subtle" style="margin-bottom:8px">Every file crediting you this year, newest first. If a number looks off, this is the receipt — search a client or matter type to check whether something landed here or was missed.</p>
+    ${clientLedger(code, 0, hi)}
 
     <div class="footer-note">
       Credit shown by <b>${role==="orig"?"originating":"closing"} attorney</b>.
-      Prior-year figures use the same calendar span for a fair comparison. Live from the ${CONFIG.year} Clients sheet.
+      ${CONFIG.year-1} figures cover the same months (January–${monthLabel}) for a fair comparison. Live from the ${CONFIG.year} Clients sheet.
     </div>
   </div>`;
 }
 
 // The receipt: every file crediting `code` in [loMo,hiMo], newest first, with
-// an instant client-side search. This is what lets an attorney self-audit —
-// "did we miss the Henderson matter?" — instead of emailing to ask.
+// an instant client-side search. Columns: date · client · type of matter ·
+// fee. (No attorney column — a solo report is all one attorney anyway.)
 function clientLedger(code, loMo, hiMo){
   const items=[];
   for(const r of ROWS){
@@ -468,11 +498,8 @@ function clientLedger(code, loMo, hiMo){
     items.push({
       date:String(r["_date"]||r["Month"]||"").slice(0,10),
       client:String(r["Client"]||"—").trim()||"—",
-      matter:String(r["Matter"]||"").trim(),
       cat:catOf(r),
-      other: role==="orig"
-        ? String(r["Closing Attorney"]||"").trim().toUpperCase()
-        : String(r["Originating Attorney"]||"").trim().toUpperCase(),
+      matter:String(r["Matter"]||"").trim(),
       fee,
     });
   }
@@ -480,22 +507,24 @@ function clientLedger(code, loMo, hiMo){
   if(!items.length) return `<p class="subtle">No files in this period.</p>`;
 
   const rowsHtml=items.map(e=>{
-    const hay=`${e.client} ${e.matter} ${e.cat} ${e.date} ${e.other}`.toLowerCase();
+    // Prefer the readable Category; fall back to the Matter text if Category
+    // is blank, so the column is never empty.
+    const type = e.cat && e.cat !== "Uncategorized" ? e.cat : (e.matter || "—");
+    const hay=`${e.client} ${type} ${e.matter} ${e.date}`.toLowerCase();
     return `<div class="lrow" data-s="${esc(hay)}">
       <span class="ld">${esc(e.date||'—')}</span>
       <span class="lc" title="${esc(e.client)}">${esc(e.client)}</span>
-      <span class="lm" title="${esc(e.cat)}">${esc(e.cat)}</span>
-      <span class="lo" title="${role==="orig"?"Closing":"Originating"}: ${esc(attorneyLabel(e.other))}">${esc(e.other||'—')}</span>
+      <span class="lm" title="${esc(type)}">${esc(type)}</span>
       <span class="lf ${e.fee<0?'neg':''}">${usd0(e.fee)}</span>
     </div>`;
   }).join("");
 
-  return `<input class="lsearch" type="text" placeholder="Search a client, matter type, or month…" autocomplete="off"
+  return `<input class="lsearch" type="text" placeholder="Search a client or matter type…" autocomplete="off"
     oninput="filterLedger(this)" />
     <div class="ledger">
       <div class="lrow lhead">
-        <span class="ld">Date</span><span class="lc">Client</span><span class="lm">Type</span>
-        <span class="lo">${role==="orig"?"Closer":"Originator"}</span><span class="lf">Fee</span>
+        <span class="ld">Date</span><span class="lc">Client</span>
+        <span class="lm">Matter type</span><span class="lf">Fee</span>
       </div>
       ${rowsHtml}
     </div>
@@ -517,7 +546,7 @@ function reportHead(who){
   return `<div class="rhead">
     <div>
       <h2 class="who">${esc(who)}</h2>
-      <div class="lens">${role==="orig"?"Originating":"Closing"}-attorney credit · H1 ${CONFIG.year} performance report</div>
+      <div class="lens">${role==="orig"?"Originating":"Closing"}-attorney credit · ${CONFIG.year} year-to-date performance</div>
     </div>
     <div class="firm">Dorcey Law Firm<br>Generated ${stamp}</div>
   </div>`;
@@ -556,21 +585,24 @@ function categoryTable(cur, prev){
   const rows=cats.map(c=>{
     const cc=cur.cats[c], pc=prev.cats[c]||{rev:0,files:0};
     const avg=cc.files?cc.rev/cc.files:0;
-    const pavg=pc.files?pc.rev/pc.files:0;
+    // Color this year's revenue vs last year's for the same category.
+    const cls = pc.rev>0 ? (cc.rev>pc.rev?"up":cc.rev<pc.rev?"down":"flat") : (cc.rev>0?"up":"flat");
+    const prevCell = pc.rev>0 ? usd0(pc.rev) : '<span class="flat">—</span>';
     return `<tr>
       <td class="cat-name">${esc(c)}</td>
       <td>${cc.files}</td>
-      <td>${usd0(cc.rev)}</td>
+      <td class="${cls}">${usd0(cc.rev)}</td>
       <td>${usd0(avg)}</td>
-      <td>${pavg>0?yoyTag(avg,pavg):'<span class="flat">—</span>'}</td>
+      <td>${prevCell}</td>
     </tr>`;
   }).join("");
   const tot=cats.reduce((s,c)=>s+cur.cats[c].rev,0);
   const totF=cats.reduce((s,c)=>s+cur.cats[c].files,0);
+  const totPrev=cats.reduce((s,c)=>s+((prev.cats[c]||{rev:0}).rev),0);
   return `<table class="cat">
-    <thead><tr><th>File type (category)</th><th>Files</th><th>Revenue</th><th>Avg fee</th><th>Avg vs ${CONFIG.year-1}</th></tr></thead>
+    <thead><tr><th>Type of work</th><th>Files</th><th>${CONFIG.year} revenue</th><th>Avg fee</th><th>${CONFIG.year-1} revenue</th></tr></thead>
     <tbody>${rows}
-      <tr class="totrow"><td>All types</td><td>${totF}</td><td>${usd0(tot)}</td><td>${usd0(totF?tot/totF:0)}</td><td></td></tr>
+      <tr class="totrow"><td>All types</td><td>${totF}</td><td>${usd0(tot)}</td><td>${usd0(totF?tot/totF:0)}</td><td>${totPrev>0?usd0(totPrev):''}</td></tr>
     </tbody>
   </table>`;
 }
@@ -578,52 +610,52 @@ function categoryTable(cur, prev){
 // ---- LEADERBOARD ----------------------------------------------------------
 function leaderboardView(){
   const cut=ytdCutoffMonth();
+  const hi = cut<0?11:cut;
+  const monthLabel = MONTH_NAMES[hi];
   const codes=attorneysPresent();
 
   const rows=codes.map(code=>{
-    const h1=statBlock(ROWS,code,0,5);
-    const h1p=statBlock(ROWS_2025,code,0,5);
-    const ytd=statBlock(ROWS,code,0,11);
-    const ytdp=statBlock(ROWS_2025,code,0,cut<0?11:cut);
-    return {code, h1, h1p, ytd, ytdp};
-  }).sort((a,b)=>b.h1.total-a.h1.total);
+    const ytd=statBlock(ROWS,code,0,hi);
+    const ytdp=statBlock(ROWS_2025,code,0,hi); // same span last year
+    return {code, ytd, ytdp};
+  }).sort((a,b)=>b.ytd.total-a.ytd.total);
 
-  const body=rows.map(r=>`
-    <tr>
+  const body=rows.map(r=>{
+    const cls = r.ytdp.total>0 ? (r.ytd.total>r.ytdp.total?"up":r.ytd.total<r.ytdp.total?"down":"flat") : (r.ytd.total>0?"up":"flat");
+    const prevCell = r.ytdp.total>0 ? usd0(r.ytdp.total) : '<span class="flat">—</span>';
+    return `<tr>
       <td class="cat-name">${esc(attorneyLabel(r.code))}</td>
-      <td>${usd0(r.h1.total)}</td>
-      <td>${yoyTag(r.h1.total,r.h1p.total)}</td>
-      <td>${r.h1.files}</td>
-      <td>${usd0(r.h1.avgFile)}</td>
-      <td>${usd0(r.h1.avgNew)}</td>
-      <td>${usd0(r.ytd.total)}</td>
-      <td>${yoyTag(r.ytd.total,r.ytdp.total)}</td>
-    </tr>`).join("");
+      <td class="${cls}">${usd0(r.ytd.total)}</td>
+      <td>${prevCell}</td>
+      <td>${r.ytd.files}</td>
+      <td>${usd0(r.ytd.avgFile)}</td>
+      <td>${usd0(r.ytd.avgNew)}</td>
+    </tr>`;
+  }).join("");
 
-  const tH1=rows.reduce((s,r)=>s+r.h1.total,0);
-  const tH1p=rows.reduce((s,r)=>s+r.h1p.total,0);
-  const tF=rows.reduce((s,r)=>s+r.h1.files,0);
   const tYtd=rows.reduce((s,r)=>s+r.ytd.total,0);
   const tYtdp=rows.reduce((s,r)=>s+r.ytdp.total,0);
+  const tF=rows.reduce((s,r)=>s+r.ytd.files,0);
+  const totCls = tYtdp>0 ? (tYtd>tYtdp?"up":tYtd<tYtdp?"down":"flat") : "flat";
 
   return `<div class="report leaderboard">
     ${reportHead("Leadership Summary — All Attorneys")}
-    <div class="sec-label">First half (Jan–Jun ${CONFIG.year}) · ranked by H1 revenue</div>
+    <div class="sec-label">${CONFIG.year} year-to-date · January through ${monthLabel} · ranked by revenue</div>
     <table class="cat">
       <thead><tr>
-        <th>Attorney</th><th>H1 rev</th><th>vs ${CONFIG.year-1}</th><th>Files</th>
-        <th>Avg / file</th><th>Avg new-matter</th><th>YTD rev</th><th>YTD vs ${CONFIG.year-1}</th>
+        <th>Attorney</th><th>${CONFIG.year} revenue</th><th>${CONFIG.year-1} revenue</th>
+        <th>Files closed</th><th>Avg / file</th><th>Avg new-matter</th>
       </tr></thead>
       <tbody>${body}
         <tr class="totrow">
-          <td>Firm total</td><td>${usd0(tH1)}</td><td>${yoyTag(tH1,tH1p)}</td><td>${tF}</td>
-          <td>${usd0(tF?tH1/tF:0)}</td><td></td><td>${usd0(tYtd)}</td><td>${yoyTag(tYtd,tYtdp)}</td>
+          <td>Firm total</td><td class="${totCls}">${usd0(tYtd)}</td><td>${tYtdp>0?usd0(tYtdp):''}</td>
+          <td>${tF}</td><td>${usd0(tF?tYtd/tF:0)}</td><td></td>
         </tr>
       </tbody>
     </table>
     <p class="subtle" style="margin-top:12px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
-    Pick an individual from the dropdown for their full scorecard, monthly trend, and file-type breakdown.
-    Prior-year uses the same calendar span.</p>
+    Green means ahead of last year, red means behind — the ${CONFIG.year-1} column shows the same months for comparison.
+    Pick an individual from the dropdown for their full scorecard, monthly trend, and file list.</p>
     <div class="footer-note">Live from the ${CONFIG.year} Clients sheet · toggle Originating/Closing above.</div>
   </div>`;
 }
