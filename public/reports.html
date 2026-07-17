@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dorcey · Attorney Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0f1d33; --navy-2:#1b2f4d; --gold:#c6a04e; --gold-soft:#e3cd97;
+    --cream:#f7f3ea; --parchment:#f6f1e4; --ink:#2a2a2a; --muted:#7d7666;
+    --line:#e7e0d2; --up:#2d6a4f; --down:#9b2335; --shadow:0 16px 38px -22px rgba(15,29,51,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:var(--ink)}
+  a{color:inherit}
+
+  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;
+    border-bottom:1px solid rgba(198,160,78,.25)}
+  .topnav a{flex:1;max-width:170px;text-align:center;padding:12px 8px;
+    color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent;
+    transition:background .15s,color .15s,border-color .15s}
+  .topnav a:hover{background:#132849;color:#e3cd97}
+  .topnav a.active{color:var(--gold);border-bottom-color:var(--gold);background:#132849}
+  .topnav a .ico{display:block;font-size:1.05rem;margin-bottom:2px}
+
+  header.masthead{background:linear-gradient(155deg,var(--navy),var(--navy-2));color:var(--cream);
+    padding:22px 28px;border-bottom:3px solid var(--gold)}
+  .eyebrow{font-size:.7rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-soft);font-weight:600}
+  .masthead h1{font-family:"Playfair Display",serif;font-weight:700;margin:.15rem 0 .1rem;font-size:1.6rem}
+  .masthead .sub{color:#c7cfdd;font-size:.86rem}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 20px 60px}
+  .loading{padding:80px;text-align:center;color:var(--muted)}
+  .error{padding:40px;text-align:center;color:var(--down);background:#fff;border-radius:14px;box-shadow:var(--shadow)}
+
+  /* Control bar */
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:20px}
+  .controls .grp{display:flex;align-items:center;gap:8px}
+  .controls label{font:700 .72rem "Libre Franklin";letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .controls select{font:500 .95rem "Libre Franklin";padding:9px 12px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;color:var(--ink);min-width:200px}
+  .controls select:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+  .togchip{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:9px;padding:3px}
+  .togchip button{border:0;background:transparent;padding:8px 14px;border-radius:6px;cursor:pointer;
+    font:600 .8rem "Libre Franklin";color:var(--muted)}
+  .togchip button[aria-selected="true"]{background:var(--navy);color:#fff}
+  .printbtn{margin-left:auto;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:10px;
+    padding:10px 16px;font:600 .88rem "Libre Franklin";cursor:pointer}
+  .printbtn:hover{background:var(--navy);color:#fff}
+
+  /* Report card */
+  .report{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+    padding:26px 30px;margin-bottom:24px}
+  .report .rhead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+    border-bottom:2px solid var(--gold);padding-bottom:14px;margin-bottom:20px;flex-wrap:wrap}
+  .report .rhead .who{font-family:"Playfair Display",serif;font-size:1.5rem;color:var(--navy);margin:0}
+  .report .rhead .lens{font-size:.78rem;color:var(--muted);margin-top:3px}
+  .report .rhead .firm{text-align:right;font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+  .sec-label{font:700 .74rem "Libre Franklin";letter-spacing:.12em;text-transform:uppercase;
+    color:var(--navy);margin:22px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .sec-label:first-of-type{margin-top:0}
+
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .statgrid.three{grid-template-columns:repeat(3,1fr)}
+  .stat{background:var(--parchment);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .stat.hero{background:linear-gradient(150deg,var(--navy),var(--navy-2));border-color:var(--navy)}
+  .stat.hero .k{color:var(--gold-soft)} .stat.hero .v{color:#fff} .stat.hero .d{color:#c7cfdd}
+  .stat .k{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .stat .v{font-family:"Playfair Display",serif;font-size:1.45rem;color:var(--navy);line-height:1.1;margin-top:4px}
+  .stat .d{font-size:.74rem;color:var(--muted);margin-top:3px}
+  .stat .d .up{color:var(--up);font-weight:700}
+  .stat .d .down{color:var(--down);font-weight:700}
+  .stat .d .flat{color:var(--muted);font-weight:700}
+
+  /* Monthly / quarterly bars */
+  .bars{display:flex;align-items:flex-end;gap:10px;height:170px;margin-top:8px;padding-bottom:20px}
+  .bars .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
+  .bars .col .pair{width:100%;display:flex;gap:3px;align-items:flex-end;height:135px;justify-content:center}
+  .bars .col .bar{width:42%;max-width:26px;border-radius:4px 4px 0 0;transition:height .5s;min-height:2px}
+  .bars .col .bar.prev{background:#c7cfdd}
+  .bars .col .bar.cur{background:var(--gold)}
+  .bars .col .lbl{font-size:.72rem;color:var(--muted);margin-top:7px;font-weight:600}
+  .bars .col .tip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);
+    background:var(--navy);color:#fff;padding:5px 9px;border-radius:6px;font-size:.7rem;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
+  .bars .col:hover .tip{opacity:1}
+  .barlegend{display:flex;gap:16px;font-size:.74rem;color:var(--muted);justify-content:flex-end;margin-top:-6px}
+  .barlegend .item{display:flex;align-items:center;gap:6px}
+  .barlegend .sw{width:14px;height:12px;border-radius:2px}
+
+  /* Category table */
+  table.cat{border-collapse:collapse;width:100%;font-size:.86rem;margin-top:6px}
+  table.cat th,table.cat td{padding:9px 11px;text-align:right;border-bottom:1px dashed var(--line);white-space:nowrap}
+  table.cat th{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  table.cat th:first-child,table.cat td:first-child{text-align:left}
+  table.cat td.cat-name{font-weight:600;color:var(--navy)}
+  table.cat tr:hover td{background:var(--parchment)}
+  table.cat tr.totrow td{border-top:2px solid var(--line);font-weight:700;color:var(--navy)}
+  table.cat .up{color:var(--up);font-weight:700} table.cat .down{color:var(--down);font-weight:700}
+  table.cat .flat{color:var(--muted)}
+
+  .leaderboard table.cat td.cat-name{cursor:default}
+  .footer-note{text-align:center;font-size:.72rem;color:var(--muted);margin-top:20px}
+  .subtle{font-size:.76rem;color:var(--muted);margin:2px 0 0}
+
+  /* Client ledger — the receipt */
+  .lsearch{width:100%;padding:9px 13px;border:1px solid var(--line);border-radius:9px;
+    font:500 .88rem "Libre Franklin";background:var(--parchment);margin:0 0 8px;outline:none}
+  .lsearch:focus{border-color:var(--gold);background:#fff}
+  .ledger{border:1px solid var(--line);border-radius:10px;max-height:360px;overflow-y:auto}
+  .lrow{display:grid;grid-template-columns:92px 1.4fr 1fr 54px 96px;gap:10px;padding:7px 12px;
+    border-bottom:1px dashed var(--line);font-size:.83rem;align-items:center}
+  .lrow:last-child{border-bottom:0}
+  .lrow:nth-child(even):not(.lhead){background:#faf7ef}
+  .lrow.lhead{position:sticky;top:0;background:#f3ecd6;font-size:.66rem;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);font-weight:700;z-index:1}
+  .lrow .ld{color:var(--muted);font-size:.76rem;white-space:nowrap}
+  .lrow .lc{font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lrow .lm{color:var(--muted);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lrow .lo{color:var(--muted);font-size:.74rem;font-weight:700}
+  .lrow .lf{text-align:right;font-weight:700;color:var(--navy);white-space:nowrap}
+  .lrow .lf.neg{color:var(--down)}
+  .lcount{text-align:right;margin-top:7px}
+  @media(max-width:820px){
+    .lrow{grid-template-columns:80px 1fr 90px}
+    .lrow .lm,.lrow .lo{display:none}
+  }
+
+  @media(max-width:820px){
+    .statgrid,.statgrid.three{grid-template-columns:repeat(2,1fr)}
+    .controls select{min-width:150px}
+  }
+
+  /* Print: strip nav/controls, one report per page, ink-friendly */
+  @media print{
+    .topnav,.controls,.printbtn,.masthead .sub,.lsearch{display:none !important}
+    .ledger{max-height:none;overflow:visible}
+    body{background:#fff}
+    header.masthead{border-bottom:2px solid var(--gold);padding:12px 20px}
+    .wrap{max-width:none;padding:0}
+    .report{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid;margin:0 0 14px}
+    .stat.hero{background:#0f1d33 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .bars .col .bar.cur{background:#c6a04e !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .bars .col .bar.prev{background:#c7cfdd !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .stat{background:#f6f1e4 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/admin"><span class="ico">⚙️</span>Admin</a>
+    <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
+    <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+    <a href="/app"><span class="ico">🧭</span>APP</a>
+    <a href="/reports" class="active"><span class="ico">📄</span>Reports</a>
+  </nav>
+  <header class="masthead">
+    <div class="eyebrow">Dorcey Law Firm · Attorney Performance</div>
+    <h1>Attorney Reports</h1>
+    <div class="sub" id="periodLabel">Loading…</div>
+  </header>
+
+  <div class="wrap">
+    <div id="controls"></div>
+    <div id="content"><div class="loading">Fetching the numbers…</div></div>
+  </div>
+
+<script>
+// ---------------------------------------------------------------------------
+// DORCEY ATTORNEY REPORTS — reuses the Pulse revenue feed.
+// Two views: an individual attorney scorecard, and a leadership combined
+// comparison. Each shows H1 (Jan–Jun) as the headline plus a full-YTD
+// section, this year vs. same-period last year, average fee, and file-type
+// (category) mix. Attribution toggles between originating and closing.
+//
+// Column contract matches pulse.html exactly (Fee Billed, Originating/Closing
+// Attorney, Matter, Category, _date/Month). "New-Matter" is the honest-growth
+// bucket via the same classify() rules. Same-period trimming keeps YoY fair.
+//
+// Access model (server-enforced):
+//   - admins + report_access users hitting /reports see the full picker,
+//     including the leadership view and any individual.
+//   - an attorney arriving on /reports/<token> is PINNED to their own code
+//     (server passes ?only=CODE); the picker + leadership view are hidden.
+// ---------------------------------------------------------------------------
+
+const CONFIG = { yearGoal: 7000000, year: 2026 };
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const ATTORNEY_NAMES = {
+  "JOD":"Josh Dorcey","MAS":"Mike Scott","EDJ":"Erica Johnson","KAS":"Kara Sajdak",
+  "DAD":"Doug Dodson","BWB":"Brad Butcher","BHB":"Brian Bronsther","DAC":"David Cahoone",
+};
+// Non-person rollup codes that must never appear as an "attorney" in reports.
+const NON_PERSON = new Set(["DLF","ADM","APP",""]);
+
+let ROWS = [];
+let ROWS_2025 = [];
+let role = "orig";              // "orig" | "clos"
+let view = "leader";            // "leader" | code
+let PINNED = null;              // if set (from ?only=), lock to this attorney
+
+// ---- helpers (mirror pulse.html) ------------------------------------------
+function cleanKey(k){ return String(k).replace(/\s+/g," ").trim().replace(/\.$/,""); }
+function normalizeKeys(row){ const o={}; for(const [k,v] of Object.entries(row)) o[cleanKey(k)]=v; return o; }
+function extractRows(feed){
+  const raw = Array.isArray(feed.entries)?feed.entries : Array.isArray(feed.rows)?feed.rows : [];
+  return raw.map(normalizeKeys);
+}
+function num(v){
+  if(v===null||v===undefined||v==="") return 0;
+  if(typeof v==="number") return isFinite(v)?v:0;
+  const n=parseFloat(String(v).replace(/[$,\s]/g,"")); return isFinite(n)?n:0;
+}
+function usd0(n){ return "$"+Math.round(n).toLocaleString("en-US"); }
+function usdK(n){
+  const a=Math.abs(n);
+  if(a>=1000000) return (n<0?"-":"")+"$"+(a/1000000).toFixed(2)+"M";
+  if(a>=1000)    return (n<0?"-":"")+"$"+Math.round(a/1000)+"K";
+  return usd0(n);
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function catOf(row){ return String(row["Category"]||"").trim() || "Uncategorized"; }
+function attorneyLabel(code){ const c=String(code||"").trim().toUpperCase(); return ATTORNEY_NAMES[c]||(c||"Unassigned"); }
+
+function monthIndex(row){
+  for(const c of [row["_date"], row["Month"], row["Date Scheduled"]]){
+    if(!c) continue;
+    if(typeof c==="string"){
+      const m=c.match(/^(\d{4})-(\d{2})/); if(m) return parseInt(m[2],10)-1;
+      const d=new Date(c); if(!isNaN(d)) return d.getUTCMonth();
+    }
+  }
+  return null;
+}
+function classify(row){
+  const matter=String(row["Matter"]||"").trim();
+  const client=String(row["Client"]||"").trim().toLowerCase();
+  const ref=String(row["Referral Name"]||"").trim().toLowerCase();
+  const pooled = ref==="payments"||ref==="bulk payment";
+  if(matter==="APP") return "APP";
+  if(matter==="DLF Registered Agent" && pooled) return "Registered Agent";
+  if(matter==="DLF Registed Agent" && pooled) return "Registered Agent";
+  if(client.includes("dorcey law firm title services")) return "Title Pass-through";
+  if(matter==="Referral Fee") return "Referral Income";
+  return "New-Matter";
+}
+function attColOf(row){
+  return String(row[role==="orig"?"Originating Attorney":"Closing Attorney"]||"").trim().toUpperCase();
+}
+
+// Same-period trim: only keep 2025 months that 2026 already has data for.
+function ytdCutoffMonth(){
+  let max=-1;
+  for(const r of ROWS){ const mi=monthIndex(r); if(mi!==null&&mi>max) max=mi; }
+  return max;
+}
+
+// Build a per-attorney stat block for a given month-range [loMonth, hiMonth]
+// inclusive (0-based). Pass 0..5 for H1, 0..11 for full year.
+function statBlock(rows, code, loMo, hiMo){
+  let total=0, files=0, newTotal=0, newFiles=0;
+  const byMonth=new Array(12).fill(0);
+  const cats={}; // cat -> {rev,files,new}
+  for(const r of rows){
+    if(attColOf(r)!==code) continue;
+    const mi=monthIndex(r);
+    if(mi===null||mi<loMo||mi>hiMo) continue;
+    const fee=num(r["Fee Billed"]);
+    if(fee===0 && (r["Fee Billed"]===null||r["Fee Billed"]===undefined||r["Fee Billed"]==="")) continue;
+    total+=fee; files++; byMonth[mi]+=fee;
+    const seg=classify(r);
+    if(seg==="New-Matter"){ newTotal+=fee; newFiles++; }
+    const c=catOf(r);
+    (cats[c] ??= {rev:0,files:0}); cats[c].rev+=fee; cats[c].files++;
+  }
+  return {total,files,newTotal,newFiles,byMonth,cats,
+    avgFile: files?total/files:0, avgNew: newFiles?newTotal/newFiles:0};
+}
+
+function yoyTag(cur, prev){
+  if(prev<=0) return cur>0 ? `<span class="up">new</span>` : `<span class="flat">—</span>`;
+  const pct=(cur-prev)/prev*100;
+  const cls=pct>=0.05?"up":pct<=-0.05?"down":"flat";
+  const arrow=pct>=0.05?"▲":pct<=-0.05?"▼":"▬";
+  return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+}
+
+// ---- boot -----------------------------------------------------------------
+load();
+
+async function load(){
+  try{
+    // The reports feed is a SECURITY BOUNDARY. We fetch from /api/reports-feed,
+    // NOT the raw /api/revenue-feed. For a report-only (pinned) attorney the
+    // server returns ONLY their own rows and echoes back {pinned:"CODE"} — the
+    // client never receives another attorney's data, so no URL edit can reveal
+    // it. Admins/leadership get the full set and pinned is null.
+    const r=await fetch("/api/reports-feed");
+    if(!r.ok) throw new Error("feed returned "+r.status);
+    const j=await r.json();
+    if(j.error) throw new Error(j.error);
+    ROWS=extractRows(j);
+    if(j.pinned && ATTORNEY_NAMES[j.pinned]){ PINNED=j.pinned; view=j.pinned; }
+
+    try{
+      const r25=await fetch("/api/reports-feed?tab=2025");
+      if(r25.ok){ const j25=await r25.json(); if(!j25.error) ROWS_2025=extractRows(j25); }
+    }catch(e){}
+
+    render();
+  }catch(e){
+    document.getElementById("content").innerHTML=`<div class="error">Couldn't reach the revenue feed. (${e.message})</div>`;
+    console.error("reports load error:",e);
+  }
+}
+
+// Which attorney codes actually appear (as orig or clos), person-only.
+function attorneysPresent(){
+  const set=new Set();
+  for(const r of ROWS){
+    for(const col of ["Originating Attorney","Closing Attorney"]){
+      const c=String(r[col]||"").trim().toUpperCase();
+      if(c && !NON_PERSON.has(c) && ATTORNEY_NAMES[c]) set.add(c);
+    }
+  }
+  return [...set].sort((a,b)=>attorneyLabel(a).localeCompare(attorneyLabel(b)));
+}
+
+function render(){
+  document.getElementById("periodLabel").textContent =
+    `${CONFIG.year} · H1 through June + full YTD · ${role==="orig"?"Originating":"Closing"} attorney`;
+
+  document.getElementById("controls").innerHTML = controlsBar();
+
+  let body;
+  if(view==="leader" && !PINNED) body = leaderboardView();
+  else body = individualView(view);
+
+  document.getElementById("content").innerHTML = body;
+  wire();
+}
+
+function controlsBar(){
+  const opts = attorneysPresent().map(c =>
+    `<option value="${c}" ${view===c?"selected":""}>${esc(attorneyLabel(c))}</option>`).join("");
+  const picker = PINNED ? "" : `
+    <div class="grp">
+      <label>Report</label>
+      <select id="viewSel">
+        <option value="leader" ${view==="leader"?"selected":""}>Leadership — all attorneys</option>
+        <optgroup label="Individual">${opts}</optgroup>
+      </select>
+    </div>`;
+  return `<div class="controls">
+    ${picker}
+    <div class="grp">
+      <label>Credit</label>
+      <div class="togchip" id="roleTog">
+        <button data-r="orig" aria-selected="${role==="orig"}">Originating</button>
+        <button data-r="clos" aria-selected="${role==="clos"}">Closing</button>
+      </div>
+    </div>
+    <button class="printbtn" onclick="window.print()">🖨️ Print / Save PDF</button>
+  </div>`;
+}
+
+// ---- INDIVIDUAL -----------------------------------------------------------
+function individualView(code){
+  const cut=ytdCutoffMonth();
+  const h1cur=statBlock(ROWS,code,0,5);
+  const h1prev=statBlock(ROWS_2025,code,0,5);
+  const ytdCur=statBlock(ROWS,code,0,11);
+  const ytdPrev=statBlock(ROWS_2025,code,0, cut<0?11:cut); // trim prior year to same span
+
+  const q1cur=statBlock(ROWS,code,0,2), q2cur=statBlock(ROWS,code,3,5);
+  const q1prev=statBlock(ROWS_2025,code,0,2), q2prev=statBlock(ROWS_2025,code,3,5);
+
+  return `<div class="report">
+    ${reportHead(attorneyLabel(code))}
+
+    <div class="sec-label">First half (Jan–Jun ${CONFIG.year}) vs. ${CONFIG.year-1}</div>
+    <div class="statgrid">
+      <div class="stat hero">
+        <div class="k">H1 revenue</div>
+        <div class="v">${usd0(h1cur.total)}</div>
+        <div class="d">${yoyTag(h1cur.total,h1prev.total)} vs ${usdK(h1prev.total)} in ${CONFIG.year-1}</div>
+      </div>
+      <div class="stat">
+        <div class="k">H1 files closed</div>
+        <div class="v">${h1cur.files}</div>
+        <div class="d">${yoyTag(h1cur.files,h1prev.files)} vs ${h1prev.files}</div>
+      </div>
+      <div class="stat">
+        <div class="k">Avg fee / file</div>
+        <div class="v">${usd0(h1cur.avgFile)}</div>
+        <div class="d">${yoyTag(h1cur.avgFile,h1prev.avgFile)} vs ${usd0(h1prev.avgFile)}</div>
+      </div>
+      <div class="stat">
+        <div class="k">Avg new-matter fee</div>
+        <div class="v">${usd0(h1cur.avgNew)}</div>
+        <div class="d">${h1cur.newFiles} new matters</div>
+      </div>
+    </div>
+
+    <div class="sec-label">By quarter</div>
+    <div class="statgrid">
+      ${quarterStat("Q1 "+CONFIG.year, q1cur.total, q1prev.total)}
+      ${quarterStat("Q2 "+CONFIG.year, q2cur.total, q2prev.total)}
+      ${quarterStat("Q1 avg / file", q1cur.avgFile, q1prev.avgFile, true)}
+      ${quarterStat("Q2 avg / file", q2cur.avgFile, q2prev.avgFile, true)}
+    </div>
+
+    <div class="sec-label">Monthly — ${CONFIG.year} vs ${CONFIG.year-1}</div>
+    <div class="barlegend">
+      <div class="item"><span class="sw" style="background:#c7cfdd"></span>${CONFIG.year-1}</div>
+      <div class="item"><span class="sw" style="background:var(--gold)"></span>${CONFIG.year}</div>
+    </div>
+    ${monthlyBars(ytdCur.byMonth, statBlock(ROWS_2025,code,0,11).byMonth)}
+
+    <div class="sec-label">Full year-to-date (Jan–${MONTH_NAMES[cut<0?11:cut]}) vs. same period ${CONFIG.year-1}</div>
+    <div class="statgrid three">
+      <div class="stat">
+        <div class="k">YTD revenue</div>
+        <div class="v">${usd0(ytdCur.total)}</div>
+        <div class="d">${yoyTag(ytdCur.total,ytdPrev.total)} vs ${usdK(ytdPrev.total)}</div>
+      </div>
+      <div class="stat">
+        <div class="k">YTD files</div>
+        <div class="v">${ytdCur.files}</div>
+        <div class="d">${yoyTag(ytdCur.files,ytdPrev.files)} vs ${ytdPrev.files}</div>
+      </div>
+      <div class="stat">
+        <div class="k">YTD avg / file</div>
+        <div class="v">${usd0(ytdCur.avgFile)}</div>
+        <div class="d">${yoyTag(ytdCur.avgFile,ytdPrev.avgFile)} vs ${usd0(ytdPrev.avgFile)}</div>
+      </div>
+    </div>
+
+    <div class="sec-label">File-type mix — H1 ${CONFIG.year}</div>
+    ${categoryTable(h1cur, h1prev)}
+
+    <div class="sec-label">The files behind these numbers — H1 ${CONFIG.year}</div>
+    <p class="subtle" style="margin-bottom:8px">Every file crediting you in the first half, newest first. If a number looks off, this is the receipt — search a name to check whether a matter landed here or was missed.</p>
+    ${clientLedger(code, 0, 5)}
+
+    <div class="footer-note">
+      Credit shown by <b>${role==="orig"?"originating":"closing"} attorney</b>.
+      Prior-year figures use the same calendar span for a fair comparison. Live from the ${CONFIG.year} Clients sheet.
+    </div>
+  </div>`;
+}
+
+// The receipt: every file crediting `code` in [loMo,hiMo], newest first, with
+// an instant client-side search. This is what lets an attorney self-audit —
+// "did we miss the Henderson matter?" — instead of emailing to ask.
+function clientLedger(code, loMo, hiMo){
+  const items=[];
+  for(const r of ROWS){
+    if(attColOf(r)!==code) continue;
+    const mi=monthIndex(r);
+    if(mi===null||mi<loMo||mi>hiMo) continue;
+    const fee=num(r["Fee Billed"]);
+    if(fee===0 && (r["Fee Billed"]===null||r["Fee Billed"]===undefined||r["Fee Billed"]==="")) continue;
+    items.push({
+      date:String(r["_date"]||r["Month"]||"").slice(0,10),
+      client:String(r["Client"]||"—").trim()||"—",
+      matter:String(r["Matter"]||"").trim(),
+      cat:catOf(r),
+      other: role==="orig"
+        ? String(r["Closing Attorney"]||"").trim().toUpperCase()
+        : String(r["Originating Attorney"]||"").trim().toUpperCase(),
+      fee,
+    });
+  }
+  items.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  if(!items.length) return `<p class="subtle">No files in this period.</p>`;
+
+  const rowsHtml=items.map(e=>{
+    const hay=`${e.client} ${e.matter} ${e.cat} ${e.date} ${e.other}`.toLowerCase();
+    return `<div class="lrow" data-s="${esc(hay)}">
+      <span class="ld">${esc(e.date||'—')}</span>
+      <span class="lc" title="${esc(e.client)}">${esc(e.client)}</span>
+      <span class="lm" title="${esc(e.cat)}">${esc(e.cat)}</span>
+      <span class="lo" title="${role==="orig"?"Closing":"Originating"}: ${esc(attorneyLabel(e.other))}">${esc(e.other||'—')}</span>
+      <span class="lf ${e.fee<0?'neg':''}">${usd0(e.fee)}</span>
+    </div>`;
+  }).join("");
+
+  return `<input class="lsearch" type="text" placeholder="Search a client, matter type, or month…" autocomplete="off"
+    oninput="filterLedger(this)" />
+    <div class="ledger">
+      <div class="lrow lhead">
+        <span class="ld">Date</span><span class="lc">Client</span><span class="lm">Type</span>
+        <span class="lo">${role==="orig"?"Closer":"Originator"}</span><span class="lf">Fee</span>
+      </div>
+      ${rowsHtml}
+    </div>
+    <div class="lcount subtle">${items.length} file${items.length>1?'s':''} · ${usd0(items.reduce((s,e)=>s+e.fee,0))} total</div>`;
+}
+
+// Live filter on the ledger (no re-render, keeps focus while typing).
+function filterLedger(input){
+  const wrap=input.parentElement;
+  const q=input.value.trim().toLowerCase();
+  wrap.querySelectorAll(".ledger .lrow:not(.lhead)").forEach(el=>{
+    el.style.display = (!q || (el.getAttribute("data-s")||"").includes(q)) ? "" : "none";
+  });
+}
+
+function reportHead(who){
+  const d=new Date();
+  const stamp=`${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  return `<div class="rhead">
+    <div>
+      <h2 class="who">${esc(who)}</h2>
+      <div class="lens">${role==="orig"?"Originating":"Closing"}-attorney credit · H1 ${CONFIG.year} performance report</div>
+    </div>
+    <div class="firm">Dorcey Law Firm<br>Generated ${stamp}</div>
+  </div>`;
+}
+
+function quarterStat(label, cur, prev, isMoney){
+  const val = isMoney ? usd0(cur) : usd0(cur);
+  return `<div class="stat">
+    <div class="k">${esc(label)}</div>
+    <div class="v">${val}</div>
+    <div class="d">${yoyTag(cur,prev)} vs ${usdK(prev)}</div>
+  </div>`;
+}
+
+function monthlyBars(curArr, prevArr){
+  const maxV=Math.max(1,...curArr,...prevArr);
+  const cols=MONTH_NAMES.map((nm,i)=>{
+    const cur=curArr[i]||0, prev=prevArr[i]||0;
+    const ch=(cur/maxV)*130, ph=(prev/maxV)*130;
+    const yoy = prev>0 ? ` (${cur>=prev?'+':''}${((cur-prev)/prev*100).toFixed(0)}%)` : '';
+    return `<div class="col">
+      <span class="tip">${nm} · ${CONFIG.year}: ${usdK(cur)} · ${CONFIG.year-1}: ${usdK(prev)}${yoy}</span>
+      <div class="pair">
+        <div class="bar prev" style="height:${ph}px"></div>
+        <div class="bar cur" style="height:${ch}px"></div>
+      </div>
+      <div class="lbl">${nm}</div>
+    </div>`;
+  }).join("");
+  return `<div class="bars">${cols}</div>`;
+}
+
+function categoryTable(cur, prev){
+  const cats=Object.keys(cur.cats).sort((a,b)=>cur.cats[b].rev-cur.cats[a].rev);
+  if(!cats.length) return `<p class="subtle">No files in this period.</p>`;
+  const rows=cats.map(c=>{
+    const cc=cur.cats[c], pc=prev.cats[c]||{rev:0,files:0};
+    const avg=cc.files?cc.rev/cc.files:0;
+    const pavg=pc.files?pc.rev/pc.files:0;
+    return `<tr>
+      <td class="cat-name">${esc(c)}</td>
+      <td>${cc.files}</td>
+      <td>${usd0(cc.rev)}</td>
+      <td>${usd0(avg)}</td>
+      <td>${pavg>0?yoyTag(avg,pavg):'<span class="flat">—</span>'}</td>
+    </tr>`;
+  }).join("");
+  const tot=cats.reduce((s,c)=>s+cur.cats[c].rev,0);
+  const totF=cats.reduce((s,c)=>s+cur.cats[c].files,0);
+  return `<table class="cat">
+    <thead><tr><th>File type (category)</th><th>Files</th><th>Revenue</th><th>Avg fee</th><th>Avg vs ${CONFIG.year-1}</th></tr></thead>
+    <tbody>${rows}
+      <tr class="totrow"><td>All types</td><td>${totF}</td><td>${usd0(tot)}</td><td>${usd0(totF?tot/totF:0)}</td><td></td></tr>
+    </tbody>
+  </table>`;
+}
+
+// ---- LEADERBOARD ----------------------------------------------------------
+function leaderboardView(){
+  const cut=ytdCutoffMonth();
+  const codes=attorneysPresent();
+
+  const rows=codes.map(code=>{
+    const h1=statBlock(ROWS,code,0,5);
+    const h1p=statBlock(ROWS_2025,code,0,5);
+    const ytd=statBlock(ROWS,code,0,11);
+    const ytdp=statBlock(ROWS_2025,code,0,cut<0?11:cut);
+    return {code, h1, h1p, ytd, ytdp};
+  }).sort((a,b)=>b.h1.total-a.h1.total);
+
+  const body=rows.map(r=>`
+    <tr>
+      <td class="cat-name">${esc(attorneyLabel(r.code))}</td>
+      <td>${usd0(r.h1.total)}</td>
+      <td>${yoyTag(r.h1.total,r.h1p.total)}</td>
+      <td>${r.h1.files}</td>
+      <td>${usd0(r.h1.avgFile)}</td>
+      <td>${usd0(r.h1.avgNew)}</td>
+      <td>${usd0(r.ytd.total)}</td>
+      <td>${yoyTag(r.ytd.total,r.ytdp.total)}</td>
+    </tr>`).join("");
+
+  const tH1=rows.reduce((s,r)=>s+r.h1.total,0);
+  const tH1p=rows.reduce((s,r)=>s+r.h1p.total,0);
+  const tF=rows.reduce((s,r)=>s+r.h1.files,0);
+  const tYtd=rows.reduce((s,r)=>s+r.ytd.total,0);
+  const tYtdp=rows.reduce((s,r)=>s+r.ytdp.total,0);
+
+  return `<div class="report leaderboard">
+    ${reportHead("Leadership Summary — All Attorneys")}
+    <div class="sec-label">First half (Jan–Jun ${CONFIG.year}) · ranked by H1 revenue</div>
+    <table class="cat">
+      <thead><tr>
+        <th>Attorney</th><th>H1 rev</th><th>vs ${CONFIG.year-1}</th><th>Files</th>
+        <th>Avg / file</th><th>Avg new-matter</th><th>YTD rev</th><th>YTD vs ${CONFIG.year-1}</th>
+      </tr></thead>
+      <tbody>${body}
+        <tr class="totrow">
+          <td>Firm total</td><td>${usd0(tH1)}</td><td>${yoyTag(tH1,tH1p)}</td><td>${tF}</td>
+          <td>${usd0(tF?tH1/tF:0)}</td><td></td><td>${usd0(tYtd)}</td><td>${yoyTag(tYtd,tYtdp)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="subtle" style="margin-top:12px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
+    Pick an individual from the dropdown for their full scorecard, monthly trend, and file-type breakdown.
+    Prior-year uses the same calendar span.</p>
+    <div class="footer-note">Live from the ${CONFIG.year} Clients sheet · toggle Originating/Closing above.</div>
+  </div>`;
+}
+
+// ---- interactions ---------------------------------------------------------
+function wire(){
+  const sel=document.getElementById("viewSel");
+  if(sel) sel.onchange=()=>{ view=sel.value; render(); };
+  document.querySelectorAll("#roleTog button").forEach(b=>{
+    b.onclick=()=>{ role=b.getAttribute("data-r"); render(); };
+  });
+}
+</script>
+</body>
+</html>
