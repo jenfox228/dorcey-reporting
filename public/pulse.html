@@ -92,6 +92,37 @@
   .togchip button[aria-selected="true"]{background:var(--navy);color:#fff}
   .togwrap{display:flex;gap:8px;flex-wrap:wrap}
 
+  /* Financial summary (QuickBooks, from /api/financials) */
+  .finsum{background:linear-gradient(150deg,#fbf8f1,#fff);border:1px solid var(--line);
+    border-left:4px solid var(--navy);border-radius:14px;box-shadow:var(--shadow);
+    padding:18px 22px;margin-bottom:22px}
+  .finsum h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 4px;font-size:1.15rem;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .finsum .stamp{font:600 .7rem "Libre Franklin",sans-serif;color:var(--muted);
+    background:var(--parchment);border:1px solid var(--line);border-radius:20px;padding:4px 12px;
+    letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+  .finsum .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 14px}
+  .fincards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .fincard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .fincard .k{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .fincard .v{font-family:"Playfair Display",serif;font-size:1.32rem;color:var(--navy);line-height:1.1;margin-top:4px}
+  .fincard .v.up{color:var(--up)} .fincard .v.down{color:var(--down)} .fincard .v.warn{color:#8a5a12}
+  .fincard .d{font-size:.72rem;color:var(--muted);margin-top:3px}
+  .finrows{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+  .finrows .fr{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    padding:7px 2px;border-bottom:1px dashed var(--line);font-size:.86rem}
+  .finrows .fr:last-child{border-bottom:0}
+  .finrows .fr .lbl{color:var(--muted)}
+  .finrows .fr .val{font-weight:700;color:var(--navy);white-space:nowrap}
+  .finrows .fr .val.up{color:var(--up)} .finrows .fr .val.down{color:var(--down)} .finrows .fr .val.warn{color:#8a5a12}
+  .finnotes{margin-top:16px;background:var(--parchment);border:1px solid var(--line);border-radius:10px;
+    padding:13px 16px;font-size:.85rem;line-height:1.65;white-space:pre-wrap;color:var(--ink)}
+  .finnotes b{display:block;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px}
+  .finempty{background:var(--parchment);border:1px dashed var(--line);border-radius:10px;
+    padding:16px;font-size:.85rem;color:var(--muted)}
+  .finempty a{color:var(--navy);font-weight:700}
+
   /* Composition strip */
   .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
   .comp .seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.72rem;font-weight:700;
@@ -208,6 +239,8 @@
   @media(max-width:900px){
     .headline{grid-template-columns:1fr}
     .kpis{grid-template-columns:repeat(2,1fr)}
+    .fincards{grid-template-columns:repeat(2,1fr)}
+    .finrows{grid-template-columns:1fr}
     .cols{grid-template-columns:1fr}
     .cols .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
     .cols3{grid-template-columns:1fr}
@@ -224,6 +257,7 @@
     <a href="/admin"><span class="ico">⚙️</span>Admin</a>
     <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
     <a href="/pulse" class="active"><span class="ico">💰</span>Pulse</a>
+    <a href="/financials"><span class="ico">🧾</span>Financials</a>
     <a href="/app"><span class="ico">🧭</span>APP</a>
     <a href="/reports"><span class="ico">📄</span>Reports</a>
   </nav>
@@ -247,10 +281,14 @@
 // sinks to the bottom of attorney lists; DAD's 2025 comparison is suppressed
 // (closing-attribution methodology changed in 2026). All sections respect
 // the global click-to-filter. Source: /api/revenue-feed → "2026 Clients" tab.
+//
+// Also renders the month-end Financial Summary from /api/financials — the
+// bookkeeper's QuickBooks figures, stored in Postgres (never in the Google
+// Sheet). That block is firm-wide and deliberately ignores the filter.
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
-  yearGoal: 7000000,
+  yearGoal: 8500000,
   year: 2026,
 };
 
@@ -288,6 +326,7 @@ const ATTORNEY_NAMES = {
 // Client-side state
 let ROWS = [];
 let ROWS_2025 = [];
+let FIN = null;   // latest row from /api/financials, or null if none saved yet
 
 // UI state — persisted across renders
 let viewMode = "blended";        // "blended" = all fees, "growth" = new-matter only
@@ -462,6 +501,15 @@ async function load(){
       }
     }catch(e){ /* best-effort */ }
 
+    // Month-end financials — best effort, never blocks the dashboard.
+    try{
+      const rf = await fetch("/api/financials");
+      if(rf.ok){
+        const jf = await rf.json();
+        if(!jf.error) FIN = jf.latest || null;
+      }
+    }catch(e){ /* best-effort */ }
+
     render();
   }catch(e){
     document.getElementById("content").innerHTML =
@@ -490,6 +538,7 @@ function render(){
     kpiSection(stats),
     thermoSection(stats),
     refundSpotlight(stats),
+    financialSection(),
     compositionSection(),
     monthlyTrendSection(stats, stats25),
     attorneyAndMatterSection(),
@@ -705,6 +754,95 @@ function refundSpotlight(s){
       <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))}${filter?' (in filter)':''}</b>
       <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${esc(latest.name || '—')} · ${latestDate}</small>
     </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · Month-end financial summary (QuickBooks, via /api/financials)
+// Firm-wide by definition — deliberately ignores the click-to-filter, since
+// these are book figures, not sheet rows.
+// ---------------------------------------------------------------------------
+
+function financialSection(){
+  if(!FIN){
+    return `<div class="finsum">
+      <h2>Month-end financials</h2>
+      <p class="sh">QuickBooks figures from the monthly close — kept in the reporting database, never on the client sheet.</p>
+      <div class="finempty">No month has been entered yet. Head to <a href="/financials">Financials</a> to add one.</div>
+    </div>`;
+  }
+
+  const d = FIN.data || {};
+  const has = k => d[k] !== undefined && d[k] !== null;
+  const money = k => has(k) ? usdK(d[k]) : "—";
+  const signedMoney = k => has(k) ? (d[k] >= 0 ? "+" : "−") + usdK(Math.abs(d[k])) : "—";
+  const pct = k => has(k) ? (d[k] >= 0 ? "+" : "−") + Math.abs(d[k]).toFixed(1) + "%" : "—";
+  const rawPct = k => has(k) ? d[k].toFixed(1) + "%" : "—";
+  const dir = k => !has(k) ? "" : (d[k] >= 0 ? "up" : "down");
+
+  const [y, m] = FIN.period.slice(0,7).split("-").map(Number);
+  const periodName = new Date(y, m-1, 1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+  const stamp = FIN.report_date
+    ? `Through ${periodName} · reported ${esc(FIN.report_date)}`
+    : `Through ${periodName}`;
+
+  const cards = `
+    <div class="fincards">
+      <div class="fincard">
+        <div class="k">Revenue vs prior year</div>
+        <div class="v ${dir('rev_delta')}">${signedMoney('rev_delta')}</div>
+        <div class="d">${pct('rev_pct')} excluding K-1</div>
+      </div>
+      <div class="fincard">
+        <div class="k">Total income incl. K-1</div>
+        <div class="v ${dir('total_delta')}">${signedMoney('total_delta')}</div>
+        <div class="d">${pct('total_pct')} with distributions</div>
+      </div>
+      <div class="fincard">
+        <div class="k">Net income</div>
+        <div class="v">${money('ni')}</div>
+        <div class="d">${rawPct('ni_margin')} net margin</div>
+      </div>
+      <div class="fincard">
+        <div class="k">Due from LaBelle &amp; Marco</div>
+        <div class="v ${has('due') && d.due > 0 ? 'warn' : ''}">${money('due')}</div>
+        <div class="d">${has('share') ? `of ${money('share')} earned` : 'outstanding transfer'}</div>
+      </div>
+    </div>`;
+
+  const rows = `
+    <div class="finrows">
+      <div>
+        <div class="fr"><span class="lbl">K-1 distributions received</span><span class="val">${money('k1')}</span></div>
+        <div class="fr"><span class="lbl">DLF share earned</span><span class="val">${money('share')}</span></div>
+        <div class="fr"><span class="lbl">Growth if fully collected</span><span class="val up">${pct('full_pct')}</span></div>
+        <div class="fr"><span class="lbl">Net income vs prior year</span><span class="val ${dir('ni_yoy')}">${pct('ni_yoy')}</span></div>
+        <div class="fr"><span class="lbl">Prior-year insurance proceeds</span><span class="val">${money('insurance')}</span></div>
+      </div>
+      <div>
+        <div class="fr"><span class="lbl">Adjusted growth (excl. insurance)</span><span class="val ${dir('ni_adj')}">${pct('ni_adj')}</span></div>
+        <div class="fr"><span class="lbl">Adjusted if K-1 fully collected</span><span class="val up">${pct('ni_full')}</span></div>
+        <div class="fr"><span class="lbl">Expected collections</span><span class="val">${money('expected')}</span></div>
+        <div class="fr"><span class="lbl">Actual QB deposits</span><span class="val">${money('qb_actual')}</span></div>
+        <div class="fr"><span class="lbl">Dashboard vs QB variance</span><span class="val ${dir('variance')}">${signedMoney('variance')}${has('variance_pct') ? ` (${rawPct('variance_pct')})` : ''}</span></div>
+      </div>
+    </div>`;
+
+  const notes = (FIN.notes && FIN.notes.trim())
+    ? `<div class="finnotes"><b>Bookkeeper's notes</b>${esc(FIN.notes)}</div>`
+    : "";
+
+  const filterNote = filter
+    ? `<div style="font-size:.75rem;color:var(--muted);margin-top:10px">These are firm-wide book figures — the dashboard filter doesn't apply here.</div>`
+    : "";
+
+  return `<div class="finsum">
+    <h2>Month-end financials <span class="stamp">${stamp}</span></h2>
+    <p class="sh">QuickBooks close, not the sheet. The Pulse tracks signed EAs; this tracks money actually collected and what's left after expenses. <a href="/financials" style="color:var(--navy);font-weight:700">Update →</a></p>
+    ${cards}
+    ${rows}
+    ${notes}
+    ${filterNote}
   </div>`;
 }
 
