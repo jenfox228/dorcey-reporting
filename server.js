@@ -524,6 +524,20 @@ app.post("/api/admin/reportlink", requireUser, requireAdmin, async (req, res) =>
   res.json({ url: `${appUrl(req)}/reports/${token}` });
 });
 
+// Sign-in link straight to the Financial Summary entry form. Admin-only,
+// since these are QuickBooks figures.
+app.post("/api/admin/finlink", requireUser, requireAdmin, async (req, res) => {
+  const { user_id } = req.body || {};
+  const { rows } = await pool.query(
+    `SELECT id, is_admin FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [user_id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: "no_user" });
+  if (!rows[0].is_admin) return res.status(400).json({ error: "not_admin" });
+  const token = await createMagicToken(user_id);
+  res.json({ url: `${appUrl(req)}/financials/${token}` });
+});
+
 app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
   const { rows } = await pool.query(
@@ -751,6 +765,83 @@ app.get("/api/app-invoice-feed", requireUser, async (req, res) => {
   }
 });
 
+// ---- Financial summary (bookkeeper → QuickBooks figures) --------------------
+// Admin-only, both read and write. These numbers come from QuickBooks, NOT
+// from the client-tracking Google Sheet, and live only in Postgres — so they
+// are never exposed to anyone with sheet access.
+//
+// One row per reporting month, keyed on the first of that month. Re-saving a
+// month updates it in place rather than creating a duplicate.
+
+// Metric keys the form is allowed to store. Anything else is ignored, so a
+// stray field can't bloat the row. Add a key here when you add a form field.
+const FIN_FIELDS = new Set([
+  "rev_delta", "rev_pct", "k1", "total_delta", "total_pct",
+  "share", "due", "full_pct",
+  "ni", "ni_margin", "ni_yoy", "insurance", "ni_adj", "ni_full",
+  "expected", "qb_actual", "variance", "variance_pct",
+]);
+
+app.get("/api/financials", requireUser, requireAdmin, async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT f.period::text AS period,
+              f.report_date,
+              f.data,
+              f.notes,
+              f.updated_at,
+              u.name AS updated_by_name
+         FROM rpt_financials f
+         LEFT JOIN rpt_users u ON u.id = f.updated_by
+        ORDER BY f.period DESC
+        LIMIT 24`
+    );
+    res.set("Cache-Control", "no-store");
+    res.json({ latest: rows[0] || null, periods: rows });
+  } catch (e) {
+    console.error("financials read error", e);
+    res.status(500).json({ error: "read_failed" });
+  }
+});
+
+app.post("/api/financials", requireUser, requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  const period = String(b.period || "").trim(); // expects "YYYY-MM"
+  if (!/^\d{4}-\d{2}$/.test(period))
+    return res.status(400).json({ error: "bad_period" });
+
+  const periodDate = `${period}-01`;
+  const reportDate =
+    typeof b.report_date === "string" ? b.report_date.trim().slice(0, 60) || null : null;
+  const notes = typeof b.notes === "string" ? b.notes.slice(0, 8000) : null;
+
+  const data = {};
+  for (const [k, v] of Object.entries(b.data || {})) {
+    if (!FIN_FIELDS.has(k)) continue;
+    if (v === "" || v === null || v === undefined) continue;
+    const n = Number(v);
+    if (Number.isFinite(n)) data[k] = n;
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO rpt_financials (period, report_date, data, notes, updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (period) DO UPDATE
+         SET report_date = EXCLUDED.report_date,
+             data        = EXCLUDED.data,
+             notes       = EXCLUDED.notes,
+             updated_by  = EXCLUDED.updated_by,
+             updated_at  = now()`,
+      [periodDate, reportDate, JSON.stringify(data), notes, req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("financials write error", e);
+    res.status(500).json({ error: "write_failed" });
+  }
+});
+
 // ---- Page routes ----------------------------------------------------------
 
 app.get("/report", (req, res) => {
@@ -781,6 +872,23 @@ app.get("/pulse/:token", async (req, res) => {
     res.sendFile(path.join(__dirname, "public", "pulse.html"));
   } catch (e) {
     console.error("pulse login error", e);
+    res.status(500).send(loginError());
+  }
+});
+
+app.get("/financials", (req, res) => {
+  if (!req.user?.is_admin) return res.status(403).send(loginError());
+  res.sendFile(path.join(__dirname, "public", "financials.html"));
+});
+
+app.get("/financials/:token", async (req, res) => {
+  try {
+    const user = await consumeMagicToken(req.params.token);
+    if (!user || !user.is_admin) return res.status(401).send(loginError());
+    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
+    res.sendFile(path.join(__dirname, "public", "financials.html"));
+  } catch (e) {
+    console.error("financials login error", e);
     res.status(500).send(loginError());
   }
 });
