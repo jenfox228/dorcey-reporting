@@ -43,6 +43,19 @@
   .section h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 4px;font-size:1.15rem}
   .section .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 16px}
 
+  /* Month picker — the way back to any prior month */
+  .picker{background:linear-gradient(150deg,#fbf8f1,#fff);border-left:4px solid var(--navy)}
+  .pickrow{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+  .pickrow .fld{flex:1;min-width:220px}
+  select.month{border:1px solid var(--line);border-radius:9px;padding:11px 12px;
+    font:600 .95rem "Libre Franklin",sans-serif;color:var(--navy);background:#fff;
+    outline:none;width:100%;cursor:pointer}
+  select.month:focus{border-color:var(--gold)}
+  .statusline{font-size:.8rem;margin-top:10px;color:var(--muted)}
+  .statusline .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .statusline .dot.saved{background:var(--up)}
+  .statusline .dot.blank{background:#cfc7b5}
+
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .fld{display:flex;flex-direction:column;gap:5px}
   .fld.full{grid-column:1/-1}
@@ -77,8 +90,7 @@
   .savestate{font-size:.82rem;color:var(--muted)}
   .savestate.ok{color:var(--up);font-weight:700}
   .savestate.err{color:var(--down);font-weight:700}
-
-  .meta{font-size:.75rem;color:var(--muted);text-align:center;margin-top:18px}
+  .savestate.dirty{color:#8a5a12;font-weight:700}
 
   @media(max-width:760px){ .grid{grid-template-columns:1fr} }
 </style>
@@ -100,22 +112,28 @@
   </header>
 
   <div class="wrap">
-    <div id="content"><div class="loading">Loading the latest month…</div></div>
+    <div id="content"><div class="loading">Loading saved months…</div></div>
   </div>
 
 <script>
 // ---------------------------------------------------------------------------
-// FINANCIAL SUMMARY ENTRY — admin-only form. Figures come from QuickBooks and
-// are stored in Postgres (rpt_financials), never in the client-tracking Google
-// Sheet. Saving here updates the Financial Summary block on /pulse.
+// FINANCIAL SUMMARY ENTRY — admin-only. Figures come from QuickBooks and live
+// in Postgres (rpt_financials), never in the client-tracking Google Sheet.
+//
+// Any month can be entered or re-entered: the server upserts on period, so
+// saving a month you've already done updates it rather than duplicating. The
+// dropdown lists every month of the year so back-filling January is a two-
+// click job, with a dot showing which months already have figures.
 // ---------------------------------------------------------------------------
+
+const FIN_YEAR = new Date().getFullYear();
 
 // Field definitions drive both the form and the payload. The `key` values must
 // match FIN_FIELDS in server.js — add in both places to add a metric.
 const SECTIONS = [
   {
     title: "Revenue",
-    blurb: "Figures as reported in the month-end summary. Leave a field blank if it doesn't apply this month.",
+    blurb: "Figures as reported in the month-end summary. Leave a field blank if it doesn't apply — blanks show as “—” on the Pulse rather than as zero.",
     fields: [
       { key:"rev_delta",  label:"DLF revenue increase vs prior year", type:"money" },
       { key:"rev_pct",    label:"Revenue growth % (excl. K-1)",       type:"pct" },
@@ -151,23 +169,9 @@ const SECTIONS = [
   },
 ];
 
-// Seed values used ONLY when a month has never been saved — so the very first
-// visit isn't a wall of empty boxes. Any saved month overrides these entirely.
-const SEED_PERIOD = "2026-06";
-const SEED = {
-  report_date: "July 8, 2026",
-  data: {
-    rev_delta:166000, rev_pct:4.3, k1:173000, total_delta:59000, total_pct:1.4,
-    share:239000, due:66000, full_pct:3,
-    ni:1100000, ni_margin:27.4, ni_yoy:-7.1, insurance:103000, ni_adj:1.9, ni_full:8,
-    expected:4240000, qb_actual:4340000, variance:97000, variance_pct:2.3,
-  },
-  notes:
-"The lower overall growth is primarily due to the decrease in LaBelle distributions compared to 2025. Based on actual LaBelle & Marco revenues, DLF's 70% share is approximately $239K; however only $173K has been transferred to DLF, leaving approximately $66K due as of 06/30/26. If the full amount had been collected, total income growth would have been approximately 3% over 2025.\n\n2025 net income included about $103K in insurance proceeds, making the raw year-over-year comparison less meaningful. Excluding those proceeds, adjusted 2026 net income increased approximately 1.9% over 2025. Had the additional $66K been transferred, adjusted net income would have increased approximately 8%.\n\nDashboard vs QB variance of roughly $97K (2.3%) indicates the dashboard is tracking consistently with QuickBooks."
-};
-
-let ALL = [];      // every saved period, newest first
-let current = null; // the period string currently loaded in the form
+let ALL = [];        // every saved period, newest first
+let current = null;  // period string ("YYYY-MM") loaded in the form
+let dirty = false;   // unsaved edits in the form right now
 
 boot();
 
@@ -178,7 +182,7 @@ async function boot(){
     const j = await r.json();
     if(j.error) throw new Error(j.error);
     ALL = j.periods || [];
-    current = ALL.length ? ALL[0].period.slice(0,7) : SEED_PERIOD;
+    current = ALL.length ? ALL[0].period.slice(0,7) : thisMonth();
     renderForm();
   }catch(e){
     document.getElementById("content").innerHTML =
@@ -193,6 +197,11 @@ function esc(s){
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function thisMonth(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+
 function recordFor(period){
   return ALL.find(p => p.period.slice(0,7) === period) || null;
 }
@@ -202,32 +211,59 @@ function monthLabel(period){
   return new Date(y, m-1, 1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
 }
 
+// Every month worth offering: January of this year through the current month,
+// plus any saved month outside that window (so a December 2025 entry, if one
+// ever gets added, doesn't vanish from the list). Newest first.
+function monthOptions(){
+  const set = new Set();
+  const now = new Date();
+  const lastMonth = (now.getFullYear() === FIN_YEAR) ? now.getMonth() + 1 : 12;
+  for(let m = 1; m <= lastMonth; m++){
+    set.add(`${FIN_YEAR}-${String(m).padStart(2,"0")}`);
+  }
+  ALL.forEach(p => set.add(p.period.slice(0,7)));
+  if(current) set.add(current);
+  return [...set].sort().reverse();
+}
+
 function renderForm(){
   const rec = recordFor(current);
-  const isSeed = !rec && current === SEED_PERIOD;
-  const data  = rec ? (rec.data || {})   : (isSeed ? SEED.data : {});
-  const notes = rec ? (rec.notes || "")  : (isSeed ? SEED.notes : "");
-  const rdate = rec ? (rec.report_date || "") : (isSeed ? SEED.report_date : "");
+  const data  = rec ? (rec.data || {})  : {};
+  const notes = rec ? (rec.notes || "") : "";
+  const rdate = rec ? (rec.report_date || "") : "";
+  dirty = false;
 
   document.getElementById("subLabel").textContent =
     rec ? `${monthLabel(current)} · last saved ${new Date(rec.updated_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}${rec.updated_by_name ? " by " + rec.updated_by_name : ""}`
-        : `${monthLabel(current)} · not yet saved`;
+        : `${monthLabel(current)} · nothing saved yet`;
 
-  const periodPicker = `
-    <div class="section">
-      <h2>Reporting period</h2>
-      <p class="sh">Pick the month these figures cover. Saving a month you've already entered updates it — it never creates a duplicate.</p>
-      <div class="grid">
+  const opts = monthOptions().map(p => {
+    const saved = !!recordFor(p);
+    return `<option value="${esc(p)}"${p === current ? " selected" : ""}>${esc(monthLabel(p))}${saved ? "  ✓ saved" : "  — blank"}</option>`;
+  }).join("");
+
+  const savedCount = ALL.length;
+  const status = rec
+    ? `<span class="dot saved"></span>${esc(monthLabel(current))} has figures saved — edit anything below and save again to update it.`
+    : `<span class="dot blank"></span>${esc(monthLabel(current))} hasn't been entered yet. Fill in what you have and save.`;
+
+  const picker = `
+    <div class="section picker">
+      <h2>Which month?</h2>
+      <p class="sh">Pick any month to view, edit, or back-fill. Saving a month that already has figures updates it — it never creates a duplicate.</p>
+      <div class="pickrow">
         <div class="fld">
-          <label for="f_period">Month</label>
-          <input type="month" id="f_period" value="${esc(current)}" />
+          <label for="f_period">Reporting month</label>
+          <select class="month" id="f_period">${opts}</select>
         </div>
         <div class="fld">
           <label for="f_report_date">Report date</label>
-          <input type="text" id="f_report_date" value="${esc(rdate)}" placeholder="e.g. July 8, 2026" />
+          <input type="text" id="f_report_date" value="${esc(rdate)}" placeholder="e.g. August 5, 2026" />
           <span class="hint">The date you sent the summary — shown on the Pulse.</span>
         </div>
       </div>
+      <div class="statusline">${status}</div>
+      <div class="statusline" style="margin-top:4px">${savedCount} month${savedCount === 1 ? "" : "s"} saved so far. The Pulse always shows the most recent one.</div>
     </div>`;
 
   const body = SECTIONS.map(sec => `
@@ -259,25 +295,12 @@ function renderForm(){
       </div>
     </div>`;
 
-  const history = ALL.length > 1 ? `
-    <div class="section">
-      <h2>Previously saved</h2>
-      <p class="sh">Click a month to load it for editing.</p>
-      <div>${ALL.map(p => {
-        const per = p.period.slice(0,7);
-        const on = per === current;
-        return `<button class="btn ghost" data-period="${esc(per)}"
-          style="margin:4px 6px 0 0;${on?'border-color:var(--gold);color:var(--navy)':''}">
-          ${esc(monthLabel(per))}${on?' ·':''}</button>`;
-      }).join("")}</div>
-    </div>` : "";
-
   const actions = `
     <div class="actionbar">
-      <span class="savestate" id="saveState">${isSeed ? "Pre-filled from the June summary — review, then save." : "No unsaved changes."}</span>
+      <span class="savestate" id="saveState">No unsaved changes.</span>
       <span>
         <a class="btn ghost" href="/pulse" style="text-decoration:none;display:inline-block">View on Pulse</a>
-        <button class="btn save" id="saveBtn">Save month</button>
+        <button class="btn save" id="saveBtn">Save ${esc(monthLabel(current))}</button>
       </span>
     </div>`;
 
@@ -286,7 +309,7 @@ function renderForm(){
       <span class="ico">🔒</span>
       <span>These figures come from QuickBooks and are stored in the reporting database — <b>admin access only</b>. They are never written to the client-tracking Google Sheet.</span>
     </div>
-    ${periodPicker}${body}${notesBlock}${history}${actions}`;
+    ${picker}${body}${notesBlock}${actions}`;
 
   wire();
 }
@@ -296,17 +319,16 @@ function wire(){
 
   document.getElementById("f_period").onchange = (e) => {
     const next = e.target.value;
-    if(!/^\d{4}-\d{2}$/.test(next)) return;
+    if(dirty && !confirm("You have unsaved changes on " + monthLabel(current) + ".\n\nSwitch months and lose them?")){
+      e.target.value = current;   // put the dropdown back
+      return;
+    }
     current = next;
     renderForm();
   };
 
-  document.querySelectorAll("[data-period]").forEach(b => {
-    b.onclick = () => { current = b.getAttribute("data-period"); renderForm(); };
-  });
-
   document.querySelectorAll("#content input, #content textarea").forEach(el => {
-    el.addEventListener("input", () => setState("Unsaved changes.", ""));
+    el.addEventListener("input", () => { dirty = true; setState("Unsaved changes.", "dirty"); });
   });
 }
 
@@ -348,7 +370,8 @@ async function save(){
     const j = await r.json();
     if(!r.ok || j.error) throw new Error(j.error || ("server returned " + r.status));
 
-    // Re-read so the history list and "last saved" stamp stay truthful.
+    // Re-read so the dropdown ticks, the count, and the "last saved" stamp
+    // all reflect reality rather than what we hope happened.
     const rr = await fetch("/api/financials");
     const jj = await rr.json();
     ALL = jj.periods || [];
