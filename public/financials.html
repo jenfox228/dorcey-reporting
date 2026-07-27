@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dorcey · Financial Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0f1d33; --navy-2:#1b2f4d; --gold:#c6a04e; --gold-soft:#e3cd97;
+    --cream:#f7f3ea; --parchment:#f6f1e4; --ink:#2a2a2a; --muted:#7d7666;
+    --line:#e7e0d2; --up:#2d6a4f; --down:#9b2335;
+    --shadow:0 16px 38px -22px rgba(15,29,51,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:var(--ink)}
+
+  .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;
+    border-bottom:1px solid rgba(198,160,78,.25)}
+  .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
+    color:#c7cfdd;text-decoration:none;font:600 .82rem "Libre Franklin",sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent;
+    transition:background .15s,color .15s,border-color .15s}
+  .topnav a:hover{background:#132849;color:#e3cd97}
+  .topnav a.active{color:var(--gold);border-bottom-color:var(--gold);background:#132849}
+  .topnav a .ico{display:block;font-size:1.05rem;margin-bottom:2px}
+
+  header.masthead{background:linear-gradient(155deg,var(--navy),var(--navy-2));color:var(--cream);
+    padding:24px 28px;border-bottom:3px solid var(--gold)}
+  .eyebrow{font-size:.7rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-soft);font-weight:600}
+  .masthead h1{font-family:"Playfair Display",serif;font-weight:700;margin:.15rem 0 .1rem;font-size:1.7rem}
+  .masthead .sub{color:#c7cfdd;font-size:.88rem}
+
+  .wrap{max-width:900px;margin:0 auto;padding:22px 20px 60px}
+  .loading{padding:60px;text-align:center;color:var(--muted)}
+
+  .privacy{background:#eef4ee;border:1px solid #cfe0cf;color:#2d5a3d;border-radius:12px;
+    padding:12px 16px;font-size:.82rem;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start}
+  .privacy .ico{font-size:1.1rem;line-height:1.2}
+
+  .section{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    padding:20px 24px;margin-bottom:20px}
+  .section h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 4px;font-size:1.15rem}
+  .section .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 16px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld.full{grid-column:1/-1}
+  .fld label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);font-weight:700}
+  .fld .hint{font-size:.7rem;color:#a8a196}
+  .fld input, .fld textarea{
+    border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+    font:500 .92rem "Libre Franklin",sans-serif;color:var(--ink);
+    background:var(--parchment);outline:none;width:100%}
+  .fld input:focus, .fld textarea:focus{border-color:var(--gold);background:#fff}
+  .fld textarea{resize:vertical;min-height:130px;line-height:1.6}
+  .money{position:relative}
+  .money::before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:var(--muted);font-weight:600;pointer-events:none;z-index:1}
+  .money input{padding-left:24px}
+  .pct{position:relative}
+  .pct::after{content:"%";position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    color:var(--muted);font-weight:600;pointer-events:none}
+  .pct input{padding-right:28px}
+
+  .actionbar{position:sticky;bottom:0;background:#fff;border:1px solid var(--line);
+    border-radius:14px;box-shadow:var(--shadow);padding:14px 20px;
+    display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;padding:12px 26px;cursor:pointer;
+    font:700 .88rem "Libre Franklin",sans-serif;letter-spacing:.03em}
+  .btn.save{background:var(--navy);color:#fff}
+  .btn.save:hover{background:var(--navy-2)}
+  .btn.save:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--navy);color:var(--navy)}
+  .savestate{font-size:.82rem;color:var(--muted)}
+  .savestate.ok{color:var(--up);font-weight:700}
+  .savestate.err{color:var(--down);font-weight:700}
+
+  .meta{font-size:.75rem;color:var(--muted);text-align:center;margin-top:18px}
+
+  @media(max-width:760px){ .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/admin"><span class="ico">⚙️</span>Admin</a>
+    <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
+    <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+    <a href="/financials" class="active"><span class="ico">🧾</span>Financials</a>
+    <a href="/app"><span class="ico">🧭</span>APP</a>
+    <a href="/reports"><span class="ico">📄</span>Reports</a>
+  </nav>
+
+  <header class="masthead">
+    <div class="eyebrow">Dorcey Law Firm · Monthly Financial Summary</div>
+    <h1>QuickBooks month-end entry</h1>
+    <div class="sub" id="subLabel">Loading…</div>
+  </header>
+
+  <div class="wrap">
+    <div id="content"><div class="loading">Loading the latest month…</div></div>
+  </div>
+
+<script>
+// ---------------------------------------------------------------------------
+// FINANCIAL SUMMARY ENTRY — admin-only form. Figures come from QuickBooks and
+// are stored in Postgres (rpt_financials), never in the client-tracking Google
+// Sheet. Saving here updates the Financial Summary block on /pulse.
+// ---------------------------------------------------------------------------
+
+// Field definitions drive both the form and the payload. The `key` values must
+// match FIN_FIELDS in server.js — add in both places to add a metric.
+const SECTIONS = [
+  {
+    title: "Revenue",
+    blurb: "Figures as reported in the month-end summary. Leave a field blank if it doesn't apply this month.",
+    fields: [
+      { key:"rev_delta",  label:"DLF revenue increase vs prior year", type:"money" },
+      { key:"rev_pct",    label:"Revenue growth % (excl. K-1)",       type:"pct" },
+      { key:"k1",         label:"K-1 distributions transferred",       type:"money", hint:"LaBelle & Marco, actually received" },
+      { key:"total_delta",label:"Total income increase incl. K-1",     type:"money" },
+      { key:"total_pct",  label:"Total income growth % incl. K-1",     type:"pct" },
+      { key:"share",      label:"DLF 70% share of LaBelle & Marco",    type:"money", hint:"Based on actual LaBelle & Marco revenues" },
+      { key:"due",        label:"Amount still due from LaBelle & Marco", type:"money", hint:"Share earned but not yet transferred" },
+      { key:"full_pct",   label:"Growth % if full amount collected",   type:"pct" },
+    ],
+  },
+  {
+    title: "Net income",
+    blurb: "K-1 transfers are included in DLF net income. Use a negative number for a decline vs prior year.",
+    fields: [
+      { key:"ni",         label:"DLF net income (YTD)",                type:"money" },
+      { key:"ni_margin",  label:"Net profit margin",                   type:"pct" },
+      { key:"ni_yoy",     label:"Net income vs prior year (reported)", type:"pct", hint:"Negative if lower than last year" },
+      { key:"insurance",  label:"Prior-year one-time insurance proceeds", type:"money", hint:"Makes the raw YoY comparison misleading" },
+      { key:"ni_adj",     label:"Adjusted net income growth (excl. insurance)", type:"pct" },
+      { key:"ni_full",    label:"Adjusted growth if full K-1 collected", type:"pct" },
+    ],
+  },
+  {
+    title: "QuickBooks vs dashboard",
+    blurb: "The dashboard reflects signed EAs; QuickBooks reflects payments actually collected. A small variance is normal and expected.",
+    fields: [
+      { key:"expected",     label:"Expected collections through month-end", type:"money" },
+      { key:"qb_actual",    label:"Actual QB deposits",                     type:"money" },
+      { key:"variance",     label:"Variance amount",                        type:"money", hint:"Positive = QB ahead of dashboard" },
+      { key:"variance_pct", label:"Variance %",                             type:"pct" },
+    ],
+  },
+];
+
+// Seed values used ONLY when a month has never been saved — so the very first
+// visit isn't a wall of empty boxes. Any saved month overrides these entirely.
+const SEED_PERIOD = "2026-06";
+const SEED = {
+  report_date: "July 8, 2026",
+  data: {
+    rev_delta:166000, rev_pct:4.3, k1:173000, total_delta:59000, total_pct:1.4,
+    share:239000, due:66000, full_pct:3,
+    ni:1100000, ni_margin:27.4, ni_yoy:-7.1, insurance:103000, ni_adj:1.9, ni_full:8,
+    expected:4240000, qb_actual:4340000, variance:97000, variance_pct:2.3,
+  },
+  notes:
+"The lower overall growth is primarily due to the decrease in LaBelle distributions compared to 2025. Based on actual LaBelle & Marco revenues, DLF's 70% share is approximately $239K; however only $173K has been transferred to DLF, leaving approximately $66K due as of 06/30/26. If the full amount had been collected, total income growth would have been approximately 3% over 2025.\n\n2025 net income included about $103K in insurance proceeds, making the raw year-over-year comparison less meaningful. Excluding those proceeds, adjusted 2026 net income increased approximately 1.9% over 2025. Had the additional $66K been transferred, adjusted net income would have increased approximately 8%.\n\nDashboard vs QB variance of roughly $97K (2.3%) indicates the dashboard is tracking consistently with QuickBooks."
+};
+
+let ALL = [];      // every saved period, newest first
+let current = null; // the period string currently loaded in the form
+
+boot();
+
+async function boot(){
+  try{
+    const r = await fetch("/api/financials");
+    if(!r.ok) throw new Error("server returned " + r.status);
+    const j = await r.json();
+    if(j.error) throw new Error(j.error);
+    ALL = j.periods || [];
+    current = ALL.length ? ALL[0].period.slice(0,7) : SEED_PERIOD;
+    renderForm();
+  }catch(e){
+    document.getElementById("content").innerHTML =
+      `<div class="section"><h2>Couldn't load</h2>
+       <p class="sh">${esc(e.message)} — try refreshing. If it keeps happening, tell Jen.</p></div>`;
+    console.error("financials load error:", e);
+  }
+}
+
+function esc(s){
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function recordFor(period){
+  return ALL.find(p => p.period.slice(0,7) === period) || null;
+}
+
+function monthLabel(period){
+  const [y,m] = period.split("-").map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+}
+
+function renderForm(){
+  const rec = recordFor(current);
+  const isSeed = !rec && current === SEED_PERIOD;
+  const data  = rec ? (rec.data || {})   : (isSeed ? SEED.data : {});
+  const notes = rec ? (rec.notes || "")  : (isSeed ? SEED.notes : "");
+  const rdate = rec ? (rec.report_date || "") : (isSeed ? SEED.report_date : "");
+
+  document.getElementById("subLabel").textContent =
+    rec ? `${monthLabel(current)} · last saved ${new Date(rec.updated_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}${rec.updated_by_name ? " by " + rec.updated_by_name : ""}`
+        : `${monthLabel(current)} · not yet saved`;
+
+  const periodPicker = `
+    <div class="section">
+      <h2>Reporting period</h2>
+      <p class="sh">Pick the month these figures cover. Saving a month you've already entered updates it — it never creates a duplicate.</p>
+      <div class="grid">
+        <div class="fld">
+          <label for="f_period">Month</label>
+          <input type="month" id="f_period" value="${esc(current)}" />
+        </div>
+        <div class="fld">
+          <label for="f_report_date">Report date</label>
+          <input type="text" id="f_report_date" value="${esc(rdate)}" placeholder="e.g. July 8, 2026" />
+          <span class="hint">The date you sent the summary — shown on the Pulse.</span>
+        </div>
+      </div>
+    </div>`;
+
+  const body = SECTIONS.map(sec => `
+    <div class="section">
+      <h2>${esc(sec.title)}</h2>
+      <p class="sh">${esc(sec.blurb)}</p>
+      <div class="grid">
+        ${sec.fields.map(f => {
+          const v = data[f.key];
+          const val = (v === undefined || v === null) ? "" : v;
+          const wrapCls = f.type === "money" ? "money" : f.type === "pct" ? "pct" : "";
+          return `<div class="fld">
+            <label for="f_${f.key}">${esc(f.label)}</label>
+            <div class="${wrapCls}">
+              <input type="number" step="any" id="f_${f.key}" value="${esc(val)}" />
+            </div>
+            ${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ""}
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`).join("");
+
+  const notesBlock = `
+    <div class="section">
+      <h2>Notes &amp; commentary</h2>
+      <p class="sh">Anything that gives the numbers context. This shows verbatim on the Pulse, so write it the way you'd write the email.</p>
+      <div class="fld full">
+        <textarea id="f_notes" placeholder="Context, caveats, anything worth flagging…">${esc(notes)}</textarea>
+      </div>
+    </div>`;
+
+  const history = ALL.length > 1 ? `
+    <div class="section">
+      <h2>Previously saved</h2>
+      <p class="sh">Click a month to load it for editing.</p>
+      <div>${ALL.map(p => {
+        const per = p.period.slice(0,7);
+        const on = per === current;
+        return `<button class="btn ghost" data-period="${esc(per)}"
+          style="margin:4px 6px 0 0;${on?'border-color:var(--gold);color:var(--navy)':''}">
+          ${esc(monthLabel(per))}${on?' ·':''}</button>`;
+      }).join("")}</div>
+    </div>` : "";
+
+  const actions = `
+    <div class="actionbar">
+      <span class="savestate" id="saveState">${isSeed ? "Pre-filled from the June summary — review, then save." : "No unsaved changes."}</span>
+      <span>
+        <a class="btn ghost" href="/pulse" style="text-decoration:none;display:inline-block">View on Pulse</a>
+        <button class="btn save" id="saveBtn">Save month</button>
+      </span>
+    </div>`;
+
+  document.getElementById("content").innerHTML = `
+    <div class="privacy">
+      <span class="ico">🔒</span>
+      <span>These figures come from QuickBooks and are stored in the reporting database — <b>admin access only</b>. They are never written to the client-tracking Google Sheet.</span>
+    </div>
+    ${periodPicker}${body}${notesBlock}${history}${actions}`;
+
+  wire();
+}
+
+function wire(){
+  document.getElementById("saveBtn").onclick = save;
+
+  document.getElementById("f_period").onchange = (e) => {
+    const next = e.target.value;
+    if(!/^\d{4}-\d{2}$/.test(next)) return;
+    current = next;
+    renderForm();
+  };
+
+  document.querySelectorAll("[data-period]").forEach(b => {
+    b.onclick = () => { current = b.getAttribute("data-period"); renderForm(); };
+  });
+
+  document.querySelectorAll("#content input, #content textarea").forEach(el => {
+    el.addEventListener("input", () => setState("Unsaved changes.", ""));
+  });
+}
+
+function setState(msg, cls){
+  const el = document.getElementById("saveState");
+  if(!el) return;
+  el.textContent = msg;
+  el.className = "savestate" + (cls ? " " + cls : "");
+}
+
+async function save(){
+  const btn = document.getElementById("saveBtn");
+  const period = document.getElementById("f_period").value;
+  if(!/^\d{4}-\d{2}$/.test(period)){
+    setState("Pick a month first.", "err");
+    return;
+  }
+
+  const data = {};
+  SECTIONS.forEach(sec => sec.fields.forEach(f => {
+    const raw = document.getElementById("f_" + f.key).value.trim();
+    if(raw !== "") data[f.key] = Number(raw);
+  }));
+
+  btn.disabled = true;
+  setState("Saving…", "");
+
+  try{
+    const r = await fetch("/api/financials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        period,
+        report_date: document.getElementById("f_report_date").value,
+        data,
+        notes: document.getElementById("f_notes").value,
+      }),
+    });
+    const j = await r.json();
+    if(!r.ok || j.error) throw new Error(j.error || ("server returned " + r.status));
+
+    // Re-read so the history list and "last saved" stamp stay truthful.
+    const rr = await fetch("/api/financials");
+    const jj = await rr.json();
+    ALL = jj.periods || [];
+    current = period;
+    renderForm();
+    setState("Saved — the Pulse is updated.", "ok");
+  }catch(e){
+    console.error("financials save error:", e);
+    setState("Couldn't save: " + e.message, "err");
+  }finally{
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
