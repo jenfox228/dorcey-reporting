@@ -76,6 +76,26 @@ export async function initSchema() {
       ON rpt_audit_log (user_id, week_of DESC);
     CREATE INDEX IF NOT EXISTS rpt_audit_log_when_idx
       ON rpt_audit_log (edited_at DESC);
+
+    -- Bookkeeper's monthly financial summary. Sourced from QuickBooks, NOT
+    -- from the client-tracking Google Sheet — these figures are admin-only
+    -- and never touch the shared spreadsheet.
+    --   period  = first of the reporting month (2026-06-01 = "through June")
+    --   data    = JSONB of the metrics, so adding a figure later is a form
+    --             change rather than a migration
+    --   notes   = her narrative commentary, shown verbatim on the Pulse
+    CREATE TABLE IF NOT EXISTS rpt_financials (
+      id            SERIAL PRIMARY KEY,
+      period        DATE NOT NULL UNIQUE,
+      report_date   TEXT,
+      data          JSONB NOT NULL DEFAULT '{}'::jsonb,
+      notes         TEXT,
+      updated_by    INTEGER REFERENCES rpt_users(id) ON DELETE SET NULL,
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS rpt_financials_period_idx
+      ON rpt_financials (period DESC);
+
     -- Backfill the contact-email column on tables created before it existed.
     ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS notify_email TEXT;
     ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS person TEXT;
