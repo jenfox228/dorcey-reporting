@@ -10,7 +10,7 @@
   *{box-sizing:border-box}
   body{margin:0;font-family:"Libre Franklin",system-ui,sans-serif;background:var(--parchment);color:#1b1b1b}
 
-  /* Top nav bar for jumping between admin / dashboard / pulse / app / reports */
+  /* Top nav bar for jumping between admin / dashboard / pulse / financials / app / reports */
   .topnav{background:#0a1732;display:flex;justify-content:center;gap:2px;padding:0;
     border-bottom:1px solid rgba(201,161,74,.25)}
   .topnav a{flex:1;max-width:180px;text-align:center;padding:12px 8px;
@@ -24,7 +24,7 @@
   header{background:var(--navy);color:var(--parchment);padding:24px;border-bottom:3px solid var(--gold)}
   header h1{font-family:"Playfair Display",serif;margin:.2rem 0;font-size:1.5rem}
   header .eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:#e7d3a1}
-  .wrap{max-width:820px;margin:0 auto;padding:22px 18px 80px}
+  .wrap{max-width:900px;margin:0 auto;padding:22px 18px 80px}
   p.lead{color:var(--muted);font-size:.92rem}
 
   /* Card component reused by Add & Edit forms */
@@ -62,6 +62,27 @@
   .status.ok{color:var(--ok)}
   .status.err{color:var(--down)}
 
+  /* ---- Access control block ---- */
+  .accessbox{border:1px solid var(--line);border-radius:12px;background:#faf7ef;
+    padding:14px 16px;margin-bottom:14px}
+  .accessbox .ab-title{font:700 .78rem "Libre Franklin",sans-serif;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--navy);margin-bottom:3px}
+  .accessbox .ab-sub{font-size:.75rem;color:var(--muted);margin-bottom:12px}
+  .rolepick{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+  .rolepick .fld{flex:1;min-width:230px;margin-bottom:0}
+  .roledesc{font-size:.75rem;color:var(--muted);flex:2;min-width:220px;padding-bottom:10px}
+  .tabgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+  .tabchk{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:8px;
+    background:#fff;border:1px solid var(--line)}
+  .tabchk input{width:17px;height:17px;margin:2px 0 0 0;flex-shrink:0}
+  .tabchk .tc-body{flex:1;min-width:0}
+  .tabchk .tc-name{font:600 .86rem "Libre Franklin",sans-serif;color:var(--navy);display:block}
+  .tabchk .tc-note{font-size:.7rem;color:var(--muted);display:block;line-height:1.35}
+  .tabchk.locked{opacity:.55;background:#f4f2ec}
+  .tabchk.locked .tc-name{color:var(--muted)}
+  .lockmsg{font-size:.72rem;color:#8a6b1e;margin-top:10px;line-height:1.45}
+  .driftmsg{font-size:.73rem;color:var(--navy);margin-top:10px;font-weight:600}
+
   /* Users table */
   table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
     border-radius:14px;overflow:hidden;box-shadow:0 16px 36px -22px rgba(15,31,58,.4)}
@@ -70,9 +91,16 @@
   tr:last-child td{border-bottom:0}
   .name{font-weight:600;color:var(--navy)}
   .tpl{color:var(--muted);font-size:.8rem}
-  .badge{font-size:.68rem;background:var(--gold);color:var(--navy);padding:2px 7px;border-radius:6px;font-weight:700}
-  .badge.app{background:#3f6184;color:#fff}
-  .badge.rpt{background:#8a6b1e;color:#fff}
+  .rolechip{font-size:.68rem;background:var(--navy);color:#fff;padding:2px 8px;border-radius:6px;font-weight:700}
+  .rolechip.principal{background:#6b4f9e}
+  .rolechip.operations{background:#2f5d8a}
+  .rolechip.attorney{background:#8a6b1e}
+  .rolechip.program_lead{background:#3f6184}
+  .rolechip.bookkeeper{background:#2f7d57}
+  .rolechip.reporter{background:#8b8578}
+  .drift{font-size:.68rem;color:var(--muted);margin-left:5px;font-weight:600}
+  .drift .plus{color:var(--ok)}
+  .drift .minus{color:var(--down)}
   .newpill{font-size:.68rem;background:#e7f3ec;color:var(--ok);padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px}
   .inactive-pill{font-size:.68rem;background:#e0e0e0;color:#555;padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px}
   button.link{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:9px;
@@ -84,6 +112,10 @@
   button.link.app:hover{background:#3f6184;color:#fff}
   button.link.rpt{border-color:#8a6b1e;color:#8a6b1e}
   button.link.rpt:hover{background:#8a6b1e;color:#fff}
+  button.link.fin{border-color:#2f7d57;color:#2f7d57}
+  button.link.fin:hover{background:#2f7d57;color:#fff}
+  button.link.pls{border-color:#6b4f9e;color:#6b4f9e}
+  button.link.pls:hover{background:#6b4f9e;color:#fff}
   .copied{color:var(--ok);font-weight:700;font-size:.82rem}
   .urlcell{font-size:.74rem;color:var(--muted);word-break:break-all;max-width:280px;margin-top:6px}
   .just-created{background:#fbf9ea}
@@ -96,6 +128,8 @@
   /* Inline edit row */
   .editrow td{background:#fbf9ea;padding:18px;border-top:2px solid var(--gold)}
   .editrow .fld{margin-bottom:10px}
+
+  @media(max-width:720px){ .tabgrid{grid-template-columns:1fr} .row2{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -103,6 +137,7 @@
     <a href="/admin" class="active"><span class="ico">⚙️</span>Admin</a>
     <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
     <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+    <a href="/financials"><span class="ico">🧾</span>Financials</a>
     <a href="/app"><span class="ico">🧭</span>APP</a>
     <a href="/reports"><span class="ico">📄</span>Reports</a>
   </nav>
@@ -157,22 +192,26 @@
             </select>
           </div>
         </div>
-        <div class="fld check">
-          <input id="u_admin" type="checkbox" />
-          <label for="u_admin">Grant admin access (dashboard + admin panel)</label>
+
+        <div class="accessbox" id="u_accessbox">
+          <div class="ab-title">Access level</div>
+          <div class="ab-sub">Pick a role to set the tabs, then adjust any individual tab below. Most people are Reporter — the form and nothing else.</div>
+          <div class="rolepick">
+            <div class="fld">
+              <label for="u_role">Role</label>
+              <select id="u_role"></select>
+            </div>
+            <div class="roledesc" id="u_roledesc"></div>
+          </div>
+          <div class="tabgrid" id="u_tabgrid"></div>
+          <div class="lockmsg" id="u_lockmsg"></div>
         </div>
-        <div class="fld check">
-          <input id="u_appaccess" type="checkbox" />
-          <label for="u_appaccess">Grant APP Pulse access (APP dashboard only — not Pulse/Dashboard/Admin)</label>
-        </div>
-        <div class="fld check">
-          <input id="u_reportaccess" type="checkbox" />
-          <label for="u_reportaccess">Grant Reports access (attorney scorecard only)</label>
-        </div>
+
         <div class="fld" id="u_attycode_wrap" style="display:none">
-          <label for="u_attycode">Attorney code — pins reports to one attorney (JOD, MAS, EDJ, KAS, DAD, BWB, BHB, DAC)</label>
+          <label for="u_attycode">Attorney code — pins Reports to one attorney</label>
           <input id="u_attycode" type="text" placeholder="e.g. MAS" maxlength="4" style="text-transform:uppercase" autocomplete="off" />
-          <span class="hint">Required for a report-only person. Leave blank only for admins who should see the full leadership view.</span>
+          <span class="hint">JOD Josh · MAS Mike · EDJ Erica · KAS Kara · DAD Doug · BWB Brad · BHB Brian · DAC David<br>
+          Required unless this person should see the full leadership view of every attorney.</span>
         </div>
         <div class="actions">
           <button class="btn-primary" id="createBtn">Create user</button>
@@ -183,25 +222,141 @@
     </div>
 
     <p class="lead">Generate a one-tap sign-in link for anyone, then text or email it to them.
-    Links are good for 3 days. Once automated email is wired up, this becomes the fallback / manual override.</p>
+    Links are good for 3 days and are single-use — generate a fresh one each time.</p>
 
     <table id="tbl"><thead><tr><th>Name</th><th>Template</th><th>Actions</th></tr></thead>
       <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">Loading team…</td></tr></tbody>
     </table>
   </div>
 <script>
+// ---------------------------------------------------------------------------
+// ADMIN — user management + per-tab access control.
+//
+// Access is stored as six independent booleans, one per tab. A "role" is a
+// named preset that sets them in bulk; the flags remain the source of truth,
+// so any one-off adjustment is allowed and the drift from the preset is shown
+// openly on the user list rather than hidden.
+//
+// is_admin now means ONE thing: can manage users. Seeing the Dashboard, Pulse
+// or Financials are separate flags — which is what lets an operations admin
+// exist who cannot see firm financials.
+// ---------------------------------------------------------------------------
+
 let JUST_CREATED_ID = null;
 let JUST_UPDATED_ID = null;
 let EDITING_ID = null;
 let TEMPLATES_CACHE = [];
 let USERS_CACHE = [];
+let GRANTER = {};   // what the person using this page can hand out
+
+// The six tabs, in nav order. `flag` is the column name on rpt_users.
+const TABS = [
+  { key:"admin",      flag:"is_admin",         name:"Admin",      note:"Manage users and generate sign-in links." },
+  { key:"dashboard",  flag:"dashboard_access", name:"Dashboard",  note:"Weekly reporting compliance across the firm." },
+  { key:"pulse",      flag:"pulse_access",     name:"Pulse",      note:"Firm revenue, attorney rankings, every client fee." },
+  { key:"financials", flag:"fin_access",       name:"Financials", note:"QuickBooks close — net income, margins, distributions." },
+  { key:"app",        flag:"app_access",       name:"APP",        note:"APP membership and renewal dashboard." },
+  { key:"reports",    flag:"report_access",    name:"Reports",    note:"Attorney scorecard, pinned to one attorney code." },
+];
+
+// Named presets. `tabs` lists which keys are ON; everything else is OFF.
+const ROLES = {
+  reporter: {
+    label: "Reporter — form only",
+    tabs: [],
+    desc: "Submits their weekly numbers. No dashboards, no nav. This is where all 35 staff sit.",
+  },
+  attorney: {
+    label: "Attorney — Pulse + Reports",
+    tabs: ["pulse","reports"],
+    desc: "Sees firm revenue and their own scorecard. Set an attorney code below to pin their Reports view.",
+  },
+  program_lead: {
+    label: "Program lead — APP + Reports",
+    tabs: ["app","reports"],
+    desc: "Runs a program area. APP dashboard plus their own scorecard, no firm-wide revenue.",
+  },
+  bookkeeper: {
+    label: "Bookkeeper — Financials + Pulse",
+    tabs: ["financials","pulse"],
+    desc: "Enters the monthly QuickBooks close and can see it in context on the Pulse.",
+  },
+  operations: {
+    label: "Operations — everything except Financials",
+    tabs: ["admin","dashboard","pulse","app","reports"],
+    desc: "Full operational access including user management, but no visibility into firm net income.",
+  },
+  principal: {
+    label: "Principal — full access",
+    tabs: ["admin","dashboard","pulse","financials","app","reports"],
+    desc: "Everything, including the QuickBooks close. Partners and firm leadership.",
+  },
+};
+const ROLE_ORDER = ["reporter","attorney","program_lead","bookkeeper","operations","principal"];
+
+function roleOptionsHtml(selected){
+  return ROLE_ORDER.map(k =>
+    `<option value="${k}"${k===selected?" selected":""}>${escapeHtml(ROLES[k].label)}</option>`
+  ).join("");
+}
+
+// Which tabs a user actually has, as a Set of tab keys.
+function tabsHeldBy(u){
+  return new Set(TABS.filter(t => u[t.flag]).map(t => t.key));
+}
+
+// How a user's real flags differ from their role's preset.
+function driftFor(u){
+  const role = ROLES[u.access_role] ? u.access_role : null;
+  if(!role) return null;
+  const preset = new Set(ROLES[role].tabs);
+  const held = tabsHeldBy(u);
+  const added   = [...held].filter(t => !preset.has(t));
+  const removed = [...preset].filter(t => !held.has(t));
+  if(!added.length && !removed.length) return null;
+  return { added, removed };
+}
+
+function tabName(key){
+  const t = TABS.find(x => x.key === key);
+  return t ? t.name : key;
+}
+
+// Render the six checkboxes. `held` is a Set of tab keys currently on.
+// Anything the granter doesn't hold is disabled — the server enforces this
+// too, but showing it here means nobody discovers the rule via an error.
+function tabGridHtml(idPrefix, held){
+  return TABS.map(t => {
+    const on = held.has(t.key);
+    const canGrant = !!GRANTER[t.key];
+    // You may always leave a flag as-is or turn it off; you just can't turn on
+    // something you don't have yourself.
+    const locked = !canGrant && !on;
+    return `<label class="tabchk ${locked?"locked":""}" for="${idPrefix}_tab_${t.key}">
+      <input type="checkbox" id="${idPrefix}_tab_${t.key}" data-tab="${t.key}"
+        ${on?"checked":""} ${locked?"disabled":""} />
+      <span class="tc-body">
+        <span class="tc-name">${escapeHtml(t.name)}</span>
+        <span class="tc-note">${escapeHtml(t.note)}</span>
+      </span>
+    </label>`;
+  }).join("");
+}
+
+function lockMsgHtml(){
+  const missing = TABS.filter(t => !GRANTER[t.key]).map(t => t.name);
+  if(!missing.length) return "";
+  return `🔒 You can't grant ${missing.map(escapeHtml).join(" or ")} because you don't have that access yourself. You can still remove it from someone who does.`;
+}
 
 async function loadUsers(){
   const r = await fetch("/api/admin/users");
   if(!r.ok){ document.getElementById("rows").innerHTML="<tr><td colspan=3>Admins only.</td></tr>"; return; }
-  const {users} = await r.json();
-  USERS_CACHE = users;
+  const data = await r.json();
+  USERS_CACHE = data.users;
+  GRANTER = data.granter || {};
   renderUsers();
+  renderAddFormAccess();
 }
 
 function renderUsers(){
@@ -211,30 +366,43 @@ function renderUsers(){
       u.id===JUST_UPDATED_ID ? "just-updated" : "",
       !u.active ? "inactive-row" : "",
     ].filter(Boolean).join(" ");
+
+    const roleKey = ROLES[u.access_role] ? u.access_role : "reporter";
+    const roleShort = {
+      reporter:"reporter", attorney:"attorney", program_lead:"program lead",
+      bookkeeper:"bookkeeper", operations:"operations", principal:"principal",
+    }[roleKey];
+
+    const d = driftFor(u);
+    const driftHtml = d ? `<span class="drift">${
+      [...d.added.map(t=>`<span class="plus">+${escapeHtml(tabName(t))}</span>`),
+       ...d.removed.map(t=>`<span class="minus">−${escapeHtml(tabName(t))}</span>`)].join(" ")
+    }</span>` : "";
+
     const badges = [
-      u.is_admin ? '<span class="badge">admin</span>' : '',
-      (u.app_access && !u.is_admin) ? '<span class="badge app">APP</span>' : '',
-      (u.report_access && !u.is_admin) ? `<span class="badge rpt">REPORT${u.attorney_code?` · ${u.attorney_code}`:''}</span>` : '',
+      `<span class="rolechip ${roleKey}">${escapeHtml(roleShort)}</span>`,
+      driftHtml,
+      u.report_access && u.attorney_code ? `<span class="drift">· ${escapeHtml(u.attorney_code)}</span>` : '',
       u.id===JUST_CREATED_ID ? '<span class="newpill">new</span>' : '',
       u.id===JUST_UPDATED_ID ? '<span class="newpill" style="background:#dbe9f7;color:#274a8a">updated</span>' : '',
       !u.active ? '<span class="inactive-pill">inactive</span>' : '',
     ].join(" ");
-    // APP link button shows for admins (they can see /app too) and for anyone
-    // explicitly granted app_access.
-    const canApp = u.active && (u.is_admin || u.app_access);
-    // Reports link shows for admins and report_access users.
-    const canReport = u.active && (u.is_admin || u.report_access);
+
+    const held = tabsHeldBy(u);
+    const live = u.active;
     return `
       <tr data-id="${u.id}" class="${rowClass}">
-        <td><span class="name">${u.name}</span> ${badges}<br>
-          <span class="tpl">${u.email}${u.person?` · ${u.person}`:''}</span></td>
-        <td class="tpl">${u.template_key}${u.location? " · "+u.location:""}</td>
+        <td><span class="name">${escapeHtml(u.name)}</span> ${badges}<br>
+          <span class="tpl">${escapeHtml(u.email)}${u.person?` · ${escapeHtml(u.person)}`:''}</span></td>
+        <td class="tpl">${escapeHtml(u.template_key)}${u.location? " · "+escapeHtml(u.location):""}</td>
         <td>
           <div class="actions-cell">
-            <button class="link" onclick="gen(${u.id},this)" ${!u.active?'disabled title="Reactivate to generate links"':''}>Generate link</button>
-            ${u.is_admin && u.active?`<button class="link" onclick="genDash(${u.id},this)">Dashboard link</button>`:''}
-            ${canApp?`<button class="link app" onclick="genApp(${u.id},this)">APP link</button>`:''}
-            ${canReport?`<button class="link rpt" onclick="genReport(${u.id},this)">Reports link</button>`:''}
+            <button class="link" onclick="gen(${u.id},this)" ${!live?'disabled title="Reactivate to generate links"':''}>Generate link</button>
+            ${live && held.has("dashboard") ?`<button class="link" onclick="genTab(${u.id},this,'dashlink','dashboard')">Dashboard link</button>`:''}
+            ${live && held.has("pulse")     ?`<button class="link pls" onclick="genTab(${u.id},this,'pulselink','Pulse')">Pulse link</button>`:''}
+            ${live && held.has("financials")?`<button class="link fin" onclick="genTab(${u.id},this,'finlink','Financials')">Financials link</button>`:''}
+            ${live && held.has("app")       ?`<button class="link app" onclick="genTab(${u.id},this,'applink','APP')">APP link</button>`:''}
+            ${live && held.has("reports")   ?`<button class="link rpt" onclick="genTab(${u.id},this,'reportlink','Reports')">Reports link</button>`:''}
             <button class="link edit" onclick="startEdit(${u.id})">✏️ Edit</button>
           </div>
           <div class="urlcell"></div>
@@ -246,6 +414,7 @@ function renderUsers(){
 
   if(EDITING_ID){
     populateEditTemplateSelect(EDITING_ID);
+    wireEditAccess(EDITING_ID);
   }
 
   if(JUST_CREATED_ID){
@@ -267,11 +436,16 @@ function renderEditRow(u){
     const sel = (u.location||"") === loc ? " selected" : "";
     return `<option value="${loc}"${sel}>${label}</option>`;
   }).join("");
+
+  const roleKey = ROLES[u.access_role] ? u.access_role : "reporter";
+  const held = tabsHeldBy(u);
+  const showCode = held.has("reports");
+
   return `
     <tr class="editrow" data-editrow="${u.id}">
       <td colspan="3">
         <div style="font-weight:700;color:var(--navy);font-size:.95rem;margin-bottom:12px">
-          ✏️ Editing: ${u.name}
+          ✏️ Editing: ${escapeHtml(u.name)}
         </div>
         <div class="fld">
           <label for="e_name_${u.id}">Role name</label>
@@ -297,24 +471,30 @@ function renderEditRow(u){
             <select id="e_location_${u.id}">${locOpts}</select>
           </div>
         </div>
-        <div class="fld check">
-          <input id="e_admin_${u.id}" type="checkbox" ${u.is_admin?'checked':''} />
-          <label for="e_admin_${u.id}">Admin access (dashboard + admin panel)</label>
+
+        <div class="accessbox">
+          <div class="ab-title">Access level</div>
+          <div class="ab-sub">Changing the role re-ticks the boxes below. Adjust any individual tab afterward — the difference is shown on the user list.</div>
+          <div class="rolepick">
+            <div class="fld">
+              <label for="e_role_${u.id}">Role</label>
+              <select id="e_role_${u.id}">${roleOptionsHtml(roleKey)}</select>
+            </div>
+            <div class="roledesc" id="e_roledesc_${u.id}">${escapeHtml(ROLES[roleKey].desc)}</div>
+          </div>
+          <div class="tabgrid" id="e_tabgrid_${u.id}">${tabGridHtml("e"+u.id, held)}</div>
+          <div class="lockmsg">${lockMsgHtml()}</div>
+          <div class="driftmsg" id="e_drift_${u.id}"></div>
         </div>
-        <div class="fld check">
-          <input id="e_appaccess_${u.id}" type="checkbox" ${u.app_access?'checked':''} />
-          <label for="e_appaccess_${u.id}">APP Pulse access (APP dashboard only)</label>
-        </div>
-        <div class="fld check">
-          <input id="e_reportaccess_${u.id}" type="checkbox" ${u.report_access?'checked':''} />
-          <label for="e_reportaccess_${u.id}">Reports access (attorney scorecard)</label>
-        </div>
-        <div class="fld">
-          <label for="e_attycode_${u.id}">Attorney code — pins reports to one attorney (blank = leadership view, admins only)</label>
+
+        <div class="fld" id="e_attycode_wrap_${u.id}" style="display:${showCode?"flex":"none"}">
+          <label for="e_attycode_${u.id}">Attorney code — pins Reports to one attorney</label>
           <input id="e_attycode_${u.id}" type="text" value="${escapeHtml(u.attorney_code||'')}"
             placeholder="e.g. MAS" maxlength="4" style="text-transform:uppercase" />
-          <span class="hint">JOD Josh · MAS Mike · EDJ Erica · KAS Kara · DAD Doug · BWB Brad · BHB Brian · DAC David</span>
+          <span class="hint">JOD Josh · MAS Mike · EDJ Erica · KAS Kara · DAD Doug · BWB Brad · BHB Brian · DAC David<br>
+          Leave blank only for someone who should see every attorney's numbers.</span>
         </div>
+
         <div class="fld check">
           <input id="e_active_${u.id}" type="checkbox" ${u.active?'checked':''} />
           <label for="e_active_${u.id}">Active (uncheck to deactivate — preserves historical data)</label>
@@ -327,6 +507,110 @@ function renderEditRow(u){
       </td>
     </tr>
   `;
+}
+
+// Wire the role dropdown + checkbox interplay inside an open edit row.
+function wireEditAccess(id){
+  const roleSel = document.getElementById(`e_role_${id}`);
+  const grid = document.getElementById(`e_tabgrid_${id}`);
+  if(!roleSel || !grid) return;
+
+  const applyRole = () => {
+    const role = ROLES[roleSel.value];
+    if(!role) return;
+    const want = new Set(role.tabs);
+    grid.querySelectorAll("input[data-tab]").forEach(cb => {
+      const key = cb.getAttribute("data-tab");
+      // Never auto-tick something this granter can't hand out.
+      if(!GRANTER[key] && want.has(key)) return;
+      cb.checked = want.has(key);
+    });
+    document.getElementById(`e_roledesc_${id}`).textContent = role.desc;
+    refreshEditDependents(id);
+  };
+
+  roleSel.onchange = applyRole;
+  grid.querySelectorAll("input[data-tab]").forEach(cb => {
+    cb.onchange = () => refreshEditDependents(id);
+  });
+  refreshEditDependents(id);
+}
+
+// Show/hide the attorney-code field and describe drift from the preset.
+function refreshEditDependents(id){
+  const grid = document.getElementById(`e_tabgrid_${id}`);
+  const roleSel = document.getElementById(`e_role_${id}`);
+  if(!grid || !roleSel) return;
+
+  const held = new Set();
+  grid.querySelectorAll("input[data-tab]").forEach(cb => {
+    if(cb.checked) held.add(cb.getAttribute("data-tab"));
+  });
+
+  const wrap = document.getElementById(`e_attycode_wrap_${id}`);
+  if(wrap) wrap.style.display = held.has("reports") ? "flex" : "none";
+
+  const preset = new Set((ROLES[roleSel.value]||{tabs:[]}).tabs);
+  const added   = [...held].filter(t => !preset.has(t));
+  const removed = [...preset].filter(t => !held.has(t));
+  const el = document.getElementById(`e_drift_${id}`);
+  if(!el) return;
+  if(!added.length && !removed.length){
+    el.textContent = "";
+  } else {
+    const bits = [
+      ...added.map(t => "+" + tabName(t)),
+      ...removed.map(t => "−" + tabName(t)),
+    ];
+    el.textContent = `Adjusted from the preset: ${bits.join(", ")}. This will show on the user list.`;
+  }
+}
+
+// ---- Add-user form access block ----
+function renderAddFormAccess(){
+  const roleSel = document.getElementById("u_role");
+  if(!roleSel) return;
+  if(!roleSel.options.length) roleSel.innerHTML = roleOptionsHtml("reporter");
+  document.getElementById("u_tabgrid").innerHTML = tabGridHtml("u", new Set());
+  document.getElementById("u_roledesc").textContent = ROLES.reporter.desc;
+  document.getElementById("u_lockmsg").innerHTML = lockMsgHtml();
+
+  roleSel.onchange = () => {
+    const role = ROLES[roleSel.value];
+    if(!role) return;
+    const want = new Set(role.tabs);
+    document.querySelectorAll("#u_tabgrid input[data-tab]").forEach(cb => {
+      const key = cb.getAttribute("data-tab");
+      if(!GRANTER[key] && want.has(key)) return;
+      cb.checked = want.has(key);
+    });
+    document.getElementById("u_roledesc").textContent = role.desc;
+    refreshAddDependents();
+  };
+  document.querySelectorAll("#u_tabgrid input[data-tab]").forEach(cb => {
+    cb.onchange = refreshAddDependents;
+  });
+  refreshAddDependents();
+}
+
+function refreshAddDependents(){
+  const held = new Set();
+  document.querySelectorAll("#u_tabgrid input[data-tab]").forEach(cb => {
+    if(cb.checked) held.add(cb.getAttribute("data-tab"));
+  });
+  document.getElementById("u_attycode_wrap").style.display = held.has("reports") ? "flex" : "none";
+}
+
+function collectTabs(prefix){
+  const out = {};
+  const scope = prefix === "u"
+    ? document.querySelectorAll("#u_tabgrid input[data-tab]")
+    : document.querySelectorAll(`#e_tabgrid_${prefix.slice(1)} input[data-tab]`);
+  scope.forEach(cb => {
+    const t = TABS.find(x => x.key === cb.getAttribute("data-tab"));
+    if(t) out[t.flag] = cb.checked;
+  });
+  return out;
 }
 
 function populateEditTemplateSelect(userId){
@@ -347,7 +631,7 @@ function populateEditTemplateSelect(userId){
     html.push(`<optgroup label="${g}">`);
     for(const t of groups[g]){
       const selected = t.key===u.template_key ? " selected" : "";
-      html.push(`<option value="${t.key}"${selected}>${t.label}</option>`);
+      html.push(`<option value="${t.key}"${selected}>${escapeHtml(t.label)}</option>`);
     }
     html.push(`</optgroup>`);
   }
@@ -367,9 +651,32 @@ function cancelEdit(){
   renderUsers();
 }
 
+const ERROR_MESSAGES = {
+  name_taken: "That role name already exists. Try a different name.",
+  name_required: "Name is required.",
+  email_required: "Valid email required.",
+  unknown_template: "That template isn't recognized.",
+  cannot_demote_self: "You can't remove your own admin access (would lock you out).",
+  cannot_deactivate_self: "You can't deactivate yourself (would lock you out).",
+  last_admin: "That's the last active admin — promote someone else first.",
+  cannot_grant_admin: "You can't grant Admin because you don't have it yourself.",
+  cannot_grant_dashboard: "You can't grant Dashboard because you don't have it yourself.",
+  cannot_grant_pulse: "You can't grant Pulse because you don't have it yourself.",
+  cannot_grant_financials: "You can't grant Financials because you don't have it yourself.",
+  cannot_grant_app: "You can't grant APP because you don't have it yourself.",
+  cannot_grant_reports: "You can't grant Reports because you don't have it yourself.",
+  no_user: "That user no longer exists.",
+  update_failed: "Something broke on the server. Try again?",
+  create_failed: "Something broke on the server. Try again?",
+};
+
 async function saveEdit(id){
   const st = document.getElementById(`e_status_${id}`);
   st.textContent = ""; st.className = "status";
+
+  const tabs = collectTabs("e"+id);
+  const attyCode = document.getElementById(`e_attycode_${id}`)?.value.trim().toUpperCase() || "";
+
   const payload = {
     id,
     name: document.getElementById(`e_name_${id}`).value.trim(),
@@ -377,11 +684,10 @@ async function saveEdit(id){
     person: document.getElementById(`e_person_${id}`).value.trim(),
     template_key: document.getElementById(`e_template_${id}`).value,
     location: document.getElementById(`e_location_${id}`).value,
-    is_admin: document.getElementById(`e_admin_${id}`).checked,
-    app_access: document.getElementById(`e_appaccess_${id}`).checked,
-    report_access: document.getElementById(`e_reportaccess_${id}`).checked,
-    attorney_code: document.getElementById(`e_attycode_${id}`).value.trim().toUpperCase(),
+    access_role: document.getElementById(`e_role_${id}`).value,
+    attorney_code: attyCode,
     active: document.getElementById(`e_active_${id}`).checked,
+    ...tabs,
   };
   if(payload.name.length < 2){ st.textContent="Name is required."; st.className="status err"; return; }
   if(!payload.email.includes("@")){ st.textContent="Valid email required."; st.className="status err"; return; }
@@ -395,17 +701,7 @@ async function saveEdit(id){
     });
     if(!r.ok){
       const err = await r.json().catch(()=>({}));
-      const messages = {
-        name_taken: "That role name already exists. Try a different name.",
-        name_required: "Name is required.",
-        email_required: "Valid email required.",
-        unknown_template: "That template isn't recognized.",
-        cannot_demote_self: "You can't remove your own admin access (would lock you out).",
-        cannot_deactivate_self: "You can't deactivate yourself (would lock you out).",
-        no_user: "That user no longer exists.",
-        update_failed: "Something broke on the server. Try again?",
-      };
-      st.textContent = messages[err.error] || ("Error: " + (err.error || r.status));
+      st.textContent = ERROR_MESSAGES[err.error] || ("Error: " + (err.error || r.status));
       st.className = "status err";
       return;
     }
@@ -436,7 +732,7 @@ async function loadTemplates(){
       if(!groups[g]) continue;
       html.push(`<optgroup label="${g}">`);
       for(const t of groups[g]){
-        html.push(`<option value="${t.key}">${t.label}</option>`);
+        html.push(`<option value="${t.key}">${escapeHtml(t.label)}</option>`);
       }
       html.push(`</optgroup>`);
     }
@@ -451,18 +747,11 @@ document.getElementById("adduserHead").onclick = ()=>{
   document.getElementById("adduser").classList.toggle("open");
 };
 
-// Reveal the attorney-code field only when Reports access is checked.
-document.getElementById("u_reportaccess").onchange = (e)=>{
-  document.getElementById("u_attycode_wrap").style.display = e.target.checked ? "flex" : "none";
-};
-
 function clearForm(){
   ["u_name","u_email","u_person","u_location","u_attycode"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("u_template").value="";
-  document.getElementById("u_admin").checked = false;
-  document.getElementById("u_appaccess").checked = false;
-  document.getElementById("u_reportaccess").checked = false;
-  document.getElementById("u_attycode_wrap").style.display = "none";
+  document.getElementById("u_role").value = "reporter";
+  renderAddFormAccess();
   const st = document.getElementById("createStatus");
   st.textContent = ""; st.className = "status";
 }
@@ -473,22 +762,23 @@ document.getElementById("createBtn").onclick = async ()=>{
   const st = document.getElementById("createStatus");
   st.textContent = ""; st.className = "status";
 
-  const appAccess = document.getElementById("u_appaccess").checked;
-  const reportAccess = document.getElementById("u_reportaccess").checked;
+  const tabs = collectTabs("u");
   const attyCode = document.getElementById("u_attycode").value.trim().toUpperCase();
+  const roleVal = document.getElementById("u_role").value;
+
   const payload = {
     name: document.getElementById("u_name").value.trim(),
     email: document.getElementById("u_email").value.trim(),
     person: document.getElementById("u_person").value.trim(),
     template_key: document.getElementById("u_template").value,
     location: document.getElementById("u_location").value,
-    is_admin: document.getElementById("u_admin").checked,
+    is_admin: !!tabs.is_admin,
   };
   if(payload.name.length < 2){ st.textContent="Name is required."; st.className="status err"; return; }
   if(!payload.email.includes("@")){ st.textContent="Valid email required."; st.className="status err"; return; }
   if(!payload.template_key){ st.textContent="Pick a template."; st.className="status err"; return; }
-  if(reportAccess && !payload.is_admin && !attyCode){
-    st.textContent="Reports access needs an attorney code (or make them an admin).";
+  if(tabs.report_access && !attyCode){
+    st.textContent="Reports access needs an attorney code — or leave it blank only for a leadership view.";
     st.className="status err"; return;
   }
 
@@ -504,37 +794,28 @@ document.getElementById("createBtn").onclick = async ()=>{
     });
     if(!r.ok){
       const err = await r.json().catch(()=>({}));
-      const messages = {
-        name_taken: "That role name already exists. Try adding the person's name to make it unique.",
-        name_required: "Name is required.",
-        email_required: "Valid email required.",
-        unknown_template: "That template isn't recognized.",
-        create_failed: "Something broke on the server. Try again?",
-      };
-      st.textContent = messages[err.error] || ("Error: " + (err.error || r.status));
+      st.textContent = ERROR_MESSAGES[err.error] || ("Error: " + (err.error || r.status));
       st.className = "status err";
       btn.disabled = false; btn.textContent = orig;
       return;
     }
     const {user} = await r.json();
-    // create-user doesn't accept app_access / report_access / attorney_code
-    // directly, so if any were set we immediately follow up with an update.
-    if(appAccess || reportAccess || attyCode){
-      try{
-        await fetch("/api/admin/update-user", {
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            id:user.id,
-            app_access:appAccess,
-            report_access:reportAccess,
-            attorney_code:attyCode,
-          }),
-        });
-      }catch(e){ /* non-fatal; flags can be set via Edit */ }
-    }
+
+    // create-user only takes the basics, so the access flags and role label
+    // follow immediately as an update.
+    try{
+      await fetch("/api/admin/update-user", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          id: user.id,
+          access_role: roleVal,
+          attorney_code: attyCode,
+          ...tabs,
+        }),
+      });
+    }catch(e){ /* non-fatal; flags can be set via Edit */ }
+
     JUST_CREATED_ID = user.id;
-    st.textContent = `✓ Created "${user.name}". Scroll down to generate their link.`;
-    st.className = "status ok";
     clearForm();
     await loadUsers();
     st.textContent = `✓ Created "${user.name}". Generate their link below.`;
@@ -547,50 +828,28 @@ document.getElementById("createBtn").onclick = async ()=>{
   }
 };
 
-async function genDash(id, btn){
+// ---- Link generation ----
+async function genTab(id, btn, endpoint, label){
+  const original = btn.textContent;
   btn.textContent="…";
-  const r = await fetch("/api/admin/dashlink",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({user_id:id})});
-  const {url} = await r.json();
-  const cell = btn.closest("td").querySelector(".urlcell");
-  cell.textContent = url;
-  btn.textContent="Copy dashboard link";
-  btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
-    btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy dashboard link",1500); };
-}
-async function genApp(id, btn){
-  btn.textContent="…";
-  const r = await fetch("/api/admin/applink",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({user_id:id})});
-  if(!r.ok){
-    const err = await r.json().catch(()=>({}));
-    btn.textContent = err.error==="no_app_access" ? "No APP access" : "Error";
-    return;
-  }
-  const {url} = await r.json();
-  const cell = btn.closest("td").querySelector(".urlcell");
-  cell.textContent = url;
-  btn.textContent="Copy APP link";
-  btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
-    btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy APP link",1500); };
-}
-async function genReport(id, btn){
-  btn.textContent="…";
-  const r = await fetch("/api/admin/reportlink",{method:"POST",headers:{"Content-Type":"application/json"},
+  const r = await fetch(`/api/admin/${endpoint}`,{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({user_id:id})});
   if(!r.ok){
     const err = await r.json().catch(()=>({}));
     btn.textContent = err.error==="no_attorney_code" ? "Set attorney code first"
-      : err.error==="no_report_access" ? "No reports access" : "Error";
+      : err.error==="no_access" ? `No ${label} access` : "Error";
+    setTimeout(()=>{ btn.textContent = original; }, 2500);
     return;
   }
   const {url} = await r.json();
   const cell = btn.closest("td").querySelector(".urlcell");
   cell.textContent = url;
-  btn.textContent="Copy reports link";
+  btn.textContent=`Copy ${label} link`;
   btn.onclick=async()=>{ await navigator.clipboard.writeText(url);
-    btn.textContent="Copied ✓"; btn.classList.add("copied"); setTimeout(()=>btn.textContent="Copy reports link",1500); };
+    btn.textContent="Copied ✓"; btn.classList.add("copied");
+    setTimeout(()=>btn.textContent=`Copy ${label} link`,1500); };
 }
+
 async function gen(id, btn){
   btn.textContent="…";
   const r = await fetch("/api/admin/link",{method:"POST",headers:{"Content-Type":"application/json"},
