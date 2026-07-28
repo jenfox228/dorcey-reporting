@@ -112,6 +112,15 @@ const TAB_COLUMNS = {
   reports:    "report_access",
 };
 
+const TAB_PATHS = {
+  admin:      "/admin",
+  dashboard:  "/dashboard",
+  pulse:      "/pulse",
+  financials: "/financials",
+  app:        "/app",
+  reports:    "/reports",
+};
+
 async function canSee(user, tab) {
   if (!user) return false;
   const col = TAB_COLUMNS[tab];
@@ -142,6 +151,56 @@ async function accessFlagsFor(userId) {
   return rows[0] || {};
 }
 
+// ---- Where a person should land on sign-in ----------------------------------
+// Attorneys and partners don't file their own numbers — their assistants do —
+// so dropping everyone on the weekly form meant the people who only ever look
+// at dashboards had to navigate away every single time.
+//
+// The role says where someone's work actually starts. If their role doesn't
+// map (or they've been adjusted away from its preset), fall through to the
+// first tab they genuinely hold. Somebody with no tabs at all still lands on
+// the form, which is right — that IS their work.
+
+const ROLE_HOME = {
+  attorney:     "pulse",
+  program_lead: "app",
+  bookkeeper:   "financials",
+  operations:   "dashboard",
+  principal:    "pulse",
+};
+
+// Fallback order when the role gives no usable answer. Narrower, more
+// role-defining tabs come first so the guess lands somewhere meaningful.
+const HOME_FALLBACK = ["financials", "pulse", "dashboard", "app", "reports", "admin"];
+
+async function homePathFor(userId) {
+  const { rows } = await pool.query(
+    `SELECT access_role, is_admin, dashboard_access, pulse_access,
+            fin_access, app_access, report_access
+       FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    [userId]
+  );
+  const u = rows[0];
+  if (!u) return "/report";
+
+  const can = {
+    admin:      u.is_admin,
+    dashboard:  u.dashboard_access,
+    pulse:      u.pulse_access,
+    financials: u.fin_access,
+    app:        u.app_access,
+    reports:    u.report_access,
+  };
+
+  const preferred = ROLE_HOME[u.access_role];
+  if (preferred && can[preferred]) return TAB_PATHS[preferred];
+
+  for (const tab of HOME_FALLBACK) {
+    if (can[tab]) return TAB_PATHS[tab];
+  }
+  return "/report";
+}
+
 // Attorney code (JOD, MAS, …) a report user is pinned to. Someone with the
 // leadership view (no code set) sees everyone.
 async function attorneyCodeFor(user) {
@@ -158,13 +217,18 @@ async function attorneyCodeFor(user) {
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
 // ---- Magic-link login -----------------------------------------------------
+// Sets the session, then sends the person to wherever their work starts.
 
 app.get("/login/:token", async (req, res) => {
   try {
     const user = await consumeMagicToken(req.params.token);
     if (!user) return res.status(401).send(loginError());
     res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.sendFile(path.join(__dirname, "public", "report.html"));
+    const home = await homePathFor(user.id);
+    if (home === "/report") {
+      return res.sendFile(path.join(__dirname, "public", "report.html"));
+    }
+    res.redirect(home);
   } catch (e) {
     console.error("login error", e);
     res.status(500).send(loginError());
@@ -219,9 +283,16 @@ app.get("/api/me", requireUser, async (req, res) => {
 
   const missedLastWeek = !reportedWeeks.has(lastWeek);
 
-  // Which tabs this person can reach — lets report.html show a nav for the
-  // handful of people who have one, and nothing for the other thirty-odd.
+  // Which tabs this person can reach — lets report.html render a nav for the
+  // handful of people who have one, and nothing at all for the other thirty.
   const flags = await accessFlagsFor(u.id);
+
+  // A viewer record (admin_none) has no weekly form. The page uses this to
+  // show a friendly "you have no numbers to file" panel instead of an empty
+  // card with a Submit button that does nothing.
+  const hasForm =
+    u.template_key !== "admin_none" &&
+    ((tpl.monday && tpl.monday.length) || (tpl.friday && tpl.friday.length));
 
   res.json({
     user: {
@@ -239,6 +310,7 @@ app.get("/api/me", requireUser, async (req, res) => {
       app:        !!flags.app_access,
       reports:    !!flags.report_access,
     },
+    hasForm: !!hasForm,
     template: { label: tpl.label, monday: tpl.monday, friday: tpl.friday },
     weekOf: thisWeek,
     suggestedPeriod: suggestedPeriod(),
@@ -388,10 +460,21 @@ app.get("/api/admin/users", requireUser, requireAdmin, async (req, res) => {
 });
 
 app.get("/api/admin/templates", requireUser, requireAdmin, async (_req, res) => {
+  // admin_none is offered explicitly: it's how you mark someone as a viewer
+  // with no weekly form, which also drops them out of the compliance
+  // dashboard's denominator. Sorted to the top so it's easy to find.
   const out = Object.entries(TEMPLATES)
     .filter(([key]) => key !== "admin_none")
     .map(([key, tpl]) => ({ key, label: tpl.label, family: tpl.family || "?" }))
     .sort((a, b) => a.label.localeCompare(b.label));
+
+  if (TEMPLATES.admin_none) {
+    out.unshift({
+      key: "admin_none",
+      label: "— Viewer only · no weekly form —",
+      family: "Z",
+    });
+  }
   res.json({ templates: out });
 });
 
@@ -576,7 +659,9 @@ app.post("/api/admin/link", requireUser, requireAdmin, async (req, res) => {
   );
   if (!rows[0]) return res.status(404).json({ error: "no_user" });
   const token = await createMagicToken(user_id);
-  res.json({ url: `${appUrl(req)}/login/${token}` });
+  // Where this link will actually land them, so the admin panel can say so.
+  const home = await homePathFor(user_id);
+  res.json({ url: `${appUrl(req)}/login/${token}`, home });
 });
 
 // Generic tab-link minter. Refuses to mint a link for a tab the target user
@@ -950,7 +1035,12 @@ app.get("/financials/:token", tokenPageRoute("financials", "financials.html"));
 app.get("/app/:token",        tokenPageRoute("app",        "app.html"));
 app.get("/reports/:token",    tokenPageRoute("reports",    "reports.html"));
 
-app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));
+// Root sends a signed-in person wherever their work starts.
+app.get("/", async (req, res) => {
+  if (!req.user) return res.redirect("/report");
+  const home = await homePathFor(req.user.id);
+  res.redirect(home);
+});
 
 function loginError() {
   return `<!doctype html><meta charset="utf-8">
