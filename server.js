@@ -93,38 +93,59 @@ function fieldDetail(templateKey, period, data) {
   }));
 }
 
-// ---- APP-access helper ------------------------------------------------------
-// Admins can see everything. Non-admins can see /app only if their
-// app_access flag is set. Checked against the DB directly so it works
-// no matter which columns attachUser() loads onto req.user.
+// ---- Per-tab access control -------------------------------------------------
+// Each tab has its own column on rpt_users. is_admin now means ONE thing:
+// "can manage users and mint sign-in links". It does NOT imply visibility of
+// the Dashboard, Pulse, or Financials — that's what lets an operations admin
+// exist who cannot see firm net income.
+//
+// Checked against the DB on every call rather than trusting whatever columns
+// attachUser() happened to load, so a permission change takes effect on the
+// user's very next request instead of whenever their session expires.
 
-async function hasAppAccess(user) {
+const TAB_COLUMNS = {
+  admin:      "is_admin",
+  dashboard:  "dashboard_access",
+  pulse:      "pulse_access",
+  financials: "fin_access",
+  app:        "app_access",
+  reports:    "report_access",
+};
+
+async function canSee(user, tab) {
   if (!user) return false;
-  if (user.is_admin) return true;
+  const col = TAB_COLUMNS[tab];
+  if (!col) return false;
   const { rows } = await pool.query(
-    `SELECT app_access FROM rpt_users WHERE id = $1 AND active = TRUE`,
+    `SELECT ${col} AS ok FROM rpt_users WHERE id = $1 AND active = TRUE`,
     [user.id]
   );
-  return !!rows[0]?.app_access;
+  return !!rows[0]?.ok;
 }
 
-// ---- Reports-access helpers -------------------------------------------------
-// Admins see everyone. A report_access user sees the reports tab; if they have
-// an attorney_code they are PINNED to that attorney (server-filtered).
+// Express guard for API routes. Usage: app.get("/x", requireUser, requireTab("pulse"), ...)
+function requireTab(tab) {
+  return async (req, res, next) => {
+    if (await canSee(req.user, tab)) return next();
+    res.status(403).json({ error: "forbidden" });
+  };
+}
 
-async function hasReportAccess(user) {
-  if (!user) return false;
-  if (user.is_admin) return true;
+// Every flag a user currently holds — used by the grant guardrail below.
+async function accessFlagsFor(userId) {
   const { rows } = await pool.query(
-    `SELECT report_access FROM rpt_users WHERE id = $1 AND active = TRUE`,
-    [user.id]
+    `SELECT is_admin, dashboard_access, pulse_access, fin_access,
+            app_access, report_access
+       FROM rpt_users WHERE id = $1`,
+    [userId]
   );
-  return !!rows[0]?.report_access;
+  return rows[0] || {};
 }
 
-// Attorney code (JOD, MAS, …) a report user is pinned to. Admins → null.
+// Attorney code (JOD, MAS, …) a report user is pinned to. Someone with the
+// leadership view (no code set) sees everyone.
 async function attorneyCodeFor(user) {
-  if (!user || user.is_admin) return null;
+  if (!user) return null;
   const { rows } = await pool.query(
     `SELECT attorney_code FROM rpt_users WHERE id = $1`,
     [user.id]
@@ -198,6 +219,10 @@ app.get("/api/me", requireUser, async (req, res) => {
 
   const missedLastWeek = !reportedWeeks.has(lastWeek);
 
+  // Which tabs this person can reach — lets report.html show a nav for the
+  // handful of people who have one, and nothing for the other thirty-odd.
+  const flags = await accessFlagsFor(u.id);
+
   res.json({
     user: {
       name: u.name,
@@ -205,6 +230,14 @@ app.get("/api/me", requireUser, async (req, res) => {
       location: u.location,
       template_key: u.template_key,
       is_admin: u.is_admin,
+    },
+    access: {
+      admin:      !!flags.is_admin,
+      dashboard:  !!flags.dashboard_access,
+      pulse:      !!flags.pulse_access,
+      financials: !!flags.fin_access,
+      app:        !!flags.app_access,
+      reports:    !!flags.report_access,
     },
     template: { label: tpl.label, monday: tpl.monday, friday: tpl.friday },
     weekOf: thisWeek,
@@ -327,13 +360,31 @@ app.post("/api/submit-past", requireUser, async (req, res) => {
 });
 
 // ---- Admin API ------------------------------------------------------------
+// requireAdmin now gates exactly one capability: managing users. Seeing the
+// Dashboard / Pulse / Financials is separate, per-tab.
 
-app.get("/api/admin/users", requireUser, requireAdmin, async (_req, res) => {
+app.get("/api/admin/users", requireUser, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, person, role, template_key, location, is_admin, active, app_access, report_access, attorney_code
+    `SELECT id, name, email, person, role, template_key, location,
+            is_admin, active, access_role,
+            dashboard_access, pulse_access, fin_access,
+            app_access, report_access, attorney_code
        FROM rpt_users ORDER BY is_admin DESC, name ASC`
   );
-  res.json({ users: rows });
+  // The caller's own flags travel with the payload so the UI can grey out
+  // any checkbox they aren't allowed to hand to someone else.
+  const mine = await accessFlagsFor(req.user.id);
+  res.json({
+    users: rows,
+    granter: {
+      admin:      !!mine.is_admin,
+      dashboard:  !!mine.dashboard_access,
+      pulse:      !!mine.pulse_access,
+      financials: !!mine.fin_access,
+      app:        !!mine.app_access,
+      reports:    !!mine.report_access,
+    },
+  });
 });
 
 app.get("/api/admin/templates", requireUser, requireAdmin, async (_req, res) => {
@@ -367,11 +418,17 @@ app.post("/api/admin/create-user", requireUser, requireAdmin, async (req, res) =
   const cleanLocation = (location || "").trim() || null;
   const admin = !!is_admin;
 
+  // Can't create someone more powerful than you are.
+  if (admin) {
+    const mine = await accessFlagsFor(req.user.id);
+    if (!mine.is_admin) return res.status(403).json({ error: "cannot_grant_admin" });
+  }
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO rpt_users
-        (name, email, person, template_key, location, is_admin, role, active)
-       VALUES ($1, $2, $3, $4, $5, $6, 'reporter', TRUE)
+        (name, email, person, template_key, location, is_admin, role, active, access_role)
+       VALUES ($1, $2, $3, $4, $5, $6, 'reporter', TRUE, 'reporter')
        RETURNING id, name, email, person, template_key, location, is_admin`,
       [cleanName, cleanEmail, cleanPerson, template_key, cleanLocation, admin]
     );
@@ -390,11 +447,36 @@ app.post("/api/admin/create-user", requireUser, requireAdmin, async (req, res) =
 //   - Name must remain unique (409 name_taken on collision).
 //   - You cannot demote yourself from admin (prevents locking yourself out).
 //   - You cannot deactivate yourself (same reason).
+//   - You cannot deactivate or demote the LAST remaining admin.
+//   - You cannot GRANT an access level you do not hold yourself. Revoking is
+//     always permitted — you can take away what you don't have, you just
+//     can't hand it out. This is what makes "admin, but no financials" a real
+//     boundary instead of a polite request.
 //   - Template must be a known key.
 app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) => {
   const b = req.body || {};
   const id = parseInt(b.id, 10);
   if (!id) return res.status(400).json({ error: "id_required" });
+
+  const mine = await accessFlagsFor(req.user.id);
+  const theirs = await accessFlagsFor(id);
+  if (!Object.keys(theirs).length) return res.status(404).json({ error: "no_user" });
+
+  // The grant guardrail. Only fires when TURNING A FLAG ON that the person
+  // making the change doesn't have.
+  const GRANTABLE = [
+    ["is_admin",         "is_admin",         "cannot_grant_admin"],
+    ["dashboard_access", "dashboard_access", "cannot_grant_dashboard"],
+    ["pulse_access",     "pulse_access",     "cannot_grant_pulse"],
+    ["fin_access",       "fin_access",       "cannot_grant_financials"],
+    ["app_access",       "app_access",       "cannot_grant_app"],
+    ["report_access",    "report_access",    "cannot_grant_reports"],
+  ];
+  for (const [field, myCol, errCode] of GRANTABLE) {
+    if (typeof b[field] === "boolean" && b[field] === true && !theirs[field] && !mine[myCol]) {
+      return res.status(403).json({ error: errCode });
+    }
+  }
 
   // Build the SET clause dynamically from what the client sent.
   const sets = [];
@@ -423,19 +505,29 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
     const v = b.location.trim();
     push("location", v.length ? v : null);
   }
+  if (typeof b.access_role === "string") {
+    const v = b.access_role.trim();
+    push("access_role", v.length ? v : null);
+  }
   if (typeof b.is_admin === "boolean") {
     // Prevent self-demotion.
     if (id === req.user.id && !b.is_admin) {
       return res.status(400).json({ error: "cannot_demote_self" });
     }
+    // Prevent removing the last admin standing.
+    if (!b.is_admin && theirs.is_admin) {
+      const { rows: cnt } = await pool.query(
+        `SELECT count(*)::int AS n FROM rpt_users WHERE is_admin = TRUE AND active = TRUE`
+      );
+      if (cnt[0].n <= 1) return res.status(400).json({ error: "last_admin" });
+    }
     push("is_admin", b.is_admin);
   }
-  if (typeof b.app_access === "boolean") {
-    push("app_access", b.app_access);
-  }
-  if (typeof b.report_access === "boolean") {
-    push("report_access", b.report_access);
-  }
+  if (typeof b.dashboard_access === "boolean") push("dashboard_access", b.dashboard_access);
+  if (typeof b.pulse_access === "boolean")     push("pulse_access", b.pulse_access);
+  if (typeof b.fin_access === "boolean")       push("fin_access", b.fin_access);
+  if (typeof b.app_access === "boolean")       push("app_access", b.app_access);
+  if (typeof b.report_access === "boolean")    push("report_access", b.report_access);
   if (typeof b.attorney_code === "string") {
     const v = b.attorney_code.trim().toUpperCase();
     push("attorney_code", v.length ? v : null);
@@ -444,6 +536,13 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
     // Prevent self-deactivation.
     if (id === req.user.id && !b.active) {
       return res.status(400).json({ error: "cannot_deactivate_self" });
+    }
+    // Prevent deactivating the last admin standing.
+    if (!b.active && theirs.is_admin) {
+      const { rows: cnt } = await pool.query(
+        `SELECT count(*)::int AS n FROM rpt_users WHERE is_admin = TRUE AND active = TRUE`
+      );
+      if (cnt[0].n <= 1) return res.status(400).json({ error: "last_admin" });
     }
     push("active", b.active);
   }
@@ -455,7 +554,9 @@ app.post("/api/admin/update-user", requireUser, requireAdmin, async (req, res) =
     const { rows } = await pool.query(
       `UPDATE rpt_users SET ${sets.join(", ")}
         WHERE id = $${vals.length}
-        RETURNING id, name, email, person, template_key, location, is_admin, active, app_access, report_access, attorney_code`,
+        RETURNING id, name, email, person, template_key, location, is_admin, active,
+                  access_role, dashboard_access, pulse_access, fin_access,
+                  app_access, report_access, attorney_code`,
       vals
     );
     if (!rows[0]) return res.status(404).json({ error: "no_user" });
@@ -478,65 +579,36 @@ app.post("/api/admin/link", requireUser, requireAdmin, async (req, res) => {
   res.json({ url: `${appUrl(req)}/login/${token}` });
 });
 
-app.post("/api/admin/dashlink", requireUser, requireAdmin, async (req, res) => {
-  const { user_id } = req.body || {};
-  const { rows } = await pool.query(
-    `SELECT id, is_admin FROM rpt_users WHERE id = $1 AND active = TRUE`,
-    [user_id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: "no_user" });
-  if (!rows[0].is_admin) return res.status(400).json({ error: "not_admin" });
-  const token = await createMagicToken(user_id);
-  res.json({ url: `${appUrl(req)}/dash/${token}` });
-});
+// Generic tab-link minter. Refuses to mint a link for a tab the target user
+// can't actually open — otherwise you'd hand someone a URL that 403s.
+function tabLinkRoute(tab, pathPrefix) {
+  return async (req, res) => {
+    const { user_id } = req.body || {};
+    const { rows } = await pool.query(
+      `SELECT id FROM rpt_users WHERE id = $1 AND active = TRUE`,
+      [user_id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: "no_user" });
+    if (!(await canSee({ id: user_id }, tab)))
+      return res.status(400).json({ error: "no_access" });
+    if (tab === "reports") {
+      const { rows: rc } = await pool.query(
+        `SELECT is_admin, attorney_code FROM rpt_users WHERE id = $1`,
+        [user_id]
+      );
+      if (!rc[0].is_admin && !rc[0].attorney_code)
+        return res.status(400).json({ error: "no_attorney_code" });
+    }
+    const token = await createMagicToken(user_id);
+    res.json({ url: `${appUrl(req)}${pathPrefix}/${token}` });
+  };
+}
 
-// Generate a sign-in link straight to APP Pulse. Works for admins and for
-// users whose app_access flag is set.
-app.post("/api/admin/applink", requireUser, requireAdmin, async (req, res) => {
-  const { user_id } = req.body || {};
-  const { rows } = await pool.query(
-    `SELECT id, is_admin, app_access FROM rpt_users WHERE id = $1 AND active = TRUE`,
-    [user_id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: "no_user" });
-  if (!rows[0].is_admin && !rows[0].app_access)
-    return res.status(400).json({ error: "no_app_access" });
-  const token = await createMagicToken(user_id);
-  res.json({ url: `${appUrl(req)}/app/${token}` });
-});
-
-// Sign-in link to the Reports tab. Admins or report_access users. A non-admin
-// must have an attorney_code assigned (otherwise the link would show nothing
-// or, misconfigured, everything).
-app.post("/api/admin/reportlink", requireUser, requireAdmin, async (req, res) => {
-  const { user_id } = req.body || {};
-  const { rows } = await pool.query(
-    `SELECT id, is_admin, report_access, attorney_code
-       FROM rpt_users WHERE id = $1 AND active = TRUE`,
-    [user_id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: "no_user" });
-  if (!rows[0].is_admin && !rows[0].report_access)
-    return res.status(400).json({ error: "no_report_access" });
-  if (!rows[0].is_admin && !rows[0].attorney_code)
-    return res.status(400).json({ error: "no_attorney_code" });
-  const token = await createMagicToken(user_id);
-  res.json({ url: `${appUrl(req)}/reports/${token}` });
-});
-
-// Sign-in link straight to the Financial Summary entry form. Admin-only,
-// since these are QuickBooks figures.
-app.post("/api/admin/finlink", requireUser, requireAdmin, async (req, res) => {
-  const { user_id } = req.body || {};
-  const { rows } = await pool.query(
-    `SELECT id, is_admin FROM rpt_users WHERE id = $1 AND active = TRUE`,
-    [user_id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: "no_user" });
-  if (!rows[0].is_admin) return res.status(400).json({ error: "not_admin" });
-  const token = await createMagicToken(user_id);
-  res.json({ url: `${appUrl(req)}/financials/${token}` });
-});
+app.post("/api/admin/dashlink",   requireUser, requireAdmin, tabLinkRoute("dashboard",  "/dash"));
+app.post("/api/admin/pulselink",  requireUser, requireAdmin, tabLinkRoute("pulse",      "/pulse"));
+app.post("/api/admin/finlink",    requireUser, requireAdmin, tabLinkRoute("financials", "/financials"));
+app.post("/api/admin/applink",    requireUser, requireAdmin, tabLinkRoute("app",        "/app"));
+app.post("/api/admin/reportlink", requireUser, requireAdmin, tabLinkRoute("reports",    "/reports"));
 
 app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
@@ -567,7 +639,7 @@ app.get("/api/admin/audit-log", requireUser, requireAdmin, async (req, res) => {
 
 // ---- Dashboard API (leadership) -------------------------------------------
 
-app.get("/api/dashboard", requireUser, requireAdmin, async (req, res) => {
+app.get("/api/dashboard", requireUser, requireTab("dashboard"), async (req, res) => {
   const requested = req.query.week;
   const isValidWeek = typeof requested === "string" && /^\d{4}-\d{2}-\d{2}$/.test(requested);
   const anchor = isValidWeek ? requested : null;
@@ -629,7 +701,7 @@ app.get("/api/dashboard", requireUser, requireAdmin, async (req, res) => {
   res.json({ weeks, thisWeek, users: out });
 });
 
-// ---- Revenue Pulse (Jen & Josh only) ---------------------------------------
+// ---- Revenue Pulse ---------------------------------------------------------
 
 const TAB_2025_CANDIDATES = [
   "ONLY 2025 Clients",
@@ -638,7 +710,7 @@ const TAB_2025_CANDIDATES = [
   "Only 2025 Clients",
 ];
 
-app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
+app.get("/api/revenue-feed", requireUser, requireTab("pulse"), async (req, res) => {
   try {
     const url = process.env.REVENUE_FEED_URL;
     if (!url) return res.status(500).json({ error: "feed_not_configured" });
@@ -673,12 +745,11 @@ app.get("/api/revenue-feed", requireUser, requireAdmin, async (req, res) => {
 
 // ---- Reports feed (security boundary) --------------------------------------
 // Wraps the revenue feed and enforces per-attorney isolation SERVER-SIDE.
-// Admins/report_access users reach it; a pinned attorney receives ONLY their
-// own rows plus {pinned:"CODE"} — their browser never holds anyone else's
-// data, so no URL/console trick can leak it.
+// A pinned attorney receives ONLY their own rows plus {pinned:"CODE"} — their
+// browser never holds anyone else's data, so no URL/console trick can leak it.
 
 async function sendFilteredReports(res, user, data) {
-  const code = await attorneyCodeFor(user); // null for admins
+  const code = await attorneyCodeFor(user); // null = leadership view
   res.set("Cache-Control", "no-store");
   if (!code) return res.json({ ...data, pinned: null });
 
@@ -694,11 +765,8 @@ async function sendFilteredReports(res, user, data) {
   res.json({ ...out, pinned: code });
 }
 
-app.get("/api/reports-feed", requireUser, async (req, res) => {
+app.get("/api/reports-feed", requireUser, requireTab("reports"), async (req, res) => {
   try {
-    if (!(await hasReportAccess(req.user)))
-      return res.status(403).json({ error: "forbidden" });
-
     const url = process.env.REVENUE_FEED_URL;
     if (!url) return res.status(500).json({ error: "feed_not_configured" });
     const bust = url.includes("?") ? "&" : "?";
@@ -726,12 +794,10 @@ app.get("/api/reports-feed", requireUser, async (req, res) => {
   }
 });
 
-// ---- APP Pulse feeds (admins + app_access users) ----------------------------
+// ---- APP Pulse feeds --------------------------------------------------------
 
-app.get("/api/app-feed", requireUser, async (req, res) => {
+app.get("/api/app-feed", requireUser, requireTab("app"), async (req, res) => {
   try {
-    if (!(await hasAppAccess(req.user)))
-      return res.status(403).json({ error: "forbidden" });
     const url = process.env.APP_FEED_URL;
     if (!url) return res.status(500).json({ error: "feed_not_configured" });
     const bust = url.includes("?") ? "&" : "?";
@@ -747,10 +813,8 @@ app.get("/api/app-feed", requireUser, async (req, res) => {
 });
 
 // Renewal money — served by the Apps Script on the APP Invoicing Spreadsheet.
-app.get("/api/app-invoice-feed", requireUser, async (req, res) => {
+app.get("/api/app-invoice-feed", requireUser, requireTab("app"), async (req, res) => {
   try {
-    if (!(await hasAppAccess(req.user)))
-      return res.status(403).json({ error: "forbidden" });
     const url = process.env.APP_INVOICE_FEED_URL;
     if (!url) return res.status(500).json({ error: "feed_not_configured" });
     const bust = url.includes("?") ? "&" : "?";
@@ -766,9 +830,9 @@ app.get("/api/app-invoice-feed", requireUser, async (req, res) => {
 });
 
 // ---- Financial summary (bookkeeper → QuickBooks figures) --------------------
-// Admin-only, both read and write. These numbers come from QuickBooks, NOT
-// from the client-tracking Google Sheet, and live only in Postgres — so they
-// are never exposed to anyone with sheet access.
+// Gated on fin_access, NOT on is_admin — that separation is the whole point.
+// These numbers come from QuickBooks and live only in Postgres, so they are
+// never exposed to anyone with client-sheet access.
 //
 // One row per reporting month, keyed on the first of that month. Re-saving a
 // month updates it in place rather than creating a duplicate.
@@ -782,7 +846,7 @@ const FIN_FIELDS = new Set([
   "expected", "qb_actual", "variance", "variance_pct",
 ]);
 
-app.get("/api/financials", requireUser, requireAdmin, async (_req, res) => {
+app.get("/api/financials", requireUser, requireTab("financials"), async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT f.period::text AS period,
@@ -804,7 +868,7 @@ app.get("/api/financials", requireUser, requireAdmin, async (_req, res) => {
   }
 });
 
-app.post("/api/financials", requireUser, requireAdmin, async (req, res) => {
+app.post("/api/financials", requireUser, requireTab("financials"), async (req, res) => {
   const b = req.body || {};
   const period = String(b.period || "").trim(); // expects "YYYY-MM"
   if (!/^\d{4}-\d{2}$/.test(period))
@@ -843,103 +907,48 @@ app.post("/api/financials", requireUser, requireAdmin, async (req, res) => {
 });
 
 // ---- Page routes ----------------------------------------------------------
+// Each gated page has two doors: the plain path (uses an existing session)
+// and a /:token path (magic link, sets the session then serves the page).
 
 app.get("/report", (req, res) => {
   if (!req.user) return res.status(401).send(loginError());
   res.sendFile(path.join(__dirname, "public", "report.html"));
 });
 
-app.get("/admin", (req, res) => {
-  if (!req.user?.is_admin) return res.status(403).send(loginError());
-  res.sendFile(path.join(__dirname, "public", "admin.html"));
-});
+function pageRoute(tab, file) {
+  return async (req, res) => {
+    if (!(await canSee(req.user, tab))) return res.status(403).send(loginError());
+    res.sendFile(path.join(__dirname, "public", file));
+  };
+}
 
-app.get("/dashboard", (req, res) => {
-  if (!req.user?.is_admin) return res.status(403).send(loginError());
-  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
-});
+function tokenPageRoute(tab, file) {
+  return async (req, res) => {
+    try {
+      const user = await consumeMagicToken(req.params.token);
+      if (!user || !(await canSee(user, tab)))
+        return res.status(401).send(loginError());
+      res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
+      res.sendFile(path.join(__dirname, "public", file));
+    } catch (e) {
+      console.error(`${tab} login error`, e);
+      res.status(500).send(loginError());
+    }
+  };
+}
 
-app.get("/pulse", (req, res) => {
-  if (!req.user?.is_admin) return res.status(403).send(loginError());
-  res.sendFile(path.join(__dirname, "public", "pulse.html"));
-});
+app.get("/admin",             pageRoute("admin",      "admin.html"));
+app.get("/dashboard",         pageRoute("dashboard",  "dashboard.html"));
+app.get("/pulse",             pageRoute("pulse",      "pulse.html"));
+app.get("/financials",        pageRoute("financials", "financials.html"));
+app.get("/app",               pageRoute("app",        "app.html"));
+app.get("/reports",           pageRoute("reports",    "reports.html"));
 
-app.get("/pulse/:token", async (req, res) => {
-  try {
-    const user = await consumeMagicToken(req.params.token);
-    if (!user || !user.is_admin) return res.status(401).send(loginError());
-    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.sendFile(path.join(__dirname, "public", "pulse.html"));
-  } catch (e) {
-    console.error("pulse login error", e);
-    res.status(500).send(loginError());
-  }
-});
-
-app.get("/financials", (req, res) => {
-  if (!req.user?.is_admin) return res.status(403).send(loginError());
-  res.sendFile(path.join(__dirname, "public", "financials.html"));
-});
-
-app.get("/financials/:token", async (req, res) => {
-  try {
-    const user = await consumeMagicToken(req.params.token);
-    if (!user || !user.is_admin) return res.status(401).send(loginError());
-    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.sendFile(path.join(__dirname, "public", "financials.html"));
-  } catch (e) {
-    console.error("financials login error", e);
-    res.status(500).send(loginError());
-  }
-});
-
-app.get("/app", async (req, res) => {
-  if (!(await hasAppAccess(req.user))) return res.status(403).send(loginError());
-  res.sendFile(path.join(__dirname, "public", "app.html"));
-});
-
-app.get("/app/:token", async (req, res) => {
-  try {
-    const user = await consumeMagicToken(req.params.token);
-    if (!user || !(await hasAppAccess(user)))
-      return res.status(401).send(loginError());
-    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.sendFile(path.join(__dirname, "public", "app.html"));
-  } catch (e) {
-    console.error("app login error", e);
-    res.status(500).send(loginError());
-  }
-});
-
-app.get("/reports", async (req, res) => {
-  if (!(await hasReportAccess(req.user))) return res.status(403).send(loginError());
-  res.sendFile(path.join(__dirname, "public", "reports.html"));
-});
-
-app.get("/reports/:token", async (req, res) => {
-  try {
-    const user = await consumeMagicToken(req.params.token);
-    if (!user || !(await hasReportAccess(user)))
-      return res.status(401).send(loginError());
-    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.sendFile(path.join(__dirname, "public", "reports.html"));
-  } catch (e) {
-    console.error("reports login error", e);
-    res.status(500).send(loginError());
-  }
-});
-
-app.get("/dash/:token", async (req, res) => {
-  try {
-    const user = await consumeMagicToken(req.params.token);
-    if (!user || !user.is_admin) return res.status(401).send(loginError());
-    res.cookie("dlf_session", makeSessionCookie(user.id), COOKIE_OPTS);
-    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
-  } catch (e) {
-    console.error("dash login error", e);
-    res.status(500).send(loginError());
-  }
-});
+app.get("/dash/:token",       tokenPageRoute("dashboard",  "dashboard.html"));
+app.get("/pulse/:token",      tokenPageRoute("pulse",      "pulse.html"));
+app.get("/financials/:token", tokenPageRoute("financials", "financials.html"));
+app.get("/app/:token",        tokenPageRoute("app",        "app.html"));
+app.get("/reports/:token",    tokenPageRoute("reports",    "reports.html"));
 
 app.get("/", (req, res) => res.redirect(req.user ? "/report" : "/report"));
 
@@ -948,28 +957,14 @@ function loginError() {
   <body style="font-family:Georgia,serif;background:#0f1f3a;color:#f5f1e6;
   display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center">
   <div><h1 style="color:#c9a14a">Link expired</h1>
-  <p>This sign-in link is no longer valid. Ask Jen for a fresh one.</p></div></body>`;
+  <p>This sign-in link is no longer valid, or you don't have access to that page.<br>
+  Ask Jen for a fresh one.</p></div></body>`;
 }
 
 // ---- Boot -----------------------------------------------------------------
 
 const PORT = process.env.PORT || 3000;
 initSchema()
-  .then(() =>
-    pool.query(
-      `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS app_access BOOLEAN NOT NULL DEFAULT FALSE`
-    )
-  )
-  .then(() =>
-    pool.query(
-      `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS report_access BOOLEAN NOT NULL DEFAULT FALSE`
-    )
-  )
-  .then(() =>
-    pool.query(
-      `ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS attorney_code TEXT`
-    )
-  )
   .then(() => app.listen(PORT, () => console.log(`Reporting app on :${PORT}`)))
   .catch((e) => {
     console.error("Failed to init schema", e);
