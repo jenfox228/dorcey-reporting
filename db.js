@@ -78,8 +78,8 @@ export async function initSchema() {
       ON rpt_audit_log (edited_at DESC);
 
     -- Bookkeeper's monthly financial summary. Sourced from QuickBooks, NOT
-    -- from the client-tracking Google Sheet — these figures are admin-only
-    -- and never touch the shared spreadsheet.
+    -- from the client-tracking Google Sheet — these figures are gated behind
+    -- fin_access and never touch the shared spreadsheet.
     --   period  = first of the reporting month (2026-06-01 = "through June")
     --   data    = JSONB of the metrics, so adding a figure later is a form
     --             change rather than a migration
@@ -108,6 +108,59 @@ export async function initSchema() {
       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rpt_users_name_key') THEN
         ALTER TABLE rpt_users ADD CONSTRAINT rpt_users_name_key UNIQUE (name);
       END IF;
+    END $$;
+
+    -- ---- Per-tab access control ------------------------------------------
+    -- One boolean per tab. These are the SOURCE OF TRUTH; access_role is a
+    -- named preset that sets them in bulk and reminds us why they're set.
+    -- A person can be given a role and then individually adjusted, and the
+    -- admin UI shows the difference rather than hiding it.
+    --
+    -- IMPORTANT: is_admin no longer means "sees everything". It now means
+    -- exactly one thing — "can manage users and generate sign-in links".
+    -- Dashboard, Pulse and Financials are each their own flag, which is what
+    -- makes an operations admin who CANNOT see firm financials possible.
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS app_access       BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS report_access    BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS dashboard_access BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS pulse_access     BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS fin_access       BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS attorney_code    TEXT;
+    ALTER TABLE rpt_users ADD COLUMN IF NOT EXISTS access_role      TEXT;
+
+    -- One-time migration. Runs only where access_role is still NULL, so it
+    -- can't stomp on choices made after this ships.
+    --
+    -- Everyone who is an admin TODAY had access to every tab, so they are
+    -- back-filled to full access and labelled 'principal'. Nobody loses
+    -- anything on deploy; you subtract from there rather than rebuild.
+    DO $$ BEGIN
+      -- Current admins -> principal, everything on.
+      UPDATE rpt_users
+         SET dashboard_access = TRUE,
+             pulse_access     = TRUE,
+             fin_access       = TRUE,
+             app_access       = TRUE,
+             report_access    = TRUE,
+             access_role      = 'principal'
+       WHERE access_role IS NULL AND is_admin = TRUE;
+
+      -- Non-admins who had both extra flags -> attorney-ish, keep what they had.
+      UPDATE rpt_users
+         SET access_role = 'attorney'
+       WHERE access_role IS NULL AND is_admin = FALSE
+         AND report_access = TRUE;
+
+      -- Non-admins with only APP -> program lead.
+      UPDATE rpt_users
+         SET access_role = 'program_lead'
+       WHERE access_role IS NULL AND is_admin = FALSE
+         AND app_access = TRUE;
+
+      -- Everyone else is a plain reporter: the form, nothing more.
+      UPDATE rpt_users
+         SET access_role = 'reporter'
+       WHERE access_role IS NULL;
     END $$;
   `);
 }
