@@ -100,6 +100,30 @@
   .barlegend .item{display:flex;align-items:center;gap:6px}
   .barlegend .sw{width:14px;height:12px;border-radius:2px}
 
+  /* ---- Fee distribution (price-point breakdown) ---- */
+  .dist{margin-top:10px}
+  .distbars{display:flex;align-items:flex-end;gap:6px;height:180px;padding-bottom:4px}
+  .distbars .dcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+    align-items:center;position:relative;height:100%}
+  .distbars .dcol .dbar{width:100%;max-width:52px;background:var(--gold);border-radius:5px 5px 0 0;
+    min-height:3px;transition:height .5s}
+  .distbars .dcol.median .dbar{background:var(--navy)}
+  .distbars .dcol .dn{font-size:.74rem;font-weight:700;color:var(--navy);margin-bottom:4px}
+  .distbars .dcol .dtip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);
+    background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:.72rem;
+    white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
+  .distbars .dcol:hover .dtip{opacity:1}
+  .distlabels{display:flex;gap:6px;margin-top:6px}
+  .distlabels .dl{flex:1;text-align:center;font-size:.63rem;color:var(--muted);
+    line-height:1.25;font-weight:600}
+  .distlabels .dl .damt{display:block;font-size:.6rem;color:#a39c8b;font-weight:500;margin-top:2px}
+  .distnote{font-size:.74rem;color:var(--muted);margin-top:12px;line-height:1.5}
+  .distnote b{color:var(--navy)}
+  .distkey{display:flex;gap:16px;font-size:.72rem;color:var(--muted);justify-content:flex-end;
+    margin-bottom:4px;flex-wrap:wrap}
+  .distkey .item{display:flex;align-items:center;gap:6px}
+  .distkey .sw{width:13px;height:11px;border-radius:2px}
+
   /* Category table */
   table.cat{border-collapse:collapse;width:100%;font-size:.86rem;margin-top:6px}
   table.cat th,table.cat td{padding:9px 11px;text-align:right;border-bottom:1px dashed var(--line);white-space:nowrap}
@@ -110,6 +134,7 @@
   table.cat tr.totrow td{border-top:2px solid var(--line);font-weight:700;color:var(--navy)}
   table.cat .up{color:var(--up);font-weight:700} table.cat .down{color:var(--down);font-weight:700}
   table.cat .flat{color:var(--muted)}
+  table.cat .zeroflag{font-size:.68rem;color:#a39c8b;font-weight:500}
 
   .leaderboard table.cat td.cat-name{cursor:default}
   .footer-note{text-align:center;font-size:.72rem;color:var(--muted);margin-top:20px}
@@ -131,6 +156,7 @@
   .lrow .lm{color:var(--muted);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lrow .lf{text-align:right;font-weight:700;color:var(--navy);white-space:nowrap}
   .lrow .lf.neg{color:var(--down)}
+  .lrow .lf.zero{color:#a39c8b}
   .lcount{text-align:right;margin-top:7px}
   @media(max-width:820px){
     .lrow{grid-template-columns:80px 1fr 90px}
@@ -140,6 +166,8 @@
   @media(max-width:820px){
     .statgrid,.statgrid.three{grid-template-columns:repeat(2,1fr)}
     .controls select{min-width:150px}
+    .distlabels .dl{font-size:.55rem}
+    .distbars .dcol .dn{font-size:.62rem}
   }
 
   /* Print: strip nav/controls, one report per page, ink-friendly */
@@ -153,6 +181,8 @@
     .stat.hero{background:#0f1d33 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .bars .col .bar.cur{background:#c6a04e !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .bars .col .bar.prev{background:#c7cfdd !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .distbars .dcol .dbar{background:#c6a04e !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .distbars .dcol.median .dbar{background:#0f1d33 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .stat{background:#f6f1e4 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
@@ -162,6 +192,7 @@
     <a href="/admin"><span class="ico">⚙️</span>Admin</a>
     <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
     <a href="/pulse"><span class="ico">💰</span>Pulse</a>
+    <a href="/financials"><span class="ico">🧾</span>Financials</a>
     <a href="/app"><span class="ico">🧭</span>APP</a>
     <a href="/reports" class="active"><span class="ico">📄</span>Reports</a>
   </nav>
@@ -180,22 +211,31 @@
 // ---------------------------------------------------------------------------
 // DORCEY ATTORNEY REPORTS — reuses the Pulse revenue feed.
 // Two views: an individual attorney scorecard, and a leadership combined
-// comparison. Each shows H1 (Jan–Jun) as the headline plus a full-YTD
-// section, this year vs. same-period last year, average fee, and file-type
-// (category) mix. Attribution toggles between originating and closing.
+// comparison. Each shows year-to-date vs. the same period last year, average
+// fee, file-type (category) mix, office split, a fee-distribution breakdown,
+// and the full file ledger. Attribution toggles between originating and
+// closing attorney.
+//
+// AVERAGES EXCLUDE $0 FILES. Refunded matters and pro bono work land in the
+// sheet at $0; counting them in the denominator dragged every average down
+// and made attorneys with a few no-charge files look underpriced. File COUNTS
+// still include them — the work happened, and hiding it would understate
+// what someone actually carried.
 //
 // Column contract matches pulse.html exactly (Fee Billed, Originating/Closing
-// Attorney, Matter, Category, _date/Month). "New-Matter" is the honest-growth
-// bucket via the same classify() rules. Same-period trimming keeps YoY fair.
+// Attorney, Matter, Category, Branch, _date/Month). "New-Matter" is the
+// honest-growth bucket via the same classify() rules. Same-period trimming
+// keeps YoY fair.
 //
 // Access model (server-enforced):
 //   - admins + report_access users hitting /reports see the full picker,
 //     including the leadership view and any individual.
 //   - an attorney arriving on /reports/<token> is PINNED to their own code
-//     (server passes ?only=CODE); the picker + leadership view are hidden.
+//     (server sends only their rows and echoes {pinned:"CODE"}); the picker
+//     and leadership view are hidden.
 // ---------------------------------------------------------------------------
 
-const CONFIG = { yearGoal: 7000000, year: 2026 };
+const CONFIG = { yearGoal: 9000000, year: 2026 };
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -206,11 +246,28 @@ const ATTORNEY_NAMES = {
 // Non-person rollup codes that must never appear as an "attorney" in reports.
 const NON_PERSON = new Set(["DLF","ADM","APP",""]);
 
+// Fee bands for the distribution. Tight where the deeds and small matters
+// cluster ($500 steps up to $1,500), widening as fees climb so a single
+// $40K advanced-planning matter doesn't generate eighty empty buckets.
+const FEE_BANDS = [
+  { lo:0,     hi:500,    label:"$0–500" },
+  { lo:501,   hi:1000,   label:"$501–1K" },
+  { lo:1001,  hi:1500,   label:"$1K–1.5K" },
+  { lo:1501,  hi:2500,   label:"$1.5K–2.5K" },
+  { lo:2501,  hi:3500,   label:"$2.5K–3.5K" },
+  { lo:3501,  hi:5000,   label:"$3.5K–5K" },
+  { lo:5001,  hi:7500,   label:"$5K–7.5K" },
+  { lo:7501,  hi:10000,  label:"$7.5K–10K" },
+  { lo:10001, hi:15000,  label:"$10K–15K" },
+  { lo:15001, hi:25000,  label:"$15K–25K" },
+  { lo:25001, hi:Infinity, label:"$25K+" },
+];
+
 let ROWS = [];
 let ROWS_2025 = [];
 let role = "orig";              // "orig" | "clos"
 let view = "leader";            // "leader" | code
-let PINNED = null;              // if set (from ?only=), lock to this attorney
+let PINNED = null;              // if set (from feed), lock to this attorney
 
 // ---- helpers (mirror pulse.html) ------------------------------------------
 function cleanKey(k){ return String(k).replace(/\s+/g," ").trim().replace(/\.$/,""); }
@@ -271,29 +328,64 @@ function ytdCutoffMonth(){
   return max;
 }
 
+// Median of a numeric array. Reported alongside the mean because a couple of
+// large matters can pull an average well above what a typical file looks
+// like — the gap between the two IS the insight.
+function median(arr){
+  if(!arr.length) return 0;
+  const s=[...arr].sort((a,b)=>a-b);
+  const m=Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+
 // Build a per-attorney stat block for a given month-range [loMonth, hiMonth]
 // inclusive (0-based). Pass 0..5 for H1, 0..11 for full year.
+//
+// Two parallel sets of numbers come out of here:
+//   files / total      — EVERY file, including $0 ones. Use for counts.
+//   paidFiles / total  — files with a real fee. Use for AVERAGES.
+// A $0 file is real work (pro bono) or reversed work (refund); either way it
+// belongs in the count but not in the denominator of an average.
 function statBlock(rows, code, loMo, hiMo){
-  let total=0, files=0, newTotal=0, newFiles=0;
+  let total=0, files=0, paidFiles=0, zeroFiles=0;
+  let newTotal=0, newFiles=0, newPaidFiles=0;
   const byMonth=new Array(12).fill(0);
-  const cats={}; // cat -> {rev,files}
-  const branches={}; // branch -> {rev,files}
+  const fees=[];              // positive fees only, for median + distribution
+  const cats={};              // cat -> {rev,files,paid}
+  const branches={};          // branch -> {rev,files,paid}
   for(const r of rows){
     if(attColOf(r)!==code) continue;
     const mi=monthIndex(r);
     if(mi===null||mi<loMo||mi>hiMo) continue;
-    const fee=num(r["Fee Billed"]);
-    if(fee===0 && (r["Fee Billed"]===null||r["Fee Billed"]===undefined||r["Fee Billed"]==="")) continue;
+    const raw=r["Fee Billed"];
+    // A truly blank cell isn't a file at all — skip it. A cell holding 0 IS a
+    // file (pro bono / refunded) and gets counted, just not averaged.
+    if(raw===null||raw===undefined||raw==="") continue;
+    const fee=num(raw);
     total+=fee; files++; byMonth[mi]+=fee;
+    if(fee>0){ paidFiles++; fees.push(fee); } else { zeroFiles++; }
+
     const seg=classify(r);
-    if(seg==="New-Matter"){ newTotal+=fee; newFiles++; }
+    if(seg==="New-Matter"){
+      newTotal+=fee; newFiles++;
+      if(fee>0) newPaidFiles++;
+    }
     const c=catOf(r);
-    (cats[c] ??= {rev:0,files:0}); cats[c].rev+=fee; cats[c].files++;
+    (cats[c] ??= {rev:0,files:0,paid:0}); cats[c].rev+=fee; cats[c].files++;
+    if(fee>0) cats[c].paid++;
     const b=branchOf(r);
-    (branches[b] ??= {rev:0,files:0}); branches[b].rev+=fee; branches[b].files++;
+    (branches[b] ??= {rev:0,files:0,paid:0}); branches[b].rev+=fee; branches[b].files++;
+    if(fee>0) branches[b].paid++;
   }
-  return {total,files,newTotal,newFiles,byMonth,cats,branches,
-    avgFile: files?total/files:0, avgNew: newFiles?newTotal/newFiles:0};
+  return {
+    total, files, paidFiles, zeroFiles,
+    newTotal, newFiles, newPaidFiles,
+    byMonth, cats, branches, fees,
+    // Averages divide by PAID files — $0 work no longer drags them down.
+    avgFile: paidFiles ? total/paidFiles : 0,
+    avgNew:  newPaidFiles ? newTotal/newPaidFiles : 0,
+    medFile: median(fees),
+  };
 }
 
 function yoyTag(cur, prev){
@@ -306,8 +398,7 @@ function yoyTag(cur, prev){
 
 // Money comparison the way Jen wants it: color the CURRENT dollar figure
 // (green if up vs last year, red if down) and show last year's actual dollars
-// beside it — no percentages to decode. `curStr` lets callers pass a
-// pre-formatted value (e.g. usd0 vs usdK).
+// beside it — no percentages to decode.
 function moneyVs(cur, prev, curStr){
   const shown = curStr !== undefined ? curStr : usd0(cur);
   let cls = "flat";
@@ -430,6 +521,12 @@ function individualView(code){
   const avg = moneyVs(cur.avgFile, prev.avgFile);
   const filesCls = cur.files > prev.files ? "up" : cur.files < prev.files ? "down" : "flat";
 
+  // Footnote on the average card when $0 files exist, so nobody wonders why
+  // the average doesn't match total ÷ files.
+  const zeroNote = cur.zeroFiles
+    ? ` · excludes ${cur.zeroFiles} no-charge file${cur.zeroFiles>1?'s':''}`
+    : "";
+
   return `<div class="report">
     ${reportHead(attorneyLabel(code))}
 
@@ -443,17 +540,17 @@ function individualView(code){
       <div class="stat">
         <div class="k">Files closed</div>
         <div class="v ${filesCls}">${cur.files}</div>
-        <div class="d"><span class="vs">vs ${prev.files} in ${CONFIG.year-1}</span></div>
+        <div class="d"><span class="vs">vs ${prev.files} in ${CONFIG.year-1}${cur.zeroFiles?` · ${cur.zeroFiles} at no charge`:''}</span></div>
       </div>
       <div class="stat">
         <div class="k">Average fee per file</div>
         <div class="v">${usd0(cur.avgFile)}</div>
-        <div class="d">${avg.html}</div>
+        <div class="d">${avg.html}${zeroNote}</div>
       </div>
       <div class="stat">
-        <div class="k">New-matter work</div>
-        <div class="v">${usd0(cur.avgNew)}</div>
-        <div class="d"><span class="vs">avg fee · ${cur.newFiles} new matters</span></div>
+        <div class="k">Typical file (median)</div>
+        <div class="v">${usd0(cur.medFile)}</div>
+        <div class="d"><span class="vs">half your files are above this</span></div>
       </div>
     </div>
 
@@ -476,6 +573,9 @@ function individualView(code){
     </div>
     ${monthlyBars(cur.byMonth, statBlock(ROWS_2025,code,0,11).byMonth)}
 
+    <div class="sec-label">Where your fees land · ${CONFIG.year} year-to-date</div>
+    ${feeDistribution(cur)}
+
     <div class="sec-label">Work by type · ${CONFIG.year} year-to-date</div>
     ${categoryTable(cur, prev)}
 
@@ -488,8 +588,87 @@ function individualView(code){
 
     <div class="footer-note">
       Credit shown by <b>${role==="orig"?"originating":"closing"} attorney</b>.
-      ${CONFIG.year-1} figures cover the same months (January–${monthLabel}) for a fair comparison. Live from the ${CONFIG.year} Clients sheet.
+      Averages exclude no-charge files. ${CONFIG.year-1} figures cover the same months (January–${monthLabel}) for a fair comparison. Live from the ${CONFIG.year} Clients sheet.
     </div>
+  </div>`;
+}
+
+// ---- Fee distribution -----------------------------------------------------
+// The price-point breakdown. Shows BOTH file count and total dollars per band,
+// because the two tell opposite stories: a tall bar of $500 deeds is a lot of
+// files contributing very little money, and seeing only the count would make
+// it look like the engine of the practice.
+function feeDistribution(s){
+  if(!s.fees.length){
+    return `<p class="subtle">No billed files in this period.</p>`;
+  }
+
+  // Bucket the fees.
+  const buckets = FEE_BANDS.map(b => ({...b, n:0, sum:0}));
+  for(const f of s.fees){
+    const b = buckets.find(x => f >= x.lo && f <= x.hi);
+    if(b){ b.n++; b.sum += f; }
+  }
+
+  // Trim empty bands from the outside in, so the chart spans only the range
+  // this attorney actually works in. Interior gaps stay — an empty band
+  // BETWEEN two populated ones is real information.
+  let first = buckets.findIndex(b=>b.n>0);
+  let last  = buckets.length - 1 - [...buckets].reverse().findIndex(b=>b.n>0);
+  const shown = buckets.slice(first, last+1);
+
+  const maxN = Math.max(...shown.map(b=>b.n), 1);
+  const medBand = shown.find(b => s.medFile >= b.lo && s.medFile <= b.hi);
+
+  const bars = shown.map(b=>{
+    const h = (b.n / maxN) * 148;
+    const isMed = medBand && b.label === medBand.label;
+    const pctFiles = (b.n / s.fees.length * 100).toFixed(0);
+    const pctRev   = s.total > 0 ? (b.sum / s.total * 100).toFixed(0) : "0";
+    return `<div class="dcol ${isMed?"median":""}">
+      <span class="dtip">${esc(b.label)} · ${b.n} file${b.n>1?'s':''} (${pctFiles}% of files) · ${usd0(b.sum)} (${pctRev}% of revenue)</span>
+      <span class="dn">${b.n}</span>
+      <div class="dbar" style="height:${h}px"></div>
+    </div>`;
+  }).join("");
+
+  const labels = shown.map(b=>
+    `<div class="dl">${esc(b.label)}<span class="damt">${b.sum>0?usdK(b.sum):"—"}</span></div>`
+  ).join("");
+
+  // The takeaway line. Which band holds the most files, and what share of
+  // revenue does it actually produce?
+  const busiest = [...shown].sort((a,b)=>b.n-a.n)[0];
+  const richest = [...shown].sort((a,b)=>b.sum-a.sum)[0];
+  let insight = "";
+  if(busiest && richest){
+    const busiestRevPct = s.total>0 ? (busiest.sum/s.total*100).toFixed(0) : 0;
+    const richestFilePct = (richest.n/s.fees.length*100).toFixed(0);
+    if(busiest.label === richest.label){
+      insight = `Most of your files <b>and</b> most of your revenue sit in the <b>${esc(busiest.label)}</b> band — ${busiest.n} files producing ${usd0(busiest.sum)}.`;
+    } else {
+      insight = `Your biggest cluster of files is <b>${esc(busiest.label)}</b> — ${busiest.n} files, but only <b>${busiestRevPct}%</b> of your revenue. Most of the money comes from <b>${esc(richest.label)}</b>: just ${richest.n} file${richest.n>1?'s':''} (${richestFilePct}% of your work) producing ${usd0(richest.sum)}.`;
+    }
+  }
+
+  const meanVsMed = s.medFile > 0 && s.avgFile > s.medFile * 1.25
+    ? ` Your average (${usd0(s.avgFile)}) sits well above your median (${usd0(s.medFile)}), which means a handful of large matters are lifting it — the median is closer to what a typical file looks like.`
+    : s.medFile > 0 && s.avgFile < s.medFile * 0.85
+    ? ` Your average (${usd0(s.avgFile)}) sits below your median (${usd0(s.medFile)}), which is unusual — worth a look at whether a few very small files are pulling it down.`
+    : "";
+
+  const zeroLine = s.zeroFiles
+    ? ` <b>${s.zeroFiles}</b> no-charge file${s.zeroFiles>1?'s':''} (refunded or pro bono) ${s.zeroFiles>1?'are':'is'} excluded from this chart and from all averages.`
+    : "";
+
+  return `<div class="dist">
+    <div class="distkey">
+      <div class="item"><span class="sw" style="background:var(--gold)"></span>files in band</div>
+      <div class="item"><span class="sw" style="background:var(--navy)"></span>band containing your median</div>
+    </div>
+    <div class="distbars">${bars}</div>
+    <div class="distlabels">${labels}</div>
+    <p class="distnote">${insight}${meanVsMed}${zeroLine}</p>
   </div>`;
 }
 
@@ -502,14 +681,14 @@ function clientLedger(code, loMo, hiMo){
     if(attColOf(r)!==code) continue;
     const mi=monthIndex(r);
     if(mi===null||mi<loMo||mi>hiMo) continue;
-    const fee=num(r["Fee Billed"]);
-    if(fee===0 && (r["Fee Billed"]===null||r["Fee Billed"]===undefined||r["Fee Billed"]==="")) continue;
+    const raw=r["Fee Billed"];
+    if(raw===null||raw===undefined||raw==="") continue;
     items.push({
       date:String(r["_date"]||r["Month"]||"").slice(0,10),
       client:String(r["Client"]||"—").trim()||"—",
       cat:catOf(r),
       matter:String(r["Matter"]||"").trim(),
-      fee,
+      fee:num(raw),
     });
   }
   items.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -520,13 +699,17 @@ function clientLedger(code, loMo, hiMo){
     // is blank, so the column is never empty.
     const type = e.cat && e.cat !== "Uncategorized" ? e.cat : (e.matter || "—");
     const hay=`${e.client} ${type} ${e.matter} ${e.date}`.toLowerCase();
+    const feeCls = e.fee < 0 ? "neg" : e.fee === 0 ? "zero" : "";
     return `<div class="lrow" data-s="${esc(hay)}">
       <span class="ld">${esc(e.date||'—')}</span>
       <span class="lc" title="${esc(e.client)}">${esc(e.client)}</span>
       <span class="lm" title="${esc(type)}">${esc(type)}</span>
-      <span class="lf ${e.fee<0?'neg':''}">${usd0(e.fee)}</span>
+      <span class="lf ${feeCls}">${usd0(e.fee)}</span>
     </div>`;
   }).join("");
+
+  const zeroCount = items.filter(e=>e.fee===0).length;
+  const zeroNote = zeroCount ? ` · ${zeroCount} at no charge` : "";
 
   return `<input class="lsearch" type="text" placeholder="Search a client or matter type…" autocomplete="off"
     oninput="filterLedger(this)" />
@@ -537,7 +720,7 @@ function clientLedger(code, loMo, hiMo){
       </div>
       ${rowsHtml}
     </div>
-    <div class="lcount subtle">${items.length} file${items.length>1?'s':''} · ${usd0(items.reduce((s,e)=>s+e.fee,0))} total</div>`;
+    <div class="lcount subtle">${items.length} file${items.length>1?'s':''} · ${usd0(items.reduce((s,e)=>s+e.fee,0))} total${zeroNote}</div>`;
 }
 
 // Live filter on the ledger (no re-render, keeps focus while typing).
@@ -558,15 +741,6 @@ function reportHead(who){
       <div class="lens">${role==="orig"?"Originating":"Closing"}-attorney credit · ${CONFIG.year} year-to-date performance</div>
     </div>
     <div class="firm">Dorcey Law Firm<br>Generated ${stamp}</div>
-  </div>`;
-}
-
-function quarterStat(label, cur, prev, isMoney){
-  const val = isMoney ? usd0(cur) : usd0(cur);
-  return `<div class="stat">
-    <div class="k">${esc(label)}</div>
-    <div class="v">${val}</div>
-    <div class="d">${yoyTag(cur,prev)} vs ${usdK(prev)}</div>
   </div>`;
 }
 
@@ -592,26 +766,29 @@ function categoryTable(cur, prev){
   const cats=Object.keys(cur.cats).sort((a,b)=>cur.cats[b].rev-cur.cats[a].rev);
   if(!cats.length) return `<p class="subtle">No files in this period.</p>`;
   const rows=cats.map(c=>{
-    const cc=cur.cats[c], pc=prev.cats[c]||{rev:0,files:0};
-    const avg=cc.files?cc.rev/cc.files:0;
-    // Color this year's revenue vs last year's for the same category.
+    const cc=cur.cats[c], pc=prev.cats[c]||{rev:0,files:0,paid:0};
+    // Average over PAID files only, same rule as everywhere else.
+    const avg=cc.paid?cc.rev/cc.paid:0;
+    const freeCount = cc.files - cc.paid;
+    const freeTag = freeCount ? `<span class="zeroflag"> (${freeCount} free)</span>` : "";
     const cls = pc.rev>0 ? (cc.rev>pc.rev?"up":cc.rev<pc.rev?"down":"flat") : (cc.rev>0?"up":"flat");
     const prevCell = pc.rev>0 ? usd0(pc.rev) : '<span class="flat">—</span>';
     return `<tr>
       <td class="cat-name">${esc(c)}</td>
-      <td>${cc.files}</td>
+      <td>${cc.files}${freeTag}</td>
       <td class="${cls}">${usd0(cc.rev)}</td>
-      <td>${usd0(avg)}</td>
+      <td>${cc.paid?usd0(avg):'<span class="flat">—</span>'}</td>
       <td>${prevCell}</td>
     </tr>`;
   }).join("");
   const tot=cats.reduce((s,c)=>s+cur.cats[c].rev,0);
   const totF=cats.reduce((s,c)=>s+cur.cats[c].files,0);
+  const totPaid=cats.reduce((s,c)=>s+cur.cats[c].paid,0);
   const totPrev=cats.reduce((s,c)=>s+((prev.cats[c]||{rev:0}).rev),0);
   return `<table class="cat">
     <thead><tr><th>Type of work</th><th>Files</th><th>${CONFIG.year} revenue</th><th>Avg fee</th><th>${CONFIG.year-1} revenue</th></tr></thead>
     <tbody>${rows}
-      <tr class="totrow"><td>All types</td><td>${totF}</td><td>${usd0(tot)}</td><td>${usd0(totF?tot/totF:0)}</td><td>${totPrev>0?usd0(totPrev):''}</td></tr>
+      <tr class="totrow"><td>All types</td><td>${totF}</td><td>${usd0(tot)}</td><td>${totPaid?usd0(tot/totPaid):'—'}</td><td>${totPrev>0?usd0(totPrev):''}</td></tr>
     </tbody>
   </table>`;
 }
@@ -626,24 +803,25 @@ function branchTable(cur, prev){
     return `<p class="subtle">All ${cc.files} file${cc.files>1?'s':''} (${usd0(cc.rev)}) came out of <b>${esc(b)}</b>.</p>`;
   }
   const rows=branches.map(b=>{
-    const cc=cur.branches[b], pc=(prev.branches&&prev.branches[b])||{rev:0,files:0};
+    const cc=cur.branches[b], pc=(prev.branches&&prev.branches[b])||{rev:0,files:0,paid:0};
     const cls = pc.rev>0 ? (cc.rev>pc.rev?"up":cc.rev<pc.rev?"down":"flat") : (cc.rev>0?"up":"flat");
     const prevCell = pc.rev>0 ? usd0(pc.rev) : '<span class="flat">—</span>';
     return `<tr>
       <td class="cat-name">${esc(b)}</td>
       <td>${cc.files}</td>
       <td class="${cls}">${usd0(cc.rev)}</td>
-      <td>${usd0(cc.files?cc.rev/cc.files:0)}</td>
+      <td>${cc.paid?usd0(cc.rev/cc.paid):'<span class="flat">—</span>'}</td>
       <td>${prevCell}</td>
     </tr>`;
   }).join("");
   const tot=branches.reduce((s,b)=>s+cur.branches[b].rev,0);
   const totF=branches.reduce((s,b)=>s+cur.branches[b].files,0);
+  const totPaid=branches.reduce((s,b)=>s+cur.branches[b].paid,0);
   const totPrev=branches.reduce((s,b)=>s+(((prev.branches||{})[b]||{rev:0}).rev),0);
   return `<table class="cat">
     <thead><tr><th>Office</th><th>Files</th><th>${CONFIG.year} revenue</th><th>Avg fee</th><th>${CONFIG.year-1} revenue</th></tr></thead>
     <tbody>${rows}
-      <tr class="totrow"><td>All offices</td><td>${totF}</td><td>${usd0(tot)}</td><td>${usd0(totF?tot/totF:0)}</td><td>${totPrev>0?usd0(totPrev):''}</td></tr>
+      <tr class="totrow"><td>All offices</td><td>${totF}</td><td>${usd0(tot)}</td><td>${totPaid?usd0(tot/totPaid):'—'}</td><td>${totPrev>0?usd0(totPrev):''}</td></tr>
     </tbody>
   </table>`;
 }
@@ -664,19 +842,23 @@ function leaderboardView(){
   const body=rows.map(r=>{
     const cls = r.ytdp.total>0 ? (r.ytd.total>r.ytdp.total?"up":r.ytd.total<r.ytdp.total?"down":"flat") : (r.ytd.total>0?"up":"flat");
     const prevCell = r.ytdp.total>0 ? usd0(r.ytdp.total) : '<span class="flat">—</span>';
+    const freeTag = r.ytd.zeroFiles ? `<span class="zeroflag"> (${r.ytd.zeroFiles} free)</span>` : "";
     return `<tr>
       <td class="cat-name">${esc(attorneyLabel(r.code))}</td>
       <td class="${cls}">${usd0(r.ytd.total)}</td>
       <td>${prevCell}</td>
-      <td>${r.ytd.files}</td>
+      <td>${r.ytd.files}${freeTag}</td>
       <td>${usd0(r.ytd.avgFile)}</td>
-      <td>${usd0(r.ytd.avgNew)}</td>
+      <td>${usd0(r.ytd.medFile)}</td>
     </tr>`;
   }).join("");
 
   const tYtd=rows.reduce((s,r)=>s+r.ytd.total,0);
   const tYtdp=rows.reduce((s,r)=>s+r.ytdp.total,0);
   const tF=rows.reduce((s,r)=>s+r.ytd.files,0);
+  const tPaid=rows.reduce((s,r)=>s+r.ytd.paidFiles,0);
+  const tZero=rows.reduce((s,r)=>s+r.ytd.zeroFiles,0);
+  const allFees=rows.reduce((a,r)=>a.concat(r.ytd.fees),[]);
   const totCls = tYtdp>0 ? (tYtd>tYtdp?"up":tYtd<tYtdp?"down":"flat") : "flat";
 
   // Firm-wide office rollup: merge every attorney's branch stats.
@@ -684,7 +866,10 @@ function leaderboardView(){
     const out={};
     for(const r of list){
       const src=pick(r).branches||{};
-      for(const b in src){ (out[b] ??= {rev:0,files:0}); out[b].rev+=src[b].rev; out[b].files+=src[b].files; }
+      for(const b in src){
+        (out[b] ??= {rev:0,files:0,paid:0});
+        out[b].rev+=src[b].rev; out[b].files+=src[b].files; out[b].paid+=(src[b].paid||0);
+      }
     }
     return out;
   }
@@ -694,25 +879,38 @@ function leaderboardView(){
     ? `<div class="sec-label">Revenue by office · firm-wide</div>${branchTable(firmCur, firmPrev)}`
     : "";
 
+  // Firm-wide distribution, so leadership can see the whole book's shape.
+  const firmDist = allFees.length
+    ? `<div class="sec-label">Where the firm's fees land · ${CONFIG.year} year-to-date</div>
+       ${feeDistribution({fees:allFees, total:tYtd, avgFile:tPaid?tYtd/tPaid:0,
+                          medFile:median(allFees), zeroFiles:tZero})}`
+    : "";
+
+  const zeroLine = tZero
+    ? ` ${tZero} no-charge file${tZero>1?'s':''} (refunded or pro bono) ${tZero>1?'are':'is'} counted in Files but excluded from the averages.`
+    : "";
+
   return `<div class="report leaderboard">
     ${reportHead("Leadership Summary — All Attorneys")}
     <div class="sec-label">${CONFIG.year} year-to-date · January through ${monthLabel} · ranked by revenue</div>
     <table class="cat">
       <thead><tr>
         <th>Attorney</th><th>${CONFIG.year} revenue</th><th>${CONFIG.year-1} revenue</th>
-        <th>Files closed</th><th>Avg / file</th><th>Avg new-matter</th>
+        <th>Files closed</th><th>Avg / file</th><th>Median file</th>
       </tr></thead>
       <tbody>${body}
         <tr class="totrow">
           <td>Firm total</td><td class="${totCls}">${usd0(tYtd)}</td><td>${tYtdp>0?usd0(tYtdp):''}</td>
-          <td>${tF}</td><td>${usd0(tF?tYtd/tF:0)}</td><td></td>
+          <td>${tF}</td><td>${tPaid?usd0(tYtd/tPaid):'—'}</td><td>${usd0(median(allFees))}</td>
         </tr>
       </tbody>
     </table>
+    ${firmDist}
     ${officeBlock}
     <p class="subtle" style="margin-top:12px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
     Green means ahead of last year, red means behind — the ${CONFIG.year-1} column shows the same months for comparison.
-    Pick an individual from the dropdown for their full scorecard, monthly trend, and file list.</p>
+    <b>Median</b> is the midpoint file: when it sits well below the average, a few large matters are lifting that average.${zeroLine}
+    Pick an individual from the dropdown for their full scorecard, fee distribution, and file list.</p>
     <div class="footer-note">Live from the ${CONFIG.year} Clients sheet · toggle Originating/Closing above.</div>
   </div>`;
 }
