@@ -230,6 +230,7 @@
   .erow .eatt{color:var(--muted);font-size:.74rem;font-weight:700}
   .erow .efee{text-align:right;font-weight:700;color:var(--navy);white-space:nowrap}
   .erow .efee.neg{color:var(--down)}
+  .erow .efee.zero{color:#a39c8b}
   .ecount{font-size:.75rem;color:var(--muted);margin-top:8px;text-align:right}
 
   /* Refund spotlight */
@@ -312,6 +313,12 @@
 // sinks to the bottom of attorney lists; DAD's 2025 comparison is suppressed
 // (closing-attribution methodology changed in 2026). All sections respect
 // the global click-to-filter. Source: /api/revenue-feed → "2026 Clients" tab.
+//
+// AVERAGES EXCLUDE $0 FILES. Refunded matters and pro bono work sit in the
+// sheet at $0; counting them in the denominator dragged every average down
+// and made the firm look cheaper than it prices. File COUNTS still include
+// them — the work happened, and hiding it would understate what people
+// actually carried. Same rule as reports.html, so the two pages agree.
 //
 // Also renders the month-end Financial Summary from /api/financials — the
 // bookkeeper's QuickBooks figures, stored in Postgres (never in the Google
@@ -407,6 +414,16 @@ function usdK(n){
 
 function esc(s){
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// Median of a numeric array. Shown next to the mean because a handful of large
+// matters can pull an average well above what a typical file looks like — the
+// gap between the two is itself the insight.
+function median(arr){
+  if(!arr.length) return 0;
+  const s = [...arr].sort((a,b)=>a-b);
+  const m = Math.floor(s.length/2);
+  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
 }
 
 function monthIndex(row){
@@ -614,6 +631,11 @@ function filterBar(){
   </div>`;
 }
 
+// Two parallel sets of numbers come out of here:
+//   files / total        — EVERY row with a fee cell, including $0 ones.
+//   paidFiles / total    — only rows with a real fee. Use for AVERAGES.
+// A $0 row is real work (pro bono) or reversed work (refund); either way it
+// belongs in the count but not in the denominator of an average.
 function computeStats(rows){
   const buckets = {};
   SEG_ORDER.forEach(k => buckets[k] = {revenue:0, files:0});
@@ -626,14 +648,20 @@ function computeStats(rows){
   const byBranch = {};
   const byRefSource = {};
 
-  let total = 0, files = 0, newMatterTotal = 0, newMatterFiles = 0;
+  let total = 0, files = 0, paidFiles = 0, zeroFiles = 0;
+  let newMatterTotal = 0, newMatterFiles = 0, newMatterPaidFiles = 0;
+  const fees = [];            // positive fees only, for the median
   const refundList = [];
 
   for(const row of rows){
-    const fee = num(row["Fee Billed"]);
-    if(fee === 0 && (row["Fee Billed"] === null || row["Fee Billed"] === undefined || row["Fee Billed"] === "")) continue;
+    const raw = row["Fee Billed"];
+    // A truly blank cell isn't an entry at all. A cell holding 0 IS an entry
+    // (pro bono / refunded) and gets counted, just not averaged.
+    if(raw === null || raw === undefined || raw === "") continue;
+    const fee = num(raw);
     files++;
     total += fee;
+    if(fee > 0){ paidFiles++; fees.push(fee); } else if(fee === 0){ zeroFiles++; }
 
     const seg = classify(row);
     buckets[seg].revenue += fee;
@@ -642,6 +670,7 @@ function computeStats(rows){
     if(seg === "New-Matter"){
       newMatterTotal += fee;
       newMatterFiles++;
+      if(fee > 0) newMatterPaidFiles++;
     }
 
     const mi = monthIndex(row);
@@ -690,10 +719,12 @@ function computeStats(rows){
   }
 
   return {
-    total, newMatterTotal, files, newMatterFiles,
+    total, files, paidFiles, zeroFiles, fees,
+    newMatterTotal, newMatterFiles, newMatterPaidFiles,
     buckets, byMonth,
     byAttorneyOrig, byAttorneyClos, byMatter, byCategory, byBranch, byRefSource,
     refundList,
+    medFile: median(fees),
   };
 }
 
@@ -711,7 +742,7 @@ function headlineSection(s, s25){
     <div class="stat hero">
       <div class="k">${filter ? 'Filtered revenue' : 'Total revenue'} ${CONFIG.year} YTD</div>
       <div class="v">${usd0(s.total)}</div>
-      <div class="d">${yoyLabel || `${s.files.toLocaleString()} paid entries`}</div>
+      <div class="d">${yoyLabel || `${s.files.toLocaleString()} entries`}</div>
     </div>
     <div class="stat">
       <div class="k">New-matter revenue</div>
@@ -729,9 +760,14 @@ function headlineSection(s, s25){
 function kpiSection(s){
   const monthsWithData = Math.max(1, s.byMonth.filter(v => v > 0).length);
   const monthlyPace = s.total / monthsWithData;
-  const avgPerFile = s.files > 0 ? s.total / s.files : 0;
-  const avgPerNewMatter = s.newMatterFiles > 0 ? s.newMatterTotal / s.newMatterFiles : 0;
+  // Averages divide by PAID files — no-charge work no longer drags them down.
+  const avgPerFile = s.paidFiles > 0 ? s.total / s.paidFiles : 0;
+  const avgPerNewMatter = s.newMatterPaidFiles > 0 ? s.newMatterTotal / s.newMatterPaidFiles : 0;
   const projectedAnnual = monthlyPace * 12;
+
+  const zeroNote = s.zeroFiles
+    ? `excl. ${s.zeroFiles} no-charge`
+    : `across ${s.paidFiles.toLocaleString()} billed files`;
 
   return `<div class="kpis">
     <div class="kpi"><div class="k">Monthly pace</div>
@@ -739,10 +775,10 @@ function kpiSection(s){
       <div class="d">avg across ${monthsWithData} months</div></div>
     <div class="kpi"><div class="k">Avg per new matter</div>
       <div class="v">${usd0(avgPerNewMatter)}</div>
-      <div class="d">real client work</div></div>
+      <div class="d">real client work${s.newMatterFiles > s.newMatterPaidFiles ? ` · excl. ${s.newMatterFiles - s.newMatterPaidFiles} no-charge` : ''}</div></div>
     <div class="kpi"><div class="k">Avg per entry</div>
       <div class="v">${usd0(avgPerFile)}</div>
-      <div class="d">blended</div></div>
+      <div class="d">median ${usd0(s.medFile)} · ${zeroNote}</div></div>
     <div class="kpi"><div class="k">Projected annual</div>
       <div class="v">${usdK(projectedAnnual)}</div>
       <div class="d">at current pace</div></div>
@@ -780,6 +816,10 @@ function thermoSection(s){
   </div>`;
 }
 
+// Fires on NEGATIVE fees. Note that the tracking sheet currently records a
+// refund by zeroing Fee Billed and explaining in Notes, so this banner will
+// stay silent until refunds are entered as negative amounts (or a dedicated
+// Refund Amount column exists for it to read).
 function refundSpotlight(s){
   if(!s.refundList.length) return "";
   const total = s.refundList.reduce((a,r)=>a+r.fee,0);
@@ -795,7 +835,7 @@ function refundSpotlight(s){
 }
 
 // ---------------------------------------------------------------------------
-// NEW · Month-end financial summary (QuickBooks, via /api/financials)
+// Month-end financial summary (QuickBooks, via /api/financials)
 // Shows the latest close, how each figure moved since the PREVIOUS close, and
 // a net-income trend across every month entered. Firm-wide by definition —
 // deliberately ignores the click-to-filter, since these are book figures.
@@ -1147,7 +1187,7 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit, sinkKeys){
 }
 
 // ---------------------------------------------------------------------------
-// NEW · Average fee per matter — category × attorney matrix
+// Average fee per matter — category × attorney matrix
 // ---------------------------------------------------------------------------
 
 function avgFeeMatrixSection(){
@@ -1220,7 +1260,7 @@ function avgFeeMatrixSection(){
 
   return `<div class="section">
     <h2>Average fee — category × attorney <span class="togwrap">${yearTog}${roleTog}</span></h2>
-    <p class="sh">The matter-mix decoder: what each attorney's average fee looks like inside each category. Refunds excluded. Click a category name to filter the whole dashboard. Hover any cell for total dollars.</p>
+    <p class="sh">The matter-mix decoder: what each attorney's average fee looks like inside each category. Refunds and no-charge files excluded. Click a category name to filter the whole dashboard. Hover any cell for total dollars.</p>
     <div class="matrix-scroll">
       <table class="matrix">
         <thead><tr><th>Category</th>${headCells}<th class="allcol">All</th></tr></thead>
@@ -1235,7 +1275,7 @@ function avgFeeMatrixSection(){
 }
 
 // ---------------------------------------------------------------------------
-// NEW · Revenue by office — total dollars by branch location
+// Revenue by office — total dollars by branch location
 // ---------------------------------------------------------------------------
 
 const BRANCH_PALETTE = ["#c6a04e","#3f6184","#6e8aa6","#9aae8e","#b07f5a","#8a6b9e","#5c8a8a"];
@@ -1283,7 +1323,7 @@ function officeSection(s, s25){
 }
 
 // ---------------------------------------------------------------------------
-// NEW · Referral engine — source dollars + top individual referrers
+// Referral engine — source dollars + top individual referrers
 // ---------------------------------------------------------------------------
 
 function referralSection(s, s25){
@@ -1328,7 +1368,7 @@ function referralSection(s, s25){
 }
 
 // ---------------------------------------------------------------------------
-// NEW · New vs. existing client revenue mix by month
+// New vs. existing client revenue mix by month
 // ---------------------------------------------------------------------------
 
 function clientMixSection(){
@@ -1402,21 +1442,25 @@ function recentEntriesSection(rows){
 
   const rowsHtml = entries.map(e => {
     const hay = `${e.client} ${e.matter} ${e.att} ${attorneyLabel(e.att)} ${e.date}`.toLowerCase();
+    const feeCls = e.fee < 0 ? "neg" : e.fee === 0 ? "zero" : "";
     return `<div class="erow" data-search="${esc(hay)}">
       <span class="edate">${esc(e.date || '—')}</span>
       <span class="ename" title="${esc(e.client)}">${esc(e.client)}</span>
       <span class="ematter" title="${esc(e.matter)}">${esc(e.matter)}</span>
       <span class="eatt" title="${esc(attorneyLabel(e.att))}">${esc(e.att)}</span>
-      <span class="efee ${e.fee < 0 ? 'neg' : ''}">${usd0(e.fee)}</span>
+      <span class="efee ${feeCls}">${usd0(e.fee)}</span>
     </div>`;
   }).join("");
+
+  const zeroCount = entries.filter(e => e.fee === 0).length;
+  const zeroNote = zeroCount ? ` · ${zeroCount} at no charge` : "";
 
   return `<div class="section">
     <h2>Latest entries ${filter ? '(filtered)' : `in ${CONFIG.year}`}</h2>
     <p class="sh">Newest first. Type a client, matter, or attorney to jump straight to them — scroll for more.</p>
     <input id="entrySearch" class="esearch" type="text" placeholder="Search client, matter, or attorney…" autocomplete="off" />
     <div class="elist" id="entryList">${rowsHtml || '<div style="color:var(--muted);padding:14px">No entries.</div>'}</div>
-    <div class="ecount" id="entryCount">Showing ${entries.length.toLocaleString()} entries</div>
+    <div class="ecount" id="entryCount">Showing ${entries.length.toLocaleString()} entries${zeroNote}</div>
   </div>`;
 }
 
@@ -1424,6 +1468,7 @@ function footerNote(){
   return `<div class="footer-note">
     Data pulled live from the <b>${CONFIG.year} Clients</b> sheet. Refresh to update.
     &nbsp;·&nbsp; Goal: <b>${usd0(CONFIG.yearGoal)}</b>
+    &nbsp;·&nbsp; Averages exclude no-charge files.
   </div>`;
 }
 
