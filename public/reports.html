@@ -100,7 +100,7 @@
   .barlegend .item{display:flex;align-items:center;gap:6px}
   .barlegend .sw{width:14px;height:12px;border-radius:2px}
 
-  /* ---- Fee distribution (price-point breakdown) ---- */
+  /* Fee distribution (price-point breakdown) */
   .dist{margin-top:10px}
   .distbars{display:flex;align-items:flex-end;gap:6px;height:180px;padding-bottom:4px}
   .distbars .dcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
@@ -132,9 +132,30 @@
   table.cat td.cat-name{font-weight:600;color:var(--navy)}
   table.cat tr:hover td{background:var(--parchment)}
   table.cat tr.totrow td{border-top:2px solid var(--line);font-weight:700;color:var(--navy)}
+  table.cat tr.rollup td{color:var(--muted)}
+  table.cat tr.rollup td.cat-name{color:var(--muted);font-weight:600}
   table.cat .up{color:var(--up);font-weight:700} table.cat .down{color:var(--down);font-weight:700}
   table.cat .flat{color:var(--muted)}
   table.cat .zeroflag{font-size:.68rem;color:#a39c8b;font-weight:500}
+  table.cat .rolltag{font-size:.64rem;color:#a39c8b;font-weight:500;letter-spacing:.04em}
+
+  /* Reconciliation block */
+  .recon{background:var(--parchment);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;margin-top:6px}
+  .recon .rr{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+    padding:8px 2px;border-bottom:1px dashed var(--line);font-size:.88rem}
+  .recon .rr:last-of-type{border-bottom:0}
+  .recon .rr .rl{color:var(--ink)}
+  .recon .rr .rl small{display:block;color:var(--muted);font-size:.72rem;margin-top:1px}
+  .recon .rr .rv{font-weight:700;color:var(--navy);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .recon .rr.sub .rl{padding-left:16px;color:var(--muted)}
+  .recon .rr.sub .rv{font-weight:600;color:var(--muted)}
+  .recon .rr.grand{border-top:2px solid var(--navy);border-bottom:0;margin-top:6px;padding-top:11px}
+  .recon .rr.grand .rl{font-weight:700;color:var(--navy)}
+  .recon .rr.grand .rv{font-size:1.1rem;color:var(--navy)}
+  .recon .check{margin-top:12px;font-size:.76rem;padding:9px 12px;border-radius:8px;line-height:1.5}
+  .recon .check.ok{background:#eaf3ee;color:#1f5c3d;border:1px solid #bcd9c8}
+  .recon .check.off{background:#fbeceb;color:#8a2b23;border:1px solid #e8bdb8}
 
   .leaderboard table.cat td.cat-name{cursor:default}
   .footer-note{text-align:center;font-size:.72rem;color:var(--muted);margin-top:20px}
@@ -183,7 +204,7 @@
     .bars .col .bar.prev{background:#c7cfdd !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .distbars .dcol .dbar{background:#c6a04e !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .distbars .dcol.median .dbar{background:#0f1d33 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .stat{background:#f6f1e4 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .stat,.recon{background:#f6f1e4 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
 </head>
@@ -216,23 +237,29 @@
 // and the full file ledger. Attribution toggles between originating and
 // closing attorney.
 //
-// AVERAGES EXCLUDE $0 FILES. Refunded matters and pro bono work land in the
-// sheet at $0; counting them in the denominator dragged every average down
-// and made attorneys with a few no-charge files look underpriced. File COUNTS
-// still include them — the work happened, and hiding it would understate
-// what someone actually carried.
+// EVERYTHING IS YEAR-TO-DATE. `hi` comes from ytdCutoffMonth() — the last
+// month with any 2026 data — and EVERY call to statBlock passes 0..hi for
+// both years, including the monthly chart. Earlier the chart alone pulled
+// 2025's full twelve months, which drew tall grey bars for Aug–Dec against
+// empty 2026 bars and read as a collapse that hadn't happened.
 //
-// Column contract matches pulse.html exactly (Fee Billed, Originating/Closing
-// Attorney, Matter, Category, Branch, _date/Month). "New-Matter" is the
-// honest-growth bucket via the same classify() rules. Same-period trimming
-// keeps YoY fair.
+// AVERAGES EXCLUDE $0 FILES. Refunded matters and pro bono work land in the
+// sheet at $0; counting them in the denominator dragged every average down.
+// File COUNTS still include them — the work happened.
+//
+// ADM (Admin Onboarding) appears in the leaderboard at Josh's request, since
+// excluding it made the firm total disagree with the Pulse. It's a rollup
+// rather than a person, so it sinks to the bottom of the ranking. DLF (house)
+// and APP (bulk) stay out of the ranking but are accounted for explicitly in
+// the reconciliation at the foot of the leadership view.
 //
 // Access model (server-enforced):
 //   - admins + report_access users hitting /reports see the full picker,
 //     including the leadership view and any individual.
 //   - an attorney arriving on /reports/<token> is PINNED to their own code
-//     (server sends only their rows and echoes {pinned:"CODE"}); the picker
-//     and leadership view are hidden.
+//     (server sends only their rows and echoes {pinned:"CODE"}); the picker,
+//     the leadership view, and the firm reconciliation are all hidden — a
+//     reconciliation built from one attorney's rows would be nonsense.
 // ---------------------------------------------------------------------------
 
 const CONFIG = { yearGoal: 9000000, year: 2026 };
@@ -242,9 +269,21 @@ const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"
 const ATTORNEY_NAMES = {
   "JOD":"Josh Dorcey","MAS":"Mike Scott","EDJ":"Erica Johnson","KAS":"Kara Sajdak",
   "DAD":"Doug Dodson","BWB":"Brad Butcher","BHB":"Brian Bronsther","DAC":"David Cahoone",
+  "ADM":"Admin Onboarding",
 };
-// Non-person rollup codes that must never appear as an "attorney" in reports.
-const NON_PERSON = new Set(["DLF","ADM","APP",""]);
+// Codes that are rollups rather than people. ADM is listed here so it can be
+// sunk to the bottom of the ranking, but it IS shown — unlike DLF and APP.
+const ROLLUP_CODES = new Set(["ADM"]);
+// Codes kept out of the attorney ranking entirely. They're surfaced in the
+// reconciliation instead, so no dollar goes missing.
+const EXCLUDED_CODES = new Set(["DLF","APP",""]);
+
+// Friendly names for the non-attorney credit codes, used in reconciliation.
+const OTHER_CODE_NAMES = {
+  "DLF":"House (Dorcey Law Firm)",
+  "APP":"APP (bulk billing)",
+  "":"Unassigned",
+};
 
 // Fee bands for the distribution. Tight where the deeds and small matters
 // cluster ($500 steps up to $1,500), widening as fees climb so a single
@@ -262,6 +301,10 @@ const FEE_BANDS = [
   { lo:15001, hi:25000,  label:"$15K–25K" },
   { lo:25001, hi:Infinity, label:"$25K+" },
 ];
+
+// Pooled / pass-through buckets, in display order. These never belong to an
+// attorney — they're firm money that would double-count if credited.
+const POOLED_SEGMENTS = ["APP","Registered Agent","Title Pass-through","Referral Income"];
 
 let ROWS = [];
 let ROWS_2025 = [];
@@ -290,7 +333,10 @@ function usdK(n){
 }
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function catOf(row){ return String(row["Category"]||"").trim() || "Uncategorized"; }
-function attorneyLabel(code){ const c=String(code||"").trim().toUpperCase(); return ATTORNEY_NAMES[c]||(c||"Unassigned"); }
+function attorneyLabel(code){
+  const c=String(code||"").trim().toUpperCase();
+  return ATTORNEY_NAMES[c] || OTHER_CODE_NAMES[c] || (c||"Unassigned");
+}
 
 function monthIndex(row){
   for(const c of [row["_date"], row["Month"], row["Date Scheduled"]]){
@@ -317,11 +363,12 @@ function classify(row){
 function attColOf(row){
   return String(row[role==="orig"?"Originating Attorney":"Closing Attorney"]||"").trim().toUpperCase();
 }
-// Office/branch the work was done out of. Matches Pulse's reader: reads the
-// "Branch" column, defaults to "Unassigned" when blank.
 function branchOf(row){ return String(row["Branch"]||"").trim() || "Unassigned"; }
 
 // Same-period trim: only keep 2025 months that 2026 already has data for.
+// This drives EVERY comparison on the page — headline, quarters, monthly
+// chart, categories, offices, leaderboard. One source of truth for "how far
+// into the year are we".
 function ytdCutoffMonth(){
   let max=-1;
   for(const r of ROWS){ const mi=monthIndex(r); if(mi!==null&&mi>max) max=mi; }
@@ -339,13 +386,11 @@ function median(arr){
 }
 
 // Build a per-attorney stat block for a given month-range [loMonth, hiMonth]
-// inclusive (0-based). Pass 0..5 for H1, 0..11 for full year.
+// inclusive (0-based).
 //
 // Two parallel sets of numbers come out of here:
 //   files / total      — EVERY file, including $0 ones. Use for counts.
 //   paidFiles / total  — files with a real fee. Use for AVERAGES.
-// A $0 file is real work (pro bono) or reversed work (refund); either way it
-// belongs in the count but not in the denominator of an average.
 function statBlock(rows, code, loMo, hiMo){
   let total=0, files=0, paidFiles=0, zeroFiles=0;
   let newTotal=0, newFiles=0, newPaidFiles=0;
@@ -358,8 +403,6 @@ function statBlock(rows, code, loMo, hiMo){
     const mi=monthIndex(r);
     if(mi===null||mi<loMo||mi>hiMo) continue;
     const raw=r["Fee Billed"];
-    // A truly blank cell isn't a file at all — skip it. A cell holding 0 IS a
-    // file (pro bono / refunded) and gets counted, just not averaged.
     if(raw===null||raw===undefined||raw==="") continue;
     const fee=num(raw);
     total+=fee; files++; byMonth[mi]+=fee;
@@ -381,24 +424,38 @@ function statBlock(rows, code, loMo, hiMo){
     total, files, paidFiles, zeroFiles,
     newTotal, newFiles, newPaidFiles,
     byMonth, cats, branches, fees,
-    // Averages divide by PAID files — $0 work no longer drags them down.
     avgFile: paidFiles ? total/paidFiles : 0,
     avgNew:  newPaidFiles ? newTotal/newPaidFiles : 0,
     medFile: median(fees),
   };
 }
 
-function yoyTag(cur, prev){
-  if(prev<=0) return cur>0 ? `<span class="up">new</span>` : `<span class="flat">—</span>`;
-  const pct=(cur-prev)/prev*100;
-  const cls=pct>=0.05?"up":pct<=-0.05?"down":"flat";
-  const arrow=pct>=0.05?"▲":pct<=-0.05?"▼":"▬";
-  return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+// Firm-wide totals for the reconciliation. Deliberately independent of
+// statBlock so it can't inherit any per-attorney filtering — it walks every
+// row in the window and partitions the same money two ways: by credit code,
+// and by revenue segment. Both must sum to the same grand total.
+function firmTotals(rows, loMo, hiMo){
+  let grand=0, files=0;
+  const byCode={};     // credit code -> {rev,files}
+  const bySeg={};      // segment -> {rev,files}
+  for(const r of rows){
+    const mi=monthIndex(r);
+    if(mi===null||mi<loMo||mi>hiMo) continue;
+    const raw=r["Fee Billed"];
+    if(raw===null||raw===undefined||raw==="") continue;
+    const fee=num(raw);
+    grand+=fee; files++;
+    const code=attColOf(r);
+    (byCode[code] ??= {rev:0,files:0}); byCode[code].rev+=fee; byCode[code].files++;
+    const seg=classify(r);
+    (bySeg[seg] ??= {rev:0,files:0}); bySeg[seg].rev+=fee; bySeg[seg].files++;
+  }
+  return {grand, files, byCode, bySeg};
 }
 
-// Money comparison the way Jen wants it: color the CURRENT dollar figure
-// (green if up vs last year, red if down) and show last year's actual dollars
-// beside it — no percentages to decode.
+// Money comparison: colour the CURRENT dollar figure (green if up vs last
+// year, red if down) and show last year's actual dollars beside it — no
+// percentages to decode.
 function moneyVs(cur, prev, curStr){
   const shown = curStr !== undefined ? curStr : usd0(cur);
   let cls = "flat";
@@ -406,7 +463,7 @@ function moneyVs(cur, prev, curStr){
     if(cur > prev * 1.0005) cls = "up";
     else if(cur < prev * 0.9995) cls = "down";
   } else if(cur > 0){
-    cls = "up"; // brand-new dollars where there were none last year
+    cls = "up";
   }
   const prevNote = prev > 0
     ? `<span class="vs">vs ${usdK(prev)} in ${CONFIG.year-1}</span>`
@@ -422,8 +479,7 @@ async function load(){
     // The reports feed is a SECURITY BOUNDARY. We fetch from /api/reports-feed,
     // NOT the raw /api/revenue-feed. For a report-only (pinned) attorney the
     // server returns ONLY their own rows and echoes back {pinned:"CODE"} — the
-    // client never receives another attorney's data, so no URL edit can reveal
-    // it. Admins/leadership get the full set and pinned is null.
+    // client never receives another attorney's data.
     const r=await fetch("/api/reports-feed");
     if(!r.ok) throw new Error("feed returned "+r.status);
     const j=await r.json();
@@ -443,23 +499,27 @@ async function load(){
   }
 }
 
-// Which attorney codes actually appear (as orig or clos), person-only.
+// Which credit codes actually appear. Rollups (ADM) are included and sorted
+// last; DLF/APP are excluded here and handled in the reconciliation.
 function attorneysPresent(){
   const set=new Set();
   for(const r of ROWS){
     for(const col of ["Originating Attorney","Closing Attorney"]){
       const c=String(r[col]||"").trim().toUpperCase();
-      if(c && !NON_PERSON.has(c) && ATTORNEY_NAMES[c]) set.add(c);
+      if(c && !EXCLUDED_CODES.has(c) && ATTORNEY_NAMES[c]) set.add(c);
     }
   }
-  return [...set].sort((a,b)=>attorneyLabel(a).localeCompare(attorneyLabel(b)));
+  const list=[...set];
+  const people=list.filter(c=>!ROLLUP_CODES.has(c)).sort((a,b)=>attorneyLabel(a).localeCompare(attorneyLabel(b)));
+  const rollups=list.filter(c=>ROLLUP_CODES.has(c)).sort((a,b)=>attorneyLabel(a).localeCompare(attorneyLabel(b)));
+  return [...people, ...rollups];
 }
 
 function render(){
   const cut = ytdCutoffMonth();
   const monthLabel = MONTH_NAMES[cut<0?11:cut];
   document.getElementById("periodLabel").textContent =
-    `${CONFIG.year} year-to-date · through ${monthLabel} · ${role==="orig"?"Originating":"Closing"} attorney`;
+    `${CONFIG.year} year-to-date · January through ${monthLabel} · ${role==="orig"?"Originating":"Closing"} attorney`;
 
   document.getElementById("controls").innerHTML = controlsBar();
 
@@ -521,14 +581,17 @@ function individualView(code){
   const avg = moneyVs(cur.avgFile, prev.avgFile);
   const filesCls = cur.files > prev.files ? "up" : cur.files < prev.files ? "down" : "flat";
 
-  // Footnote on the average card when $0 files exist, so nobody wonders why
-  // the average doesn't match total ÷ files.
   const zeroNote = cur.zeroFiles
     ? ` · excludes ${cur.zeroFiles} no-charge file${cur.zeroFiles>1?'s':''}`
     : "";
 
+  const rollupNote = ROLLUP_CODES.has(code)
+    ? `<p class="subtle" style="margin-bottom:14px">${esc(attorneyLabel(code))} is a rollup code rather than an individual — these are files credited to onboarding rather than to a named attorney.</p>`
+    : "";
+
   return `<div class="report">
     ${reportHead(attorneyLabel(code))}
+    ${rollupNote}
 
     <div class="sec-label">Year-to-date · January through ${monthLabel} ${CONFIG.year}</div>
     <div class="statgrid">
@@ -566,12 +629,12 @@ function individualView(code){
       }).join("")}
     </div>
 
-    <div class="sec-label">Monthly revenue · ${CONFIG.year} vs ${CONFIG.year-1}</div>
+    <div class="sec-label">Monthly revenue · ${CONFIG.year} vs ${CONFIG.year-1} · through ${monthLabel}</div>
     <div class="barlegend">
       <div class="item"><span class="sw" style="background:#c7cfdd"></span>${CONFIG.year-1}</div>
       <div class="item"><span class="sw" style="background:var(--gold)"></span>${CONFIG.year}</div>
     </div>
-    ${monthlyBars(cur.byMonth, statBlock(ROWS_2025,code,0,11).byMonth)}
+    ${monthlyBars(cur.byMonth, prev.byMonth, hi)}
 
     <div class="sec-label">Where your fees land · ${CONFIG.year} year-to-date</div>
     ${feeDistribution(cur)}
@@ -588,7 +651,7 @@ function individualView(code){
 
     <div class="footer-note">
       Credit shown by <b>${role==="orig"?"originating":"closing"} attorney</b>.
-      Averages exclude no-charge files. ${CONFIG.year-1} figures cover the same months (January–${monthLabel}) for a fair comparison. Live from the ${CONFIG.year} Clients sheet.
+      Averages exclude no-charge files. Every figure covers January–${monthLabel} in both years, so the comparison is like-for-like. Live from the ${CONFIG.year} Clients sheet.
     </div>
   </div>`;
 }
@@ -603,7 +666,6 @@ function feeDistribution(s){
     return `<p class="subtle">No billed files in this period.</p>`;
   }
 
-  // Bucket the fees.
   const buckets = FEE_BANDS.map(b => ({...b, n:0, sum:0}));
   for(const f of s.fees){
     const b = buckets.find(x => f >= x.lo && f <= x.hi);
@@ -636,8 +698,6 @@ function feeDistribution(s){
     `<div class="dl">${esc(b.label)}<span class="damt">${b.sum>0?usdK(b.sum):"—"}</span></div>`
   ).join("");
 
-  // The takeaway line. Which band holds the most files, and what share of
-  // revenue does it actually produce?
   const busiest = [...shown].sort((a,b)=>b.n-a.n)[0];
   const richest = [...shown].sort((a,b)=>b.sum-a.sum)[0];
   let insight = "";
@@ -673,8 +733,7 @@ function feeDistribution(s){
 }
 
 // The receipt: every file crediting `code` in [loMo,hiMo], newest first, with
-// an instant client-side search. Columns: date · client · type of matter ·
-// fee. (No attorney column — a solo report is all one attorney anyway.)
+// an instant client-side search.
 function clientLedger(code, loMo, hiMo){
   const items=[];
   for(const r of ROWS){
@@ -695,8 +754,6 @@ function clientLedger(code, loMo, hiMo){
   if(!items.length) return `<p class="subtle">No files in this period.</p>`;
 
   const rowsHtml=items.map(e=>{
-    // Prefer the readable Category; fall back to the Matter text if Category
-    // is blank, so the column is never empty.
     const type = e.cat && e.cat !== "Uncategorized" ? e.cat : (e.matter || "—");
     const hay=`${e.client} ${type} ${e.matter} ${e.date}`.toLowerCase();
     const feeCls = e.fee < 0 ? "neg" : e.fee === 0 ? "zero" : "";
@@ -744,14 +801,20 @@ function reportHead(who){
   </div>`;
 }
 
-function monthlyBars(curArr, prevArr){
-  const maxV=Math.max(1,...curArr,...prevArr);
-  const cols=MONTH_NAMES.map((nm,i)=>{
-    const cur=curArr[i]||0, prev=prevArr[i]||0;
-    const ch=(cur/maxV)*130, ph=(prev/maxV)*130;
-    const yoy = prev>0 ? ` (${cur>=prev?'+':''}${((cur-prev)/prev*100).toFixed(0)}%)` : '';
+// Monthly bars, TRUNCATED AT THE YTD CUTOFF. Drawing all twelve months meant
+// 2025 showed tall bars for Aug–Dec against nothing in 2026 — which looked
+// like a collapse rather than a year still in progress.
+function monthlyBars(curArr, prevArr, hiMo){
+  const months = MONTH_NAMES.slice(0, hiMo+1);
+  const cur = curArr.slice(0, hiMo+1);
+  const prev = prevArr.slice(0, hiMo+1);
+  const maxV=Math.max(1,...cur,...prev);
+  const cols=months.map((nm,i)=>{
+    const c=cur[i]||0, p=prev[i]||0;
+    const ch=(c/maxV)*130, ph=(p/maxV)*130;
+    const yoy = p>0 ? ` (${c>=p?'+':''}${((c-p)/p*100).toFixed(0)}%)` : '';
     return `<div class="col">
-      <span class="tip">${nm} · ${CONFIG.year}: ${usdK(cur)} · ${CONFIG.year-1}: ${usdK(prev)}${yoy}</span>
+      <span class="tip">${nm} · ${CONFIG.year}: ${usdK(c)} · ${CONFIG.year-1}: ${usdK(p)}${yoy}</span>
       <div class="pair">
         <div class="bar prev" style="height:${ph}px"></div>
         <div class="bar cur" style="height:${ch}px"></div>
@@ -759,7 +822,10 @@ function monthlyBars(curArr, prevArr){
       <div class="lbl">${nm}</div>
     </div>`;
   }).join("");
-  return `<div class="bars">${cols}</div>`;
+  const note = hiMo < 11
+    ? `<p class="subtle" style="text-align:right;margin-top:-14px">Both years shown January–${MONTH_NAMES[hiMo]} — the year isn't over yet.</p>`
+    : "";
+  return `<div class="bars">${cols}</div>${note}`;
 }
 
 function categoryTable(cur, prev){
@@ -767,7 +833,6 @@ function categoryTable(cur, prev){
   if(!cats.length) return `<p class="subtle">No files in this period.</p>`;
   const rows=cats.map(c=>{
     const cc=cur.cats[c], pc=prev.cats[c]||{rev:0,files:0,paid:0};
-    // Average over PAID files only, same rule as everywhere else.
     const avg=cc.paid?cc.rev/cc.paid:0;
     const freeCount = cc.files - cc.paid;
     const freeTag = freeCount ? `<span class="zeroflag"> (${freeCount} free)</span>` : "";
@@ -797,7 +862,6 @@ function categoryTable(cur, prev){
 function branchTable(cur, prev){
   const branches=Object.keys(cur.branches).sort((a,b)=>cur.branches[b].rev-cur.branches[a].rev);
   if(!branches.length) return `<p class="subtle">No office data in this period.</p>`;
-  // If everything's in one office, a table is overkill — say it in a line.
   if(branches.length===1){
     const b=branches[0], cc=cur.branches[b];
     return `<p class="subtle">All ${cc.files} file${cc.files>1?'s':''} (${usd0(cc.rev)}) came out of <b>${esc(b)}</b>.</p>`;
@@ -836,15 +900,22 @@ function leaderboardView(){
   const rows=codes.map(code=>{
     const ytd=statBlock(ROWS,code,0,hi);
     const ytdp=statBlock(ROWS_2025,code,0,hi); // same span last year
-    return {code, ytd, ytdp};
-  }).sort((a,b)=>b.ytd.total-a.ytd.total);
+    return {code, ytd, ytdp, isRollup: ROLLUP_CODES.has(code)};
+  });
 
-  const body=rows.map(r=>{
+  // People first by revenue, rollups (ADM) last — it isn't a person and
+  // shouldn't sort into the middle of an attorney ranking.
+  const people = rows.filter(r=>!r.isRollup).sort((a,b)=>b.ytd.total-a.ytd.total);
+  const rollups = rows.filter(r=>r.isRollup).sort((a,b)=>b.ytd.total-a.ytd.total);
+  const ordered = [...people, ...rollups];
+
+  const body=ordered.map(r=>{
     const cls = r.ytdp.total>0 ? (r.ytd.total>r.ytdp.total?"up":r.ytd.total<r.ytdp.total?"down":"flat") : (r.ytd.total>0?"up":"flat");
     const prevCell = r.ytdp.total>0 ? usd0(r.ytdp.total) : '<span class="flat">—</span>';
     const freeTag = r.ytd.zeroFiles ? `<span class="zeroflag"> (${r.ytd.zeroFiles} free)</span>` : "";
-    return `<tr>
-      <td class="cat-name">${esc(attorneyLabel(r.code))}</td>
+    const rollTag = r.isRollup ? `<span class="rolltag"> · rollup</span>` : "";
+    return `<tr class="${r.isRollup?'rollup':''}">
+      <td class="cat-name">${esc(attorneyLabel(r.code))}${rollTag}</td>
       <td class="${cls}">${usd0(r.ytd.total)}</td>
       <td>${prevCell}</td>
       <td>${r.ytd.files}${freeTag}</td>
@@ -853,12 +924,12 @@ function leaderboardView(){
     </tr>`;
   }).join("");
 
-  const tYtd=rows.reduce((s,r)=>s+r.ytd.total,0);
-  const tYtdp=rows.reduce((s,r)=>s+r.ytdp.total,0);
-  const tF=rows.reduce((s,r)=>s+r.ytd.files,0);
-  const tPaid=rows.reduce((s,r)=>s+r.ytd.paidFiles,0);
-  const tZero=rows.reduce((s,r)=>s+r.ytd.zeroFiles,0);
-  const allFees=rows.reduce((a,r)=>a.concat(r.ytd.fees),[]);
+  const tYtd=ordered.reduce((s,r)=>s+r.ytd.total,0);
+  const tYtdp=ordered.reduce((s,r)=>s+r.ytdp.total,0);
+  const tF=ordered.reduce((s,r)=>s+r.ytd.files,0);
+  const tPaid=ordered.reduce((s,r)=>s+r.ytd.paidFiles,0);
+  const tZero=ordered.reduce((s,r)=>s+r.ytd.zeroFiles,0);
+  const allFees=ordered.reduce((a,r)=>a.concat(r.ytd.fees),[]);
   const totCls = tYtdp>0 ? (tYtd>tYtdp?"up":tYtd<tYtdp?"down":"flat") : "flat";
 
   // Firm-wide office rollup: merge every attorney's branch stats.
@@ -873,13 +944,12 @@ function leaderboardView(){
     }
     return out;
   }
-  const firmCur={branches:mergeBranches(rows,r=>r.ytd)};
-  const firmPrev={branches:mergeBranches(rows,r=>r.ytdp)};
+  const firmCur={branches:mergeBranches(ordered,r=>r.ytd)};
+  const firmPrev={branches:mergeBranches(ordered,r=>r.ytdp)};
   const officeBlock = Object.keys(firmCur.branches).length
     ? `<div class="sec-label">Revenue by office · firm-wide</div>${branchTable(firmCur, firmPrev)}`
     : "";
 
-  // Firm-wide distribution, so leadership can see the whole book's shape.
   const firmDist = allFees.length
     ? `<div class="sec-label">Where the firm's fees land · ${CONFIG.year} year-to-date</div>
        ${feeDistribution({fees:allFees, total:tYtd, avgFile:tPaid?tYtd/tPaid:0,
@@ -900,19 +970,96 @@ function leaderboardView(){
       </tr></thead>
       <tbody>${body}
         <tr class="totrow">
-          <td>Firm total</td><td class="${totCls}">${usd0(tYtd)}</td><td>${tYtdp>0?usd0(tYtdp):''}</td>
+          <td>Attorney-credited</td><td class="${totCls}">${usd0(tYtd)}</td><td>${tYtdp>0?usd0(tYtdp):''}</td>
           <td>${tF}</td><td>${tPaid?usd0(tYtd/tPaid):'—'}</td><td>${usd0(median(allFees))}</td>
         </tr>
       </tbody>
     </table>
-    ${firmDist}
-    ${officeBlock}
-    <p class="subtle" style="margin-top:12px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
+    <p class="subtle" style="margin-top:10px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
     Green means ahead of last year, red means behind — the ${CONFIG.year-1} column shows the same months for comparison.
     <b>Median</b> is the midpoint file: when it sits well below the average, a few large matters are lifting that average.${zeroLine}
     Pick an individual from the dropdown for their full scorecard, fee distribution, and file list.</p>
-    <div class="footer-note">Live from the ${CONFIG.year} Clients sheet · toggle Originating/Closing above.</div>
+
+    ${reconciliation(hi, tYtd, monthLabel)}
+    ${firmDist}
+    ${officeBlock}
+    <div class="footer-note">Live from the ${CONFIG.year} Clients sheet · toggle Originating/Closing above ·
+    every figure covers January–${monthLabel} ${CONFIG.year}.</div>
   </div>`;
+}
+
+// ---- RECONCILIATION -------------------------------------------------------
+// Why the attorney table doesn't equal the Pulse's total revenue, stated in
+// dollars rather than left as a mystery. Two partitions of the same money:
+// by who gets credit, and by what kind of revenue it is. Both must land on
+// the same grand total, and the page says so out loud.
+function reconciliation(hi, attorneyCredited, monthLabel){
+  const f = firmTotals(ROWS, 0, hi);
+
+  // Credit codes that aren't in the attorney table.
+  const otherCodes = Object.keys(f.byCode)
+    .filter(c => EXCLUDED_CODES.has(c))
+    .sort((a,b) => f.byCode[b].rev - f.byCode[a].rev);
+  const otherTotal = otherCodes.reduce((s,c)=>s+f.byCode[c].rev, 0);
+
+  const otherRows = otherCodes.map(c => `
+    <div class="rr sub">
+      <span class="rl">${esc(attorneyLabel(c))}<small>${f.byCode[c].files} file${f.byCode[c].files>1?'s':''} — not credited to an individual</small></span>
+      <span class="rv">${usd0(f.byCode[c].rev)}</span>
+    </div>`).join("");
+
+  // Segment view of the same money.
+  const newMatter = f.bySeg["New-Matter"] ? f.bySeg["New-Matter"].rev : 0;
+  const pooledRows = POOLED_SEGMENTS
+    .filter(s => f.bySeg[s] && f.bySeg[s].rev !== 0)
+    .map(s => `
+      <div class="rr sub">
+        <span class="rl">${esc(s)}<small>${f.bySeg[s].files} entr${f.bySeg[s].files>1?'ies':'y'}</small></span>
+        <span class="rv">${usd0(f.bySeg[s].rev)}</span>
+      </div>`).join("");
+  const pooledTotal = POOLED_SEGMENTS.reduce((s,k)=> s + (f.bySeg[k] ? f.bySeg[k].rev : 0), 0);
+
+  // Does the attorney table plus the excluded codes actually equal the total?
+  const sum = attorneyCredited + otherTotal;
+  const diff = f.grand - sum;
+  const balanced = Math.abs(diff) < 1;
+
+  const checkLine = balanced
+    ? `<div class="check ok">✓ Balances. Attorney-credited revenue plus the codes above equals <b>${usd0(f.grand)}</b> — the same total the Pulse reports for January–${esc(monthLabel)}.</div>`
+    : `<div class="check off">⚠ Off by ${usd0(Math.abs(diff))}. Some rows carry a credit code that isn't in either group above — most often a blank or misspelled attorney code on the sheet. Worth a look at the ${CONFIG.year} Clients tab.</div>`;
+
+  return `
+    <div class="sec-label">Reconciliation · how this adds up to firm revenue</div>
+    <p class="subtle" style="margin-bottom:10px">The attorney table above deliberately leaves out house and bulk-billed money, so it won't match the Pulse on its own. Here's the rest of it.</p>
+    <div class="recon">
+      <div class="rr">
+        <span class="rl">Attorney-credited revenue<small>everyone in the table above, including rollups</small></span>
+        <span class="rv">${usd0(attorneyCredited)}</span>
+      </div>
+      ${otherRows}
+      <div class="rr grand">
+        <span class="rl">Firm total · January–${esc(monthLabel)} ${CONFIG.year}</span>
+        <span class="rv">${usd0(f.grand)}</span>
+      </div>
+      ${checkLine}
+    </div>
+
+    <p class="subtle" style="margin:16px 0 8px">The same money, split by what kind of revenue it is rather than who closed it:</p>
+    <div class="recon">
+      <div class="rr">
+        <span class="rl">New-matter revenue<small>real client work — the honest growth number</small></span>
+        <span class="rv">${usd0(newMatter)}</span>
+      </div>
+      <div class="rr">
+        <span class="rl">Pooled &amp; pass-through<small>firm money that isn't attributable to one attorney</small></span>
+        <span class="rv">${usd0(pooledTotal)}</span>
+      </div>
+      ${pooledRows}
+      <div class="rr grand">
+        <span class="rl">Firm total · January–${esc(monthLabel)} ${CONFIG.year}</span>
+        <span class="rv">${usd0(f.grand)}</span>
+      </div>
+    </div>`;
 }
 
 // ---- interactions ---------------------------------------------------------
