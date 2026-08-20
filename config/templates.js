@@ -167,6 +167,23 @@ export const TEMPLATES = {
     ],
   },
 
+  // Business Planning — JT McGee. Added July 2026. Monday-only reporter:
+  // all fields are previous-week counts, so Friday is intentionally empty.
+  op_bp_jtm: {
+    label: "Business Planning — JT McGee",
+    family: "C",
+    monday: [
+      n("llcs", "LLCs (last week)"),
+      n("bps", "BPs (last week)"),
+      n("mas", "M&As (last week)"),
+      n("sent_for_signature", "Sent for signature"),
+      n("signed", "Signed"),
+      n("final_payment", "Final payment received"),
+      n("special_requests", "Special request projects"),
+    ],
+    friday: [],
+  },
+
   // Drafting — VERIFIED.
   op_drafting: {
     label: "Drafting",
