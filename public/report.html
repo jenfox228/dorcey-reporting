@@ -298,10 +298,10 @@ function render(){
   $("#statusNote").textContent = edited ? "Editing this week's entry" : "Enter this week's numbers";
   const host = $("#fields");
   host.innerHTML = `<div class="card">${fields.map(f=>row(f, vals[f.key])).join("")}</div>`;
-  host.querySelectorAll(".stepper button").forEach(b=>{
-    b.onclick=()=>{ const inp=document.getElementById("f_"+b.dataset.k);
-      inp.value=Math.max(0,(parseInt(inp.value||0,10)+(b.dataset.d==="+"?1:-1))); };
-  });
+  // NOTE: steppers are wired ONCE via the delegated document-level click
+  // handler below (it services both current-week "f_" and past-weeks "p_"
+  // fields). Do NOT also attach per-button onclick handlers here — doing
+  // both makes every click count twice (the +2 bug).
 }
 
 function row(f, v, idPrefix){
@@ -383,7 +383,8 @@ async function loadPast(){
   }catch(e){ /* ignore — past-weeks is optional */ }
 }
 
-// Stepper handler also services past-weeks fields (matches data-pre prefix).
+// THE stepper handler — one delegated listener services every +/- button on
+// the page (current-week "f_" fields and past-weeks "p_" fields alike).
 document.addEventListener("click",(e)=>{
   const b = e.target.closest(".stepper button");
   if(!b) return;
