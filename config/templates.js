@@ -169,17 +169,19 @@ export const TEMPLATES = {
 
   // Business Planning — JT McGee. Added July 2026. Monday-only reporter:
   // all fields are previous-week counts, so Friday is intentionally empty.
+  // Labels updated July 2026 (EA = Engagement Agreement); keys unchanged so
+  // previously submitted data stays attached.
   op_bp_jtm: {
     label: "Business Planning — JT McGee",
     family: "C",
     monday: [
-      n("llcs", "LLCs (last week)"),
-      n("bps", "BPs (last week)"),
-      n("mas", "M&As (last week)"),
-      n("sent_for_signature", "Sent for signature"),
-      n("signed", "Signed"),
-      n("final_payment", "Final payment received"),
-      n("special_requests", "Special request projects"),
+      n("bps", "# of BP EA's sent out (last week)"),
+      n("mas", "# of M&A EA's sent out (last week)"),
+      n("llcs", "# of LLCs created (last week)"),
+      n("sent_for_signature", "# of DocuSign packages sent (last week)"),
+      n("signed", "# of DocuSign packages signed (last week)"),
+      n("final_payment", "# of closed BP/MA matters (last week)"),
+      n("special_requests", "# of special request projects completed"),
     ],
     friday: [],
   },
@@ -433,5 +435,5 @@ export const TEMPLATES = {
 export function fieldsFor(templateKey, periodType) {
   const tpl = TEMPLATES[templateKey];
   if (!tpl) return [];
-  return periodType === "M" ? tpl.monday : tpl.friday;
+  return periodType === "F" ? tpl.friday : tpl.monday;
 }
