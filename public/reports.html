@@ -254,10 +254,12 @@
 // ladder, so the table sorts by complexity rather than by revenue — the point
 // is watching the fee climb as you read down.
 //
-// ADM (Admin Onboarding) appears in the leaderboard at Josh's request, since
-// excluding it made the firm total disagree with the Pulse. It's a rollup
-// rather than a person, so it sinks to the bottom. DLF (house) and APP (bulk)
-// stay out of the ranking but are accounted for in the reconciliation.
+// ADM (Admin Onboarding) and DLF (House) appear in the leaderboard as
+// rollups — not people, so they sink below the named attorneys. House was
+// added July 2026 so the year-over-year story is visible in one table:
+// house-coded origination is up while individual credit is down, i.e. the
+// credit moved, the revenue didn't. APP (bulk) and blank codes stay out of
+// the ranking but are accounted for in the reconciliation.
 //
 // Access model (server-enforced):
 //   - admins + report_access users hitting /reports see the full picker.
@@ -275,12 +277,12 @@ const ATTORNEY_NAMES = {
   "JOD":"Josh Dorcey","MAS":"Mike Scott","EDJ":"Erica Johnson","KAS":"Kara Sajdak",
   "DAD":"Doug Dodson","BWB":"Brad Butcher","BHB":"Brian Bronsther","DAC":"David Cahoone",
   "ADM":"Admin Onboarding",
+  "DLF":"House (Dorcey Law Firm)",
 };
-const ROLLUP_CODES = new Set(["ADM"]);
-const EXCLUDED_CODES = new Set(["DLF","APP",""]);
+const ROLLUP_CODES = new Set(["ADM","DLF"]);
+const EXCLUDED_CODES = new Set(["APP",""]);
 
 const OTHER_CODE_NAMES = {
-  "DLF":"House (Dorcey Law Firm)",
   "APP":"APP (bulk billing)",
   "":"Unassigned",
 };
@@ -615,8 +617,12 @@ function individualView(code, cut){
     ? ` · excludes ${cur.zeroFiles} no-charge file${cur.zeroFiles>1?'s':''}`
     : "";
 
+  const ROLLUP_NOTES = {
+    "ADM": `${esc(attorneyLabel(code))} is a rollup code rather than an individual — these are files credited to onboarding rather than to a named attorney.`,
+    "DLF": `${esc(attorneyLabel(code))} is a rollup rather than an individual — matters coded to the firm itself. When this line runs ahead of last year while individual lines run behind, origination credit moved to house coding; the revenue didn't leave.`,
+  };
   const rollupNote = ROLLUP_CODES.has(code)
-    ? `<p class="subtle" style="margin-bottom:14px">${esc(attorneyLabel(code))} is a rollup code rather than an individual — these are files credited to onboarding rather than to a named attorney.</p>`
+    ? `<p class="subtle" style="margin-bottom:14px">${ROLLUP_NOTES[code] || `${esc(attorneyLabel(code))} is a rollup code rather than an individual.`}</p>`
     : "";
 
   return `<div class="report">
@@ -1018,7 +1024,7 @@ function leaderboardView(cut){
       </tr></thead>
       <tbody>${body}
         <tr class="totrow">
-          <td>Attorney-credited</td><td class="${totCls}">${usd0(tYtd)}</td><td>${tYtdp>0?usd0(tYtdp):''}</td>
+          <td>Total — attorneys + rollups</td><td class="${totCls}">${usd0(tYtd)}</td><td>${tYtdp>0?usd0(tYtdp):''}</td>
           <td>${tF}</td><td>${tPaid?usd0(tYtd/tPaid):'—'}</td><td>${usd0(median(allFees))}</td>
         </tr>
       </tbody>
@@ -1026,6 +1032,7 @@ function leaderboardView(cut){
     <p class="subtle" style="margin-top:10px">Credit by <b>${role==="orig"?"originating":"closing"} attorney</b>.
     Green means ahead of last year, red means behind — the ${CONFIG.year-1} column covers ${esc(period)} too, matched to the day.
     <b>Median</b> is the midpoint file: when it sits well below the average, a few large matters are lifting that average.${zeroLine}
+    <b>House (Dorcey Law Firm)</b> sits at the bottom as a rollup: matters coded to the firm rather than an individual. When the house line runs well ahead of last year while individual lines run behind, origination credit has shifted to house coding — the revenue is still here, it's just spread out more.
     Pick an individual from the dropdown for their full scorecard, fee distribution, and file list.</p>
 
     ${reconciliation(cut, tYtd, period)}
@@ -1072,10 +1079,10 @@ function reconciliation(cut, attorneyCredited, period){
 
   return `
     <div class="sec-label">Reconciliation · how this adds up to firm revenue</div>
-    <p class="subtle" style="margin-bottom:10px">The attorney table above deliberately leaves out house and bulk-billed money, so it won't match the Pulse on its own. Here's the rest of it.</p>
+    <p class="subtle" style="margin-bottom:10px">The table above now includes house-coded money; what's left out is bulk billing and anything with a blank code. Here's how it all adds up.</p>
     <div class="recon">
       <div class="rr">
-        <span class="rl">Attorney-credited revenue<small>everyone in the table above, including rollups</small></span>
+        <span class="rl">Table revenue — attorneys + rollups<small>everyone in the table above, including House and Admin Onboarding</small></span>
         <span class="rv">${usd0(attorneyCredited)}</span>
       </div>
       ${otherRows}
