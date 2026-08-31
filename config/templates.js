@@ -24,7 +24,8 @@ export const TEMPLATES = {
   // July 2026: Revenue removed from Friday (case managers submit these and
   // don't have revenue data — Pulse covers revenue from the source sheet).
   // APP + Review appointments added to Monday to track maintenance-work
-  // calendar load vs. rainmaking time.
+  // calendar load vs. rainmaking time. Mail outs added to Monday for the
+  // case managers' weekly mailing count.
   attorney_ep: {
     label: "Estate Planning Attorney",
     family: "A",
@@ -38,6 +39,7 @@ export const TEMPLATES = {
       n("exe", "Executions (EXE)"),
       n("app_appts", "APP Appointments"),
       n("review_appts", "Review Appointments"),
+      n("mail_outs", "Mail outs this week"),
       n("seminars", "Seminars / speaking"),
       n("coaching", "Coaching sessions"),
       n("breakfast_lunch", "Breakfast / lunch meetings"),
@@ -182,6 +184,23 @@ export const TEMPLATES = {
       n("signed", "# of DocuSign packages signed (last week)"),
       n("final_payment", "# of closed BP/MA matters (last week)"),
       n("special_requests", "# of special request projects completed"),
+    ],
+    friday: [],
+  },
+
+  // Attorney — Joe. Added July 2026. Monday-only reporter with drafting/
+  // production metrics — separate template so these questions don't appear
+  // for the other EP attorneys. All previous-week counts; Friday empty.
+  attorney_joe: {
+    label: "Attorney — Joe",
+    family: "A",
+    monday: [
+      n("trusts_prepped", "# of Trusts prepped (last week)"),
+      n("exe_changes", "# of changes for EXE (last week)"),
+      n("files_completed", "# of files completed (last week)"),
+      n("mail_outs", "# of mail outs (last week)"),
+      n("rushes", "# of rushes (last week)"),
+      n("errors", "# of errors (last week)"),
     ],
     friday: [],
   },
@@ -435,5 +454,5 @@ export const TEMPLATES = {
 export function fieldsFor(templateKey, periodType) {
   const tpl = TEMPLATES[templateKey];
   if (!tpl) return [];
-  return periodType === "F" ? tpl.friday : tpl.monday;
+  return periodType === "M" ? tpl.monday : tpl.friday;
 }
