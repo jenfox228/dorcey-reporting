@@ -78,6 +78,20 @@
   .thermo .pace{margin-top:8px;font-size:.85rem;color:var(--muted)}
   .thermo .pace b{color:var(--navy)}
 
+  /* Year-end projection card */
+  .proj{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;
+    box-shadow:var(--shadow);margin-bottom:22px;border-top:3px solid var(--gold)}
+  .proj .prow{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
+  .proj .k{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .proj .band{font-family:"Playfair Display",serif;font-size:1.9rem;color:var(--navy);line-height:1.1;margin-top:4px}
+  .proj-delta{display:inline-flex;align-items:center;gap:6px;background:var(--parchment);
+    border:1px solid var(--line);border-radius:18px;padding:6px 12px;font-size:.78rem;font-weight:700;color:var(--muted);margin-top:6px}
+  .proj-delta.up{color:var(--up)}
+  .proj-delta.down{color:var(--down)}
+  .proj .how{font-size:.78rem;color:var(--muted);margin-top:10px;line-height:1.55}
+  .proj .how b{color:var(--navy)}
+  .proj .goalnote{font-size:.82rem;color:var(--navy);margin-top:8px;font-weight:600}
+
   /* Section chrome */
   .section{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
     padding:18px 22px;margin-bottom:22px}
@@ -91,66 +105,6 @@
     font:600 .75rem "Libre Franklin",sans-serif;color:var(--muted)}
   .togchip button[aria-selected="true"]{background:var(--navy);color:#fff}
   .togwrap{display:flex;gap:8px;flex-wrap:wrap}
-
-  /* Financial summary (QuickBooks, from /api/financials) */
-  .finsum{background:linear-gradient(150deg,#fbf8f1,#fff);border:1px solid var(--line);
-    border-left:4px solid var(--navy);border-radius:14px;box-shadow:var(--shadow);
-    padding:18px 22px;margin-bottom:22px}
-  .finsum h2{font-family:"Playfair Display",serif;color:var(--navy);margin:0 0 4px;font-size:1.15rem;
-    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .finsum .stamp{font:600 .7rem "Libre Franklin",sans-serif;color:var(--muted);
-    background:var(--parchment);border:1px solid var(--line);border-radius:20px;padding:4px 12px;
-    letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-  .finsum .sh{font:500 .78rem "Libre Franklin",sans-serif;color:var(--muted);margin:0 0 14px}
-  .fincards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
-  .fincard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
-  .fincard .k{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
-  .fincard .v{font-family:"Playfair Display",serif;font-size:1.32rem;color:var(--navy);line-height:1.1;margin-top:4px}
-  .fincard .v.up{color:var(--up)} .fincard .v.down{color:var(--down)} .fincard .v.warn{color:#8a5a12}
-  .fincard .d{font-size:.72rem;color:var(--muted);margin-top:3px}
-
-  /* Month-over-month delta chip */
-  .mom{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;
-    border-radius:20px;padding:2px 8px;margin-top:6px;white-space:nowrap}
-  .mom.up{background:#e7f1ea;color:var(--up)}
-  .mom.down{background:#f9e9eb;color:var(--down)}
-  .mom.flat{background:var(--parchment);color:var(--muted)}
-  .mom .since{font-weight:500;opacity:.75}
-
-  /* Net-income trend bars */
-  .fintrend{background:#fff;border:1px solid var(--line);border-radius:12px;
-    padding:14px 16px;margin-bottom:16px}
-  .fintrend .th{font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
-    color:var(--muted);font-weight:700;margin-bottom:2px}
-  .fintrend .ts{font-size:.74rem;color:var(--muted);margin-bottom:12px}
-  .finbars{display:flex;align-items:flex-end;gap:10px;height:120px}
-  .finbars .fb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
-    align-items:center;position:relative;height:100%}
-  .finbars .fb .col{width:100%;max-width:52px;background:var(--navy);border-radius:5px 5px 0 0;
-    min-height:3px;transition:height .5s ease-out}
-  .finbars .fb.latest .col{background:var(--gold)}
-  .finbars .fb .fl{font-size:.68rem;color:var(--muted);margin-top:7px;font-weight:600}
-  .finbars .fb .fv{font-size:.66rem;color:var(--navy);font-weight:700;margin-bottom:4px;white-space:nowrap}
-  .finbars .fb .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
-    background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:.72rem;
-    white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
-  .finbars .fb:hover .tip{opacity:1}
-
-  .finrows{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
-  .finrows .fr{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
-    padding:7px 2px;border-bottom:1px dashed var(--line);font-size:.86rem}
-  .finrows .fr:last-child{border-bottom:0}
-  .finrows .fr .lbl{color:var(--muted)}
-  .finrows .fr .val{font-weight:700;color:var(--navy);white-space:nowrap}
-  .finrows .fr .val.up{color:var(--up)} .finrows .fr .val.down{color:var(--down)} .finrows .fr .val.warn{color:#8a5a12}
-  .finrows .fr .prev{font-size:.7rem;color:var(--muted);font-weight:500;margin-left:6px}
-  .finnotes{margin-top:16px;background:var(--parchment);border:1px solid var(--line);border-radius:10px;
-    padding:13px 16px;font-size:.85rem;line-height:1.65;white-space:pre-wrap;color:var(--ink)}
-  .finnotes b{display:block;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
-    color:var(--muted);margin-bottom:6px}
-  .finempty{background:var(--parchment);border:1px dashed var(--line);border-radius:10px;
-    padding:16px;font-size:.85rem;color:var(--muted)}
-  .finempty a{color:var(--navy);font-weight:700}
 
   /* Composition strip */
   .comp{display:flex;height:36px;border-radius:10px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
@@ -189,21 +143,19 @@
     border-radius:4px 4px 0 0;overflow:hidden}
   .months .m .sbar .sseg{width:100%}
 
-  /* Ranked lists — fixed grid columns so $, %, and '25 always line up,
-     even when a row has no prior-year data. */
+  /* Ranked lists */
   .rank{margin-top:6px}
-  .rank .r{display:grid;grid-template-columns:minmax(0,1fr) 108px 48px 112px;
-    gap:10px;align-items:center;padding:7px 8px;
-    border-bottom:1px dashed var(--line);font-size:.92rem;cursor:pointer;
-    border-radius:6px;transition:background .12s}
+  .rank .r{display:flex;justify-content:space-between;align-items:center;padding:7px 4px;
+    border-bottom:1px dashed var(--line);font-size:.92rem;gap:10px;cursor:pointer;
+    border-radius:6px;padding-left:8px;padding-right:8px;transition:background .12s}
   .rank .r:last-child{border-bottom:0}
   .rank .r:hover{background:var(--parchment)}
   .rank .r.static{cursor:default}
   .rank .r.static:hover{background:transparent}
   .rank .r.active{background:var(--gold-soft);border-left:3px solid var(--gold);padding-left:5px}
-  .rank .r .lbl{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap;text-align:right}
-  .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap}
+  .rank .r .lbl{flex:1;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rank .r .v{font-weight:700;color:var(--navy);white-space:nowrap}
+  .rank .r .d{font-size:.72rem;color:var(--muted);text-align:right;min-width:50px;white-space:nowrap}
   .rank .r .files{font-size:.7rem;color:#999;margin-left:6px}
   .rank .more{font-size:.75rem;color:var(--muted);padding:8px;text-align:center}
 
@@ -230,7 +182,6 @@
   .erow .eatt{color:var(--muted);font-size:.74rem;font-weight:700}
   .erow .efee{text-align:right;font-weight:700;color:var(--navy);white-space:nowrap}
   .erow .efee.neg{color:var(--down)}
-  .erow .efee.zero{color:#a39c8b}
   .ecount{font-size:.75rem;color:var(--muted);margin-top:8px;text-align:right}
 
   /* Refund spotlight */
@@ -269,18 +220,12 @@
   @media(max-width:900px){
     .headline{grid-template-columns:1fr}
     .kpis{grid-template-columns:repeat(2,1fr)}
-    .fincards{grid-template-columns:repeat(2,1fr)}
-    .finrows{grid-template-columns:1fr}
-    .finbars{height:100px}
-    .finbars .fb .fv{display:none}
     .cols{grid-template-columns:1fr}
     .cols .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
     .cols3{grid-template-columns:1fr}
     .cols3 .col + .col{border-left:0;border-top:1px dashed var(--line);padding-left:0;padding-top:22px;margin-top:6px}
     .erow{grid-template-columns:78px 1fr 90px}
     .erow .ematter, .erow .eatt{display:none}
-    .rank .r{grid-template-columns:minmax(0,1fr) 95px 44px}
-    .rank .r .prev25{display:none}
   }
 </style>
 </head>
@@ -289,9 +234,6 @@
     <a href="/admin"><span class="ico">⚙️</span>Admin</a>
     <a href="/dashboard"><span class="ico">📊</span>Dashboard</a>
     <a href="/pulse" class="active"><span class="ico">💰</span>Pulse</a>
-    <a href="/financials"><span class="ico">🧾</span>Financials</a>
-    <a href="/app"><span class="ico">🧭</span>APP</a>
-    <a href="/reports"><span class="ico">📄</span>Reports</a>
   </nav>
   <header class="masthead">
     <div class="eyebrow">Dorcey Law Firm · Revenue Pulse</div>
@@ -308,27 +250,12 @@
 // DORCEY REVENUE PULSE — live dashboard.
 // July 2026 expansion: avg-fee matrix (category × attorney), revenue by
 // office, referral-source dollars, top referrers, new-vs-existing client
-// mix. Ranked lists show same-period 2025 dollars ('25 YTD) for fair
-// comparison, with fixed grid columns for alignment. ADM (Admin Onboarding)
-// sinks to the bottom of attorney lists; DAD's 2025 comparison is suppressed
-// (closing-attribution methodology changed in 2026). All sections respect
-// the global click-to-filter. Source: /api/revenue-feed → "2026 Clients" tab.
-//
-// AVERAGES EXCLUDE $0 FILES. Refunded matters and pro bono work sit in the
-// sheet at $0; counting them in the denominator dragged every average down
-// and made the firm look cheaper than it prices. File COUNTS still include
-// them — the work happened, and hiding it would understate what people
-// actually carried. Same rule as reports.html, so the two pages agree.
-//
-// Also renders the month-end Financial Summary from /api/financials — the
-// bookkeeper's QuickBooks figures, stored in Postgres (never in the Google
-// Sheet). That block shows the latest close, how each figure moved since the
-// previous close, and a net-income trend across every month entered. It is
-// firm-wide and deliberately ignores the dashboard filter.
+// mix. All sections respect the global click-to-filter.
+// Source: /api/revenue-feed → the "2026 Clients" tab.
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
-  yearGoal: 9000000,
+  yearGoal: 7000000,
   year: 2026,
 };
 
@@ -348,7 +275,7 @@ const MIX_COLORS = { "New":"#c6a04e", "Existing":"#3f6184", "Other":"#c7cfdd" };
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // Attorney initials -> friendly name. DLF is the firm "house" (unassigned),
-// NOT an individual attorney. ADM = Admin Onboarding (rollup, not a person).
+// NOT an individual attorney.
 const ATTORNEY_NAMES = {
   "DLF": "House (Dorcey Law Firm)",
   "JOD": "Josh Dorcey",
@@ -359,15 +286,12 @@ const ATTORNEY_NAMES = {
   "BWB": "Brad Butcher",
   "BHB": "Brian Bronsther",
   "DAC": "David Cahoone",
-  "ADM": "Admin Onboarding",
   "APP": "APP (bulk)"
 };
 
 // Client-side state
 let ROWS = [];
 let ROWS_2025 = [];
-let FIN = null;      // latest saved month from /api/financials
-let FIN_ALL = [];    // every saved month, newest first — drives the trend
 
 // UI state — persisted across renders
 let viewMode = "blended";        // "blended" = all fees, "growth" = new-matter only
@@ -416,16 +340,6 @@ function esc(s){
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-// Median of a numeric array. Shown next to the mean because a handful of large
-// matters can pull an average well above what a typical file looks like — the
-// gap between the two is itself the insight.
-function median(arr){
-  if(!arr.length) return 0;
-  const s = [...arr].sort((a,b)=>a-b);
-  const m = Math.floor(s.length/2);
-  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
-}
-
 function monthIndex(row){
   const candidates = [row["_date"], row["Month"], row["Date Scheduled"]];
   for(const c of candidates){
@@ -435,6 +349,21 @@ function monthIndex(row){
       if(m) return parseInt(m[2],10) - 1;
       const d = new Date(c);
       if(!isNaN(d)) return d.getUTCMonth();
+    }
+  }
+  return null;
+}
+
+// Parse a row's entry date to a UTC day timestamp (null if unparseable).
+function dateMs(row){
+  const candidates = [row["_date"], row["Month"], row["Date Scheduled"]];
+  for(const c of candidates){
+    if(!c) continue;
+    if(typeof c === "string"){
+      const m = c.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(m) return Date.UTC(+m[1], +m[2]-1, +m[3]);
+      const d = new Date(c);
+      if(!isNaN(d)) return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     }
   }
   return null;
@@ -510,26 +439,6 @@ function getWorkingRows25(){
   return ROWS_2025.filter(r => passesFilter(r) && passesViewMode(r));
 }
 
-// Same-period trim: keep only 2025 rows from months that 2026 already has
-// data for, so "'25 YTD" comparisons are apples-to-apples. The cutoff comes
-// from the UNFILTERED 2026 data so it stays stable under any filter.
-function ytdCutoffMonth(){
-  let max = -1;
-  for(const r of ROWS){
-    const mi = monthIndex(r);
-    if(mi !== null && mi > max) max = mi;
-  }
-  return max;
-}
-function ytd25(rows25){
-  const cutoff = ytdCutoffMonth();
-  if(cutoff < 0) return rows25;
-  return rows25.filter(r => {
-    const mi = monthIndex(r);
-    return mi !== null && mi <= cutoff;
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
@@ -552,18 +461,6 @@ async function load(){
       }
     }catch(e){ /* best-effort */ }
 
-    // Month-end financials — best effort, never blocks the dashboard.
-    try{
-      const rf = await fetch("/api/financials");
-      if(rf.ok){
-        const jf = await rf.json();
-        if(!jf.error){
-          FIN     = jf.latest  || null;
-          FIN_ALL = jf.periods || [];
-        }
-      }
-    }catch(e){ /* best-effort */ }
-
     render();
   }catch(e){
     document.getElementById("content").innerHTML =
@@ -580,8 +477,7 @@ function render(){
   const rows   = getWorkingRows();
   const rows25 = getWorkingRows25();
   const stats   = computeStats(rows);
-  const stats25 = computeStats(rows25);               // full-year 2025 (monthly trend, headline)
-  const stats25Ytd = computeStats(ytd25(rows25));     // same-period 2025 ('25 YTD tags)
+  const stats25 = computeStats(rows25);
 
   const label = filter ? filterLabel() : `${CONFIG.year} · ${ROWS.length.toLocaleString()} paid entries`;
   document.getElementById("periodLabel").textContent = label;
@@ -591,14 +487,14 @@ function render(){
     headlineSection(stats, stats25),
     kpiSection(stats),
     thermoSection(stats),
+    projectionSection(),
     refundSpotlight(stats),
-    financialSection(),
     compositionSection(),
     monthlyTrendSection(stats, stats25),
     attorneyAndMatterSection(),
     avgFeeMatrixSection(),
-    officeSection(stats, stats25Ytd),
-    referralSection(stats, stats25Ytd),
+    officeSection(stats, stats25),
+    referralSection(stats, stats25),
     clientMixSection(),
     recentEntriesSection(rows),
     footerNote(),
@@ -631,11 +527,6 @@ function filterBar(){
   </div>`;
 }
 
-// Two parallel sets of numbers come out of here:
-//   files / total        — EVERY row with a fee cell, including $0 ones.
-//   paidFiles / total    — only rows with a real fee. Use for AVERAGES.
-// A $0 row is real work (pro bono) or reversed work (refund); either way it
-// belongs in the count but not in the denominator of an average.
 function computeStats(rows){
   const buckets = {};
   SEG_ORDER.forEach(k => buckets[k] = {revenue:0, files:0});
@@ -648,20 +539,14 @@ function computeStats(rows){
   const byBranch = {};
   const byRefSource = {};
 
-  let total = 0, files = 0, paidFiles = 0, zeroFiles = 0;
-  let newMatterTotal = 0, newMatterFiles = 0, newMatterPaidFiles = 0;
-  const fees = [];            // positive fees only, for the median
+  let total = 0, files = 0, newMatterTotal = 0, newMatterFiles = 0;
   const refundList = [];
 
   for(const row of rows){
-    const raw = row["Fee Billed"];
-    // A truly blank cell isn't an entry at all. A cell holding 0 IS an entry
-    // (pro bono / refunded) and gets counted, just not averaged.
-    if(raw === null || raw === undefined || raw === "") continue;
-    const fee = num(raw);
+    const fee = num(row["Fee Billed"]);
+    if(fee === 0 && (row["Fee Billed"] === null || row["Fee Billed"] === undefined || row["Fee Billed"] === "")) continue;
     files++;
     total += fee;
-    if(fee > 0){ paidFiles++; fees.push(fee); } else if(fee === 0){ zeroFiles++; }
 
     const seg = classify(row);
     buckets[seg].revenue += fee;
@@ -670,7 +555,6 @@ function computeStats(rows){
     if(seg === "New-Matter"){
       newMatterTotal += fee;
       newMatterFiles++;
-      if(fee > 0) newMatterPaidFiles++;
     }
 
     const mi = monthIndex(row);
@@ -719,12 +603,10 @@ function computeStats(rows){
   }
 
   return {
-    total, files, paidFiles, zeroFiles, fees,
-    newMatterTotal, newMatterFiles, newMatterPaidFiles,
+    total, newMatterTotal, files, newMatterFiles,
     buckets, byMonth,
     byAttorneyOrig, byAttorneyClos, byMatter, byCategory, byBranch, byRefSource,
     refundList,
-    medFile: median(fees),
   };
 }
 
@@ -742,7 +624,7 @@ function headlineSection(s, s25){
     <div class="stat hero">
       <div class="k">${filter ? 'Filtered revenue' : 'Total revenue'} ${CONFIG.year} YTD</div>
       <div class="v">${usd0(s.total)}</div>
-      <div class="d">${yoyLabel || `${s.files.toLocaleString()} entries`}</div>
+      <div class="d">${yoyLabel || `${s.files.toLocaleString()} paid entries`}</div>
     </div>
     <div class="stat">
       <div class="k">New-matter revenue</div>
@@ -760,14 +642,9 @@ function headlineSection(s, s25){
 function kpiSection(s){
   const monthsWithData = Math.max(1, s.byMonth.filter(v => v > 0).length);
   const monthlyPace = s.total / monthsWithData;
-  // Averages divide by PAID files — no-charge work no longer drags them down.
-  const avgPerFile = s.paidFiles > 0 ? s.total / s.paidFiles : 0;
-  const avgPerNewMatter = s.newMatterPaidFiles > 0 ? s.newMatterTotal / s.newMatterPaidFiles : 0;
+  const avgPerFile = s.files > 0 ? s.total / s.files : 0;
+  const avgPerNewMatter = s.newMatterFiles > 0 ? s.newMatterTotal / s.newMatterFiles : 0;
   const projectedAnnual = monthlyPace * 12;
-
-  const zeroNote = s.zeroFiles
-    ? `excl. ${s.zeroFiles} no-charge`
-    : `across ${s.paidFiles.toLocaleString()} billed files`;
 
   return `<div class="kpis">
     <div class="kpi"><div class="k">Monthly pace</div>
@@ -775,10 +652,10 @@ function kpiSection(s){
       <div class="d">avg across ${monthsWithData} months</div></div>
     <div class="kpi"><div class="k">Avg per new matter</div>
       <div class="v">${usd0(avgPerNewMatter)}</div>
-      <div class="d">real client work${s.newMatterFiles > s.newMatterPaidFiles ? ` · excl. ${s.newMatterFiles - s.newMatterPaidFiles} no-charge` : ''}</div></div>
+      <div class="d">real client work</div></div>
     <div class="kpi"><div class="k">Avg per entry</div>
       <div class="v">${usd0(avgPerFile)}</div>
-      <div class="d">median ${usd0(s.medFile)} · ${zeroNote}</div></div>
+      <div class="d">blended</div></div>
     <div class="kpi"><div class="k">Projected annual</div>
       <div class="v">${usdK(projectedAnnual)}</div>
       <div class="d">at current pace</div></div>
@@ -816,10 +693,112 @@ function thermoSection(s){
   </div>`;
 }
 
-// Fires on NEGATIVE fees. Note that the tracking sheet currently records a
-// refund by zeroing Fee Billed and explaining in Notes, so this banner will
-// stay silent until refunds are entered as negative amounts (or a dedicated
-// Refund Amount column exists for it to read).
+// ---------------------------------------------------------------------------
+// NEW · Year-end projection — a band, not a twitchy point estimate.
+// Seasonal method: 2026 booked so far + what 2025 earned from this calendar
+// date through Dec 31 (so it knows December is big and summer is soft).
+// Straight-line method: current daily pace carried to year-end.
+// The week-over-week chip re-runs both methods on data trimmed back 7 days —
+// no stored history needed. Always firm-wide, like the goal thermometer.
+// ---------------------------------------------------------------------------
+
+function projectionSection(){
+  // Anchor on the latest dated 2026 entry, not the wall clock — a sheet that
+  // hasn't been updated in a week shouldn't quietly deflate the pace.
+  let latest = null;
+  for(const r of ROWS){
+    const t = dateMs(r);
+    if(t !== null && (latest === null || t > latest)) latest = t;
+  }
+  if(latest === null) return ""; // no dated entries — nothing to project
+
+  const dayOfYearAt = ms => {
+    const d = new Date(ms);
+    return Math.floor((ms - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000) + 1;
+  };
+
+  // Split a year's rows into booked-by-cutoff vs after-cutoff, where the
+  // cutoff is the same calendar month/day mapped into that year.
+  // Undated rows count as already booked.
+  function split(rows, year, cutMs){
+    const c = new Date(cutMs);
+    const cut = Date.UTC(year, c.getUTCMonth(), c.getUTCDate());
+    let before = 0, after = 0;
+    for(const r of rows){
+      const fee = num(r["Fee Billed"]);
+      const t = dateMs(r);
+      if(t === null || t <= cut) before += fee; else after += fee;
+    }
+    return {before, after};
+  }
+
+  function project(cutMs){
+    const y26 = split(ROWS, CONFIG.year, cutMs).before;
+    const seasonal = ROWS_2025.length ? y26 + split(ROWS_2025, CONFIG.year - 1, cutMs).after : null;
+    const doy = dayOfYearAt(cutMs);
+    const straight = doy > 0 ? (y26 / doy) * 365 : null;
+    return {seasonal, straight};
+  }
+
+  const now  = project(latest);
+  const prev = project(latest - 7 * 86400000);
+
+  const vals = [now.seasonal, now.straight].filter(v => v !== null);
+  if(!vals.length) return "";
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const band = (vals.length === 2 && Math.abs(hi - lo) >= 10000)
+    ? `${usdK(lo)} – ${usdK(hi)}` : usdK(vals[0]);
+
+  // Week-over-week movement of the seasonal method (the stable one);
+  // falls back to straight-line if there's no 2025 data.
+  const nowKey  = now.seasonal  !== null ? now.seasonal  : now.straight;
+  const prevKey = now.seasonal  !== null ? prev.seasonal : prev.straight;
+  let deltaChip = "";
+  if(nowKey !== null && prevKey !== null){
+    const delta = nowKey - prevKey;
+    if(Math.abs(delta) < 1000){
+      deltaChip = `<span class="proj-delta" title="Both methods re-run on data trimmed back 7 days">≈ unchanged vs a week ago</span>`;
+    } else {
+      const cls = delta > 0 ? "up" : "down";
+      deltaChip = `<span class="proj-delta ${cls}" title="Both methods re-run on data trimmed back 7 days">${delta > 0 ? "▲" : "▼"} ${usdK(Math.abs(delta))} vs a week ago</span>`;
+    }
+  }
+
+  const goal = CONFIG.yearGoal;
+  const goalNote = lo >= goal
+    ? `Both ends of the band clear the ${usd0(goal)} goal. ✅`
+    : hi < goal
+      ? `Both ends fall short of the ${usd0(goal)} goal — it would take a record Q4.`
+      : `The ${usd0(goal)} goal sits inside the band — Q4 decides it.`;
+
+  const d = new Date(latest);
+  const asOf = `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCDate()}`;
+
+  const seasonalTxt = now.seasonal !== null
+    ? `<b>Seasonal (${usdK(now.seasonal)}):</b> 2026 booked so far plus what 2025 earned from this calendar date through Dec 31 — it knows December is big.`
+    : `<b>Seasonal:</b> unavailable (no 2025 data loaded).`;
+  const straightTxt = now.straight !== null
+    ? `<b>Straight-line (${usdK(now.straight)}):</b> the current daily pace carried to year-end.`
+    : "";
+
+  const noteWhenFiltered = filter
+    ? `<div style="font-size:.75rem;color:var(--muted);margin-top:6px">Projection is always firm-wide — it ignores the active filter.</div>`
+    : "";
+
+  return `<div class="proj">
+    <div class="prow">
+      <div>
+        <div class="k">Year-end projection · recalculates on every load</div>
+        <div class="band">${band}</div>
+      </div>
+      ${deltaChip}
+    </div>
+    <div class="how">${seasonalTxt} &nbsp;·&nbsp; ${straightTxt} Based on entries through ${asOf}.</div>
+    <div class="goalnote">${goalNote}</div>
+    ${noteWhenFiltered}
+  </div>`;
+}
+
 function refundSpotlight(s){
   if(!s.refundList.length) return "";
   const total = s.refundList.reduce((a,r)=>a+r.fee,0);
@@ -831,185 +810,6 @@ function refundSpotlight(s){
       <b>${s.refundList.length} refund${s.refundList.length>1?'s':''} totaling ${usd0(Math.abs(total))}${filter?' (in filter)':''}</b>
       <small>Most recent: ${usd0(Math.abs(latest.fee))} · ${esc(latest.name || '—')} · ${latestDate}</small>
     </div>
-  </div>`;
-}
-
-// ---------------------------------------------------------------------------
-// Month-end financial summary (QuickBooks, via /api/financials)
-// Shows the latest close, how each figure moved since the PREVIOUS close, and
-// a net-income trend across every month entered. Firm-wide by definition —
-// deliberately ignores the click-to-filter, since these are book figures.
-// ---------------------------------------------------------------------------
-
-function finMonthName(period){
-  const [y,m] = String(period).slice(0,7).split("-").map(Number);
-  return new Date(y, m-1, 1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
-}
-function finMonthShort(period){
-  const [y,m] = String(period).slice(0,7).split("-").map(Number);
-  return MONTH_NAMES[m-1];
-}
-
-function financialSection(){
-  if(!FIN){
-    return `<div class="finsum">
-      <h2>Month-end financials</h2>
-      <p class="sh">QuickBooks figures from the monthly close — kept in the reporting database, never on the client sheet.</p>
-      <div class="finempty">No month has been entered yet. Head to <a href="/financials">Financials</a> to add one.</div>
-    </div>`;
-  }
-
-  const d = FIN.data || {};
-  // FIN_ALL arrives newest-first, so index 1 is the close before this one.
-  const prevRec = FIN_ALL.length > 1 ? FIN_ALL[1] : null;
-  const p = prevRec ? (prevRec.data || {}) : {};
-  const prevName = prevRec ? finMonthName(prevRec.period) : null;
-  const prevShort = prevRec ? finMonthShort(prevRec.period) : null;
-
-  const has  = k => d[k] !== undefined && d[k] !== null;
-  const hasP = k => p[k] !== undefined && p[k] !== null;
-
-  const money      = k => has(k) ? usdK(d[k]) : "—";
-  const signedMoney= k => has(k) ? (d[k] >= 0 ? "+" : "−") + usdK(Math.abs(d[k])) : "—";
-  const pct        = k => has(k) ? (d[k] >= 0 ? "+" : "−") + Math.abs(d[k]).toFixed(1) + "%" : "—";
-  const rawPct     = k => has(k) ? d[k].toFixed(1) + "%" : "—";
-  const dir        = k => !has(k) ? "" : (d[k] >= 0 ? "up" : "down");
-
-  // Month-over-month chip. `kind` decides how the movement is phrased:
-  //   "money" → dollar change      "points" → percentage-point change
-  // `goodDown` flips the colour for figures where shrinking is the win
-  // (e.g. money still owed to us).
-  function momChip(k, kind, goodDown){
-    if(!prevRec || !has(k) || !hasP(k)) return "";
-    const delta = d[k] - p[k];
-    if(Math.abs(delta) < 0.0001){
-      return `<div class="mom flat">no change <span class="since">since ${esc(prevShort)}</span></div>`;
-    }
-    const better = goodDown ? delta < 0 : delta > 0;
-    const arrow = delta > 0 ? "▲" : "▼";
-    const shown = kind === "points"
-      ? Math.abs(delta).toFixed(1) + " pts"
-      : usdK(Math.abs(delta));
-    return `<div class="mom ${better ? "up" : "down"}">${arrow} ${shown} <span class="since">since ${esc(prevShort)}</span></div>`;
-  }
-
-  // Inline "was X in May" tag for the detail rows.
-  function wasTag(k, kind){
-    if(!prevRec || !hasP(k)) return "";
-    const shown = kind === "pct" ? p[k].toFixed(1) + "%" : usdK(p[k]);
-    return `<span class="prev">was ${esc(shown)} in ${esc(prevShort)}</span>`;
-  }
-
-  const stamp = FIN.report_date
-    ? `Through ${finMonthName(FIN.period)} · reported ${esc(FIN.report_date)}`
-    : `Through ${finMonthName(FIN.period)}`;
-
-  const cards = `
-    <div class="fincards">
-      <div class="fincard">
-        <div class="k">Revenue vs prior year</div>
-        <div class="v ${dir('rev_delta')}">${signedMoney('rev_delta')}</div>
-        <div class="d">${pct('rev_pct')} excluding K-1</div>
-        ${momChip('rev_delta','money',false)}
-      </div>
-      <div class="fincard">
-        <div class="k">Total income incl. K-1</div>
-        <div class="v ${dir('total_delta')}">${signedMoney('total_delta')}</div>
-        <div class="d">${pct('total_pct')} with distributions</div>
-        ${momChip('total_delta','money',false)}
-      </div>
-      <div class="fincard">
-        <div class="k">Net income</div>
-        <div class="v">${money('ni')}</div>
-        <div class="d">${rawPct('ni_margin')} net margin</div>
-        ${momChip('ni','money',false)}
-      </div>
-      <div class="fincard">
-        <div class="k">Due from LaBelle &amp; Marco</div>
-        <div class="v ${has('due') && d.due > 0 ? 'warn' : ''}">${money('due')}</div>
-        <div class="d">${has('share') ? `of ${money('share')} earned` : 'outstanding transfer'}</div>
-        ${momChip('due','money',true)}
-      </div>
-    </div>`;
-
-  // Net-income trend across every saved month, oldest → newest.
-  const trendPts = [...FIN_ALL].reverse()
-    .filter(r => r.data && r.data.ni !== undefined && r.data.ni !== null)
-    .map(r => ({ period: r.period, ni: r.data.ni, margin: r.data.ni_margin }));
-
-  let trend = "";
-  if(trendPts.length >= 2){
-    const maxNi = Math.max(...trendPts.map(t => t.ni), 1);
-    const bars = trendPts.map((t, i) => {
-      const isLast = i === trendPts.length - 1;
-      const h = Math.max(3, (t.ni / maxNi) * 92);
-      const marginTip = (t.margin !== undefined && t.margin !== null)
-        ? ` · ${t.margin.toFixed(1)}% margin` : "";
-      return `<div class="fb ${isLast ? "latest" : ""}">
-        <span class="tip">${esc(finMonthName(t.period))}: ${usdK(t.ni)}${marginTip}</span>
-        <span class="fv">${usdK(t.ni)}</span>
-        <div class="col" style="height:${h}px"></div>
-        <span class="fl">${esc(finMonthShort(t.period))}</span>
-      </div>`;
-    }).join("");
-
-    const first = trendPts[0], last = trendPts[trendPts.length - 1];
-    const grew = last.ni - first.ni;
-    const marginMove = (first.margin != null && last.margin != null)
-      ? ` Margin moved from ${first.margin.toFixed(1)}% to ${last.margin.toFixed(1)}%.`
-      : "";
-
-    trend = `<div class="fintrend">
-      <div class="th">Net income by close</div>
-      <div class="ts">Cumulative year-to-date at each month-end — so the rise between bars is what that month added. ${esc(usdK(Math.abs(grew)))} ${grew >= 0 ? "added" : "lost"} between ${esc(finMonthName(first.period))} and ${esc(finMonthName(last.period))}.${esc(marginMove)}</div>
-      <div class="finbars">${bars}</div>
-    </div>`;
-  } else if(trendPts.length === 1){
-    trend = `<div class="fintrend">
-      <div class="th">Net income by close</div>
-      <div class="ts">Only one month entered so far — the trend appears once there's a second close to compare against. Back-fill earlier months on the <a href="/financials" style="color:var(--navy);font-weight:700">Financials</a> page.</div>
-    </div>`;
-  }
-
-  const rows = `
-    <div class="finrows">
-      <div>
-        <div class="fr"><span class="lbl">K-1 distributions received</span><span class="val">${money('k1')}${wasTag('k1','money')}</span></div>
-        <div class="fr"><span class="lbl">DLF share earned</span><span class="val">${money('share')}${wasTag('share','money')}</span></div>
-        <div class="fr"><span class="lbl">Growth if fully collected</span><span class="val up">${pct('full_pct')}</span></div>
-        <div class="fr"><span class="lbl">Net income vs prior year</span><span class="val ${dir('ni_yoy')}">${pct('ni_yoy')}${wasTag('ni_yoy','pct')}</span></div>
-        <div class="fr"><span class="lbl">Prior-year insurance proceeds</span><span class="val">${money('insurance')}</span></div>
-      </div>
-      <div>
-        <div class="fr"><span class="lbl">Adjusted growth (excl. insurance)</span><span class="val ${dir('ni_adj')}">${pct('ni_adj')}${wasTag('ni_adj','pct')}</span></div>
-        <div class="fr"><span class="lbl">Adjusted if K-1 fully collected</span><span class="val up">${pct('ni_full')}</span></div>
-        <div class="fr"><span class="lbl">Expected collections</span><span class="val">${money('expected')}</span></div>
-        <div class="fr"><span class="lbl">Actual QB deposits</span><span class="val">${money('qb_actual')}${wasTag('qb_actual','money')}</span></div>
-        <div class="fr"><span class="lbl">Dashboard vs QB variance</span><span class="val ${dir('variance')}">${signedMoney('variance')}${has('variance_pct') ? ` (${rawPct('variance_pct')})` : ''}</span></div>
-      </div>
-    </div>`;
-
-  const notes = (FIN.notes && FIN.notes.trim())
-    ? `<div class="finnotes"><b>Bookkeeper's notes · ${esc(finMonthName(FIN.period))}</b>${esc(FIN.notes)}</div>`
-    : "";
-
-  const compareNote = prevName
-    ? `<div style="font-size:.75rem;color:var(--muted);margin-top:10px">Movement chips and “was …” tags compare against the ${esc(prevName)} close.</div>`
-    : `<div style="font-size:.75rem;color:var(--muted);margin-top:10px">Only one close saved so far — comparisons appear once a second month is entered.</div>`;
-
-  const filterNote = filter
-    ? `<div style="font-size:.75rem;color:var(--muted);margin-top:4px">These are firm-wide book figures — the dashboard filter doesn't apply here.</div>`
-    : "";
-
-  return `<div class="finsum">
-    <h2>Month-end financials <span class="stamp">${stamp}</span></h2>
-    <p class="sh">QuickBooks close, not the sheet. The Pulse tracks signed EAs; this tracks money actually collected and what's left after expenses. <a href="/financials" style="color:var(--navy);font-weight:700">Update →</a></p>
-    ${cards}
-    ${trend}
-    ${rows}
-    ${notes}
-    ${compareNote}
-    ${filterNote}
   </div>`;
 }
 
@@ -1099,25 +899,21 @@ function attorneyAndMatterSection(){
   const rows = getWorkingRows();
   const rows25 = getWorkingRows25();
   const s = computeStats(rows);
-  const s25 = computeStats(ytd25(rows25)); // same-period 2025 for fair '25 YTD tags
+  const s25 = computeStats(rows25);
 
   // APP (bulk) already shows in the Revenue composition strip — leaving it in
   // the attorney lists would double-bill it visually. Real names only here.
-  // DAD (Doug Dodson) is dropped from the 2025 comparison maps only: the firm
-  // changed closing-attorney attribution in 2026 (Doug now gets credit solely
-  // for his own closings), so his 2025 numbers aren't comparable and would
-  // falsely read as a collapse.
-  function drop(map, keys){ const out = {...map}; keys.forEach(k => delete out[k]); return out; }
+  function noApp(map){ const out = {...map}; delete out["APP"]; return out; }
 
   return `<div class="section">
     <h2>Where the money's coming from</h2>
     <p class="sh">Click any row to filter the whole dashboard to that person, matter type, or category.</p>
     <div class="cols">
       <div class="col">
-        ${rankedList("Originating attorney", drop(s.byAttorneyOrig, ["APP"]), drop(s25.byAttorneyOrig, ["APP","DAD"]), "attorney_orig", false, undefined, ["ADM"])}
+        ${rankedList("Originating attorney", noApp(s.byAttorneyOrig), noApp(s25.byAttorneyOrig), "attorney_orig")}
       </div>
       <div class="col">
-        ${rankedList("Closing attorney", drop(s.byAttorneyClos, ["APP","DLF"]), drop(s25.byAttorneyClos, ["APP","DAD","DLF"]), "attorney_clos", false, undefined, ["ADM"])}
+        ${rankedList("Closing attorney", noApp(s.byAttorneyClos), noApp(s25.byAttorneyClos), "attorney_clos")}
       </div>
     </div>
     <div class="cols" style="margin-top:22px">
@@ -1131,7 +927,7 @@ function attorneyAndMatterSection(){
   </div>`;
 }
 
-function rankedList(title, dataMap, data25Map, kind, isRawKey, limit, sinkKeys){
+function rankedList(title, dataMap, data25Map, kind, isRawKey, limit){
   let rows = Object.entries(dataMap)
     .map(([k, v]) => ({
       key:k,
@@ -1142,17 +938,6 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit, sinkKeys){
     }))
     .sort((a,b) => b.revenue - a.revenue);
 
-  // Sink non-person rollup rows (e.g. ADM = Admin Onboarding) to the bottom
-  // so they don't break up the actual attorney rankings. Order within each
-  // group stays revenue-descending.
-  if(sinkKeys && sinkKeys.length){
-    const sunk = new Set(sinkKeys.map(k => String(k).toUpperCase()));
-    rows = [
-      ...rows.filter(r => !sunk.has(String(r.key).toUpperCase())),
-      ...rows.filter(r =>  sunk.has(String(r.key).toUpperCase())),
-    ];
-  }
-
   const total = rows.reduce((a,r)=>a+r.revenue,0);
   const has25 = rows.some(r => r.revenue25 > 0);
   const hiddenCount = limit && rows.length > limit ? rows.length - limit : 0;
@@ -1160,12 +945,10 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit, sinkKeys){
 
   const html = rows.map(r => {
     const pct = total > 0 ? (r.revenue/total*100).toFixed(1) : "0.0";
-    // Show last year's SAME-PERIOD dollars, not a percentage — so the
-    // comparison answers "am I ahead of last year's pace?" Josh does the math.
-    // The span always renders (empty if no data) so grid columns stay aligned.
+    // Show last year's dollars, not a percentage — 2026 is a partial year, so
+    // a %-change vs full-year 2025 reads as a sea of red. Josh does the math.
     const prevTag = has25 && r.revenue25 > 0 ?
-      `<span class="d prev25" title="2025, same months as current ${CONFIG.year} data">'25 YTD: ${usdK(r.revenue25)}</span>` :
-      `<span class="d prev25"></span>`;
+      `<span class="d" title="Full-year 2025 total">'25: ${usdK(r.revenue25)}</span>` : '';
     const isActive = filter && filter.kind === kind && filter.value === r.key;
     // For attorney filter kinds, we normalize the value to the UPPERCASE key.
     // For raw-key lists (matter, category, refsource), we keep it as-is.
@@ -1187,7 +970,7 @@ function rankedList(title, dataMap, data25Map, kind, isRawKey, limit, sinkKeys){
 }
 
 // ---------------------------------------------------------------------------
-// Average fee per matter — category × attorney matrix
+// NEW · Average fee per matter — category × attorney matrix
 // ---------------------------------------------------------------------------
 
 function avgFeeMatrixSection(){
@@ -1260,7 +1043,7 @@ function avgFeeMatrixSection(){
 
   return `<div class="section">
     <h2>Average fee — category × attorney <span class="togwrap">${yearTog}${roleTog}</span></h2>
-    <p class="sh">The matter-mix decoder: what each attorney's average fee looks like inside each category. Refunds and no-charge files excluded. Click a category name to filter the whole dashboard. Hover any cell for total dollars.</p>
+    <p class="sh">The matter-mix decoder: what each attorney's average fee looks like inside each category. Refunds excluded. Click a category name to filter the whole dashboard. Hover any cell for total dollars.</p>
     <div class="matrix-scroll">
       <table class="matrix">
         <thead><tr><th>Category</th>${headCells}<th class="allcol">All</th></tr></thead>
@@ -1275,7 +1058,7 @@ function avgFeeMatrixSection(){
 }
 
 // ---------------------------------------------------------------------------
-// Revenue by office — total dollars by branch location
+// NEW · Revenue by office — total dollars by branch location
 // ---------------------------------------------------------------------------
 
 const BRANCH_PALETTE = ["#c6a04e","#3f6184","#6e8aa6","#9aae8e","#b07f5a","#8a6b9e","#5c8a8a"];
@@ -1323,7 +1106,7 @@ function officeSection(s, s25){
 }
 
 // ---------------------------------------------------------------------------
-// Referral engine — source dollars + top individual referrers
+// NEW · Referral engine — source dollars + top individual referrers
 // ---------------------------------------------------------------------------
 
 function referralSection(s, s25){
@@ -1368,7 +1151,7 @@ function referralSection(s, s25){
 }
 
 // ---------------------------------------------------------------------------
-// New vs. existing client revenue mix by month
+// NEW · New vs. existing client revenue mix by month
 // ---------------------------------------------------------------------------
 
 function clientMixSection(){
@@ -1442,25 +1225,21 @@ function recentEntriesSection(rows){
 
   const rowsHtml = entries.map(e => {
     const hay = `${e.client} ${e.matter} ${e.att} ${attorneyLabel(e.att)} ${e.date}`.toLowerCase();
-    const feeCls = e.fee < 0 ? "neg" : e.fee === 0 ? "zero" : "";
     return `<div class="erow" data-search="${esc(hay)}">
       <span class="edate">${esc(e.date || '—')}</span>
       <span class="ename" title="${esc(e.client)}">${esc(e.client)}</span>
       <span class="ematter" title="${esc(e.matter)}">${esc(e.matter)}</span>
       <span class="eatt" title="${esc(attorneyLabel(e.att))}">${esc(e.att)}</span>
-      <span class="efee ${feeCls}">${usd0(e.fee)}</span>
+      <span class="efee ${e.fee < 0 ? 'neg' : ''}">${usd0(e.fee)}</span>
     </div>`;
   }).join("");
-
-  const zeroCount = entries.filter(e => e.fee === 0).length;
-  const zeroNote = zeroCount ? ` · ${zeroCount} at no charge` : "";
 
   return `<div class="section">
     <h2>Latest entries ${filter ? '(filtered)' : `in ${CONFIG.year}`}</h2>
     <p class="sh">Newest first. Type a client, matter, or attorney to jump straight to them — scroll for more.</p>
     <input id="entrySearch" class="esearch" type="text" placeholder="Search client, matter, or attorney…" autocomplete="off" />
     <div class="elist" id="entryList">${rowsHtml || '<div style="color:var(--muted);padding:14px">No entries.</div>'}</div>
-    <div class="ecount" id="entryCount">Showing ${entries.length.toLocaleString()} entries${zeroNote}</div>
+    <div class="ecount" id="entryCount">Showing ${entries.length.toLocaleString()} entries</div>
   </div>`;
 }
 
@@ -1468,7 +1247,6 @@ function footerNote(){
   return `<div class="footer-note">
     Data pulled live from the <b>${CONFIG.year} Clients</b> sheet. Refresh to update.
     &nbsp;·&nbsp; Goal: <b>${usd0(CONFIG.yearGoal)}</b>
-    &nbsp;·&nbsp; Averages exclude no-charge files.
   </div>`;
 }
 
