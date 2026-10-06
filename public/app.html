@@ -200,14 +200,19 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// DORCEY APP PULSE — Auto Pilot Program dashboard, v2.
+// DORCEY APP PULSE — Auto Pilot Program dashboard, v3.
 // TWO live feeds:
 //   /api/app-feed         → APP Master Check List sheet (roster, audits,
 //                           compliance, geography, enrollments)
 //   /api/app-invoice-feed → APP Invoicing Spreadsheet (ALL renewal money):
 //                           Legacy APP Clients + 2025 Clients Renewals +
 //                           2026 Client Renewals, unified on the Status
-//                           column (Paid/Upcoming/Due/Overdue/Cancelled).
+//                           column (Paid/Upcoming/Due/Overdue/Cancelled),
+//                           PLUS the "2026 Renewal Payments" worksheet —
+//                           the only place cancelled LEGACY members still
+//                           exist (they're deleted from the Master and the
+//                           Legacy tab when they cancel). v3 uses it to
+//                           count churn honestly, by cohort.
 // Legacy rows have no Attorney column, so attorney is resolved by name-join
 // back to the Master roster (exact first+last, then last-name fallback;
 // ~97% hit rate — misses show as Unassigned).
@@ -341,6 +346,83 @@ function invStatus(r){
   if(s.startsWith("can"))  return "Cancelled";
   if(/waiv|charit|no charge/.test(s)) return "Waived / Charity";
   return "Upcoming"; // blank status, not paid → assume not yet in cycle
+}
+
+// ---------------------------------------------------------------------------
+// Cancellation forensics — the honest churn picture, by cohort.
+// Cancelled LEGACY members are deleted from the Master and the Legacy tab,
+// so they survive ONLY on the "2026 Renewal Payments" worksheet. Cancelled
+// 2025-cohort members ARE kept on their renewals tab (with a Status), and
+// that tab is fresher than the worksheet. So, deduped:
+//   · 2025-cohort cancels = r2025 rows with Status = Cancelled
+//   · Legacy-cycle cancels = worksheet CANCELLED rows NOT on the r2025 roster
+// Dedupe key = last name + first token of the first-name cell (so
+// "Thomas & Carol" matches "Thomas").
+// ---------------------------------------------------------------------------
+
+function cancelKey(last, first){
+  const f = clean(first).toLowerCase().split("&")[0].split(" and ")[0].trim().split(" ")[0] || "";
+  return clean(last).toLowerCase().replace(/[^a-z]/g,"") + "|" + f.replace(/[^a-z]/g,"");
+}
+function wsStatus(r){
+  if(num(r.cancelled_mark) === 1) return "CANCELLED";
+  if(num(r.paid_mark) === 1)      return "PAID";
+  if(num(r.waived_mark) === 1)    return "WAIVED";
+  if(num(r.unpaid_mark) === 1)    return "UNPAID";
+  return null;
+}
+function isCancelled(r){ return clean(r.status).toLowerCase().startsWith("can"); }
+
+function cancelAnalysis(inv){
+  if(!inv || !Array.isArray(inv.r2025) || !inv.r2025.length) return null;
+  const r25 = inv.r2025;
+  const keys25 = new Set(r25.map(r => cancelKey(r.last_name, r.first_name)));
+
+  // 2025 cohort — from its own (authoritative) tab
+  const c25rows = r25.filter(isCancelled);
+  const c25 = c25rows.length;
+  const c25Amt = c25rows.reduce((a,r)=>a+num(r.amount),0);
+  const paid25 = r25.filter(r => invStatus(r) === "Paid").length;
+  const invoiced = c25rows.filter(r => clean(r.invoice_sent).toLowerCase().startsWith("y")).length;
+
+  // Legacy cycle — worksheet cancels not on the 2025 roster
+  let cLeg = 0, cLegAmt = 0, legacyInvoiced = 0, hasWs = false;
+  if(Array.isArray(inv.worksheet) && inv.worksheet.length){
+    hasWs = true;
+    for(const r of inv.worksheet){
+      const st = wsStatus(r);
+      if(!st) continue;
+      if(keys25.has(cancelKey(r.last_name, r.first_name))) continue; // 2025 cohort handled above
+      legacyInvoiced++;
+      if(st === "CANCELLED"){ cLeg++; cLegAmt += num(r.amount); }
+    }
+  }
+
+  // Card-on-file vs churn (2025 cohort — the cohort with clean CC data)
+  let ccY = 0, ccYC = 0, ccN = 0, ccNC = 0, hasCC = false;
+  for(const r of r25){
+    if(clean(r.cc_auth)) hasCC = true;
+    const has = /^yes/i.test(clean(r.cc_auth));
+    const can = isCancelled(r);
+    if(has){ ccY++; if(can) ccYC++; } else { ccN++; if(can) ccNC++; }
+  }
+
+  // First-renewal churn by attorney (2025 cohort)
+  const byAtt = {};
+  for(const r of r25){
+    const a = attyCode(r.attorney) || "—";
+    (byAtt[a] ??= {n:0, c:0});
+    byAtt[a].n++;
+    if(isCancelled(r)) byAtt[a].c++;
+  }
+
+  return {
+    hasWs,
+    c25, c25Amt, n25: r25.length, paid25, invoiced,
+    cLeg, cLegAmt, legacyInvoiced,
+    total: c25 + cLeg, totalAmt: c25Amt + cLegAmt,
+    ccY, ccYC, ccN, ccNC, hasCC, byAtt,
+  };
 }
 
 // Merge the three invoicing tabs into one row set, tagging cohort and
@@ -480,6 +562,9 @@ function computeAll(data, inv){
   const collectible     = bookTotal - renew["Cancelled"].amount - renew["Waived / Charity"].amount;
   const churnAmount     = renew["Cancelled"].amount;
 
+  // --- Cancellation forensics (always program-wide — uses the RAW feed) ---
+  const cancels = cancelAnalysis(inv);
+
   // --- New-client rollups ---
   function ncStats(arr){
     let count = 0, fees = 0;
@@ -508,6 +593,7 @@ function computeAll(data, inv){
     legal, ccauth, elderLaw,
     renew, renewByAtty, cohorts, renewMoStatus, riskRows,
     bookTotal, collectedTotal, collectible, churnAmount,
+    cancels,
     invCount: invRows.length,
     n26: ncStats(new26), n25: ncStats(new25), n24: ncStats(new24),
     m26: monthly(new26, 2026), m25: monthly(new25, 2025),
@@ -567,6 +653,7 @@ function render(){
     kpiSection(s),
     renewalThermo(s),
     riskSection(s),
+    cancellationSection(s),
     auditSection(s),
     workloadSection(s),
     enrollmentSection(s),
@@ -620,6 +707,13 @@ function kpiSection(s){
   const avgRenewal = paid.count ? paid.amount / paid.count : 0;
   const openAmt   = s.renew["Due"].amount + s.renew["Overdue"].amount;
   const openCount = s.renew["Due"].count + s.renew["Overdue"].count;
+  // Churn KPI prefers the deduped cross-sheet count (cancelled legacy members
+  // only exist on the payments worksheet); falls back to the Status column.
+  const churnCount = s.cancels ? s.cancels.total    : s.renew["Cancelled"].count;
+  const churnAmt   = s.cancels ? s.cancels.totalAmt : s.churnAmount;
+  const churnSub   = s.cancels && s.cancels.hasWs
+    ? `${churnCount} memberships · Legacy ${s.cancels.cLeg} + 2025 cohort ${s.cancels.c25}`
+    : `${churnCount} memberships this cycle`;
   return `<div class="kpis">
     <div class="kpi"><div class="k">Avg renewal (paid)</div>
       <div class="v">${usd0(avgRenewal)}</div>
@@ -628,8 +722,8 @@ function kpiSection(s){
       <div class="v">${usdK(openAmt)}</div>
       <div class="d">${openCount.toLocaleString()} invoices need attention</div></div>
     <div class="kpi"><div class="k">Cancelled (churn)</div>
-      <div class="v">${usdK(s.churnAmount)}</div>
-      <div class="d">${s.renew["Cancelled"].count} memberships this cycle</div></div>
+      <div class="v">${usdK(churnAmt)}</div>
+      <div class="d">${churnSub}</div></div>
     <div class="kpi"><div class="k">Attrition on record</div>
       <div class="v">${(s.attrition.deceased + s.attrition.cancelled).toLocaleString()}</div>
       <div class="d">${s.attrition.deceased} deceased · ${s.attrition.cancelled} cancelled (all-time)</div></div>
@@ -690,6 +784,93 @@ function riskSection(s){
     <h2>⚠️ Follow-up list — ${s.riskRows.length} memberships · ${usd0(dollars)} at stake</h2>
     <p class="sh">Everything the invoicing sheet marks Due or Overdue (${nOver} overdue first, then by dollars). This is the call sheet.</p>
     <div class="risklist">${rows}</div>${more}
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// NEW · Cancellations — honest churn by cohort, cross-checked between the
+// payments worksheet and the 2025 renewals tab. Always program-wide.
+// ---------------------------------------------------------------------------
+
+function cancellationSection(s){
+  const c = s.cancels;
+  if(INV_ERROR || !c) return "";
+
+  const legPct  = c.legacyInvoiced ? (c.cLeg / c.legacyInvoiced * 100).toFixed(1) : "0.0";
+  const pct25   = c.n25 ? (c.c25 / c.n25 * 100).toFixed(1) : "0.0";
+  const decided = c.paid25 + c.c25;
+  const decidedPct = decided ? Math.round(c.c25 / decided * 100) : 0;
+  const invPct  = c.c25 ? Math.round(c.invoiced / c.c25 * 100) : 0;
+  const ccYRate = c.ccY ? Math.round(c.ccYC / c.ccY * 100) : 0;
+  const ccNRate = c.ccN ? Math.round(c.ccNC / c.ccN * 100) : 0;
+
+  const legacyChip = c.hasWs
+    ? `<div class="mixchip"><span class="amt">${c.cLeg} · ${usd0(c.cLegAmt)}</span>
+        <small>Legacy — ${legPct}% of ${c.legacyInvoiced.toLocaleString()} invoiced (Jan 1 renewals)</small></div>`
+    : `<div class="mixchip"><span class="amt">—</span>
+        <small>Legacy — needs the 2026 Renewal Payments worksheet in the feed</small></div>`;
+
+  const chips = `
+    ${legacyChip}
+    <div class="mixchip"><span class="amt">${c.c25} · ${usd0(c.c25Amt)}</span>
+      <small>2025 cohort — ${pct25}% of ${c.n25} memberships</small></div>
+    <div class="mixchip"><span class="amt">${c.total} · ${usd0(c.totalAmt)}</span>
+      <small>Total walked, ${CONFIG.year} cycle</small></div>`;
+
+  const attRows = Object.entries(c.byAtt)
+    .filter(([,v]) => v.n >= 5)
+    .map(([k,v]) => ({key:k, label:attorneyLabel(k), n:v.n, c:v.c, pct: v.n ? v.c/v.n*100 : 0}))
+    .sort((a,b) => b.pct - a.pct)
+    .map(r => `<div class="r static">
+      <span class="lbl">${esc(r.label)}<span class="files">· ${r.c} of ${r.n}</span></span>
+      <span class="v" style="color:${r.pct>=30?'var(--down)':r.pct>=20?'#a4680f':'var(--up)'}">${r.pct.toFixed(0)}%</span>
+      <span class="d"></span>
+    </div>`).join("");
+
+  const legacyTriggerRow = c.hasWs ? `
+    <div class="r static">
+      <span class="lbl">Legacy cancels land at the Nov/Dec invoice (Jan 1 renewal)</span>
+      <span class="v">${c.cLeg} of ${c.cLeg}</span>
+      <span class="d">by design</span>
+    </div>` : "";
+
+  const note = filter
+    ? `<p class="sh" style="margin-top:10px">Cancellation analysis is always program-wide — it ignores the active filter.</p>`
+    : "";
+
+  return `<div class="section">
+    <h2>Cancellations — ${CONFIG.year} cycle</h2>
+    <p class="sh">Cancelled legacy members are removed from the Master and the Legacy tab, so they're counted from the <b>2026 Renewal Payments</b> worksheet; 2025-cohort cancels come from their own renewals tab. Deduped across both — this is the honest churn number.</p>
+    <div class="mixchips">${chips}</div>
+    <div class="cols">
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">What triggers it</b>
+        <div class="rank">
+          ${legacyTriggerRow}
+          <div class="r static">
+            <span class="lbl">2025-cohort cancels after their invoice was sent</span>
+            <span class="v">${c.invoiced} of ${c.c25}</span>
+            <span class="d">${invPct}%</span>
+          </div>
+          <div class="r static">
+            <span class="lbl">2025 renewals decided so far that ended in cancellation</span>
+            <span class="v">${decidedPct}%</span>
+            <span class="d">${c.c25} vs ${c.paid25} paid</span>
+          </div>
+          ${c.hasCC ? `<div class="r static">
+            <span class="lbl" style="color:var(--up);font-weight:700">Card on file churns ${ccYRate}% vs ${ccNRate}% without</span>
+            <span class="v" style="color:var(--up)">−${Math.max(0, ccNRate - ccYRate)} pts</span>
+            <span class="d">retention lever</span>
+          </div>` : ``}
+        </div>
+      </div>
+      <div class="col">
+        <b style="color:var(--navy);font-size:.95rem">2025-cohort churn by attorney</b>
+        <div class="rank">${attRows || '<div style="color:var(--muted);padding:14px 4px">No attorney data on the 2025 tab.</div>'}</div>
+        <p class="sh" style="margin-top:8px">First-renewal cancel rate per attorney's 2025 enrollees. Small samples — directional, not a verdict.</p>
+      </div>
+    </div>
+    ${note}
   </div>`;
 }
 
@@ -916,7 +1097,8 @@ function memberLedger(){
 function footerNote(s){
   return `<div class="footer-note">
     Roster, audits &amp; enrollments from the <b>APP Master Check List</b> sheet ·
-    Renewal money from the <b>APP Invoicing Spreadsheet</b> (Legacy + 2025 + 2026 cohort tabs). Refresh to update.
+    Renewal money from the <b>APP Invoicing Spreadsheet</b> (Legacy + 2025 + 2026 cohort tabs) ·
+    Churn deduped against the <b>2026 Renewal Payments</b> worksheet. Refresh to update.
   </div>`;
 }
 
